@@ -1,5 +1,6 @@
 import {
   bestOptions,
+  classifyOption,
   findMember,
   formatSlot,
   participantCount,
@@ -28,6 +29,10 @@ export function PollCard({ pollId }: { pollId: string }) {
   const maxScore = Math.max(1, ...tallies.map((t) => t.score));
   const isOrganiser = state.room.createdBy === meId;
   const closed = poll.status === 'closed';
+  const memberIds = state.room.members.map((m) => m.id);
+  const availability = state.availability ?? [];
+  const hasAvailability = availability.length > 0;
+  const names = (ids: string[]) => ids.map((id) => findMember(state.room, id)?.name ?? '?');
 
   const myVote = (optionId: string): VoteValue | undefined =>
     poll.votes.find((v) => v.memberId === meId && v.optionId === optionId)?.value;
@@ -71,6 +76,7 @@ export function PollCard({ pollId }: { pollId: string }) {
         {poll.options.map((option) => {
           const tally = tallyById.get(option.id);
           const isWinner = closed ? poll.finalOptionId === option.id : option.id === topId;
+          const cls = hasAvailability ? classifyOption(option, memberIds, availability) : undefined;
           return (
             <OptionRow
               key={option.id}
@@ -81,6 +87,8 @@ export function PollCard({ pollId }: { pollId: string }) {
               closed={closed}
               allowMaybe={poll.allowMaybe}
               myVote={myVote(option.id)}
+              freeNames={cls ? names(cls.free) : undefined}
+              busyNames={cls ? names(cls.busy) : undefined}
               voters={(tally?.yesMembers ?? [])
                 .map((id) => findMember(state.room, id))
                 .filter(Boolean)
@@ -105,6 +113,8 @@ function OptionRow({
   closed,
   allowMaybe,
   myVote,
+  freeNames,
+  busyNames,
   voters,
   onVote,
   canFinalize,
@@ -118,6 +128,8 @@ function OptionRow({
   closed: boolean;
   allowMaybe: boolean;
   myVote?: VoteValue;
+  freeNames?: string[];
+  busyNames?: string[];
   voters: { name: string; color: string }[];
   onVote: (value: VoteValue) => void;
   canFinalize: boolean;
@@ -152,6 +164,21 @@ function OptionRow({
       <div className="progress">
         <span style={{ width: `${(score / maxScore) * 100}%` }} />
       </div>
+
+      {(freeNames?.length || busyNames?.length) && (
+        <div className="row small" style={{ gap: '0.75rem' }}>
+          {freeNames && freeNames.length > 0 && (
+            <span style={{ color: 'var(--success)' }} title={`Free: ${freeNames.join(', ')}`}>
+              📅 {freeNames.length} free
+            </span>
+          )}
+          {busyNames && busyNames.length > 0 && (
+            <span style={{ color: 'var(--danger)' }} title={`Busy: ${busyNames.join(', ')}`}>
+              ⛔ {busyNames.length} busy
+            </span>
+          )}
+        </div>
+      )}
 
       <div className="row spread row-wrap">
         <div className="row" style={{ gap: 3 }}>

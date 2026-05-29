@@ -106,6 +106,13 @@ export interface BusyInterval {
   end: ISODateTime;
 }
 
+/** A member's shared busy intervals, used to overlay availability on polls. */
+export interface MemberAvailability {
+  memberId: string;
+  busy: BusyInterval[];
+  updatedAt: ISODateTime;
+}
+
 export type ItemStatus = 'needed' | 'claimed' | 'done';
 
 /** An inventory entry: something that needs bringing to the event. */
@@ -190,4 +197,6 @@ export interface RoomState {
   doodle: DoodleBoard;
   /** Room discussion. Optional for backward-compatibility with older states. */
   messages?: Message[];
+  /** Per-member calendar availability shared for poll overlays. Optional. */
+  availability?: MemberAvailability[];
 }

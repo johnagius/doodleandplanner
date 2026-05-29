@@ -22,6 +22,35 @@ test('create a scheduling poll and vote on it', async ({ page }) => {
   await expect(pollCard.getByText(/1 of 1 voted/)).toBeVisible();
 });
 
+test('overlays shared availability on poll options', async ({ page }) => {
+  const slug = await createRoom(page);
+  await page.getByRole('button', { name: '+ New poll' }).click();
+  await page.getByLabel('Poll title').fill('Movie night?');
+  await page.getByRole('button', { name: 'Create poll' }).click();
+  await expect(page.getByRole('heading', { name: 'Movie night?' })).toBeVisible();
+
+  // Simulate "share my availability": mark the member busy during option 1.
+  await page.evaluate((s) => {
+    const key = `dap:room:${s}`;
+    const rec = JSON.parse(localStorage.getItem(key)!);
+    const me = rec.state.room.members[0].id;
+    const opt = rec.state.polls[0].options[0];
+    rec.state.availability = [
+      {
+        memberId: me,
+        busy: [{ start: opt.start, end: opt.end }],
+        updatedAt: new Date().toISOString(),
+      },
+    ];
+    localStorage.setItem(key, JSON.stringify(rec));
+  }, slug);
+  await page.reload();
+
+  const pollCard = page.locator('.card', { hasText: 'Movie night?' });
+  await expect(pollCard.getByText(/1 busy/)).toBeVisible();
+  await expect(pollCard.getByText(/1 free/)).toBeVisible();
+});
+
 test('manage the inventory checklist', async ({ page }) => {
   await createRoom(page);
   await page.getByRole('tab', { name: /Inventory/ }).click();

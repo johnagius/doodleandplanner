@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+  classifyOption,
   evaluateSlot,
   generateCandidateSlots,
   isFreeDuring,
   suggestSlots,
+  upsertAvailability,
 } from '../src/availability.js';
 import type { MemberBusy } from '../src/availability.js';
 
@@ -125,5 +127,43 @@ describe('suggestSlots', () => {
     });
     expect(suggestions).toHaveLength(1);
     expect(suggestions[0]!.freeCount).toBe(3);
+  });
+});
+
+describe('classifyOption / upsertAvailability', () => {
+  const option = { id: 'o1', start: '2026-06-01T10:00:00Z', end: '2026-06-01T11:00:00Z' };
+
+  it('splits members into free, busy and unknown', () => {
+    const availability = [
+      { memberId: 'a', busy: [], updatedAt: '2026-05-01T00:00:00Z' },
+      {
+        memberId: 'b',
+        busy: [{ start: '2026-06-01T10:30:00Z', end: '2026-06-01T10:45:00Z' }],
+        updatedAt: '2026-05-01T00:00:00Z',
+      },
+      // 'c' has shared nothing -> unknown
+    ];
+    const result = classifyOption(option, ['a', 'b', 'c'], availability);
+    expect(result.free).toEqual(['a']);
+    expect(result.busy).toEqual(['b']);
+    expect(result.unknown).toEqual(['c']);
+  });
+
+  it('upserts availability by member', () => {
+    const list = [{ memberId: 'a', busy: [], updatedAt: '2026-05-01T00:00:00Z' }];
+    const updated = upsertAvailability(list, {
+      memberId: 'a',
+      busy: [{ start: '2026-06-01T10:00:00Z', end: '2026-06-01T11:00:00Z' }],
+      updatedAt: '2026-05-02T00:00:00Z',
+    });
+    expect(updated).toHaveLength(1);
+    expect(updated[0]!.busy).toHaveLength(1);
+
+    const added = upsertAvailability(updated, {
+      memberId: 'b',
+      busy: [],
+      updatedAt: '2026-05-02T00:00:00Z',
+    });
+    expect(added).toHaveLength(2);
   });
 });

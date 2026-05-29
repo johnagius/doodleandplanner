@@ -67,6 +67,7 @@ export function emptyRoomState(room: Room): RoomState {
     events: [],
     doodle: { id: generateId('doodle'), roomId: room.id, strokes: [] },
     messages: [],
+    availability: [],
   };
 }
 

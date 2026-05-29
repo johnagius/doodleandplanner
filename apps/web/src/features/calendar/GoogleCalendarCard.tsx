@@ -16,8 +16,9 @@ export function GoogleCalendarCard() {
   const configured = isGoogleConfigured();
   const { email, connecting, error, connect, disconnect, token } = useGoogleStore();
   const room = useRoomStore((s) => s.state!.room);
+  const polls = useRoomStore((s) => s.state!.polls);
   const meId = useRoomStore((s) => s.meId)!;
-  const { linkGoogle, addPoll } = useRoomStore();
+  const { linkGoogle, addPoll, shareMyAvailability } = useRoomStore();
   const { show } = useToast();
   const [busy, setBusy] = useState(false);
 
@@ -79,6 +80,31 @@ export function GoogleCalendarCard() {
     }
   }
 
+  async function shareAvailability() {
+    setBusy(true);
+    try {
+      const accessToken = await token();
+      const options = polls.flatMap((p) => p.options);
+      const now = new Date();
+      let windowStart = now.toISOString();
+      let windowEnd = addDays(now, 14).toISOString();
+      if (options.length > 0) {
+        windowStart = options.reduce(
+          (min, o) => (o.start < min ? o.start : min),
+          options[0]!.start,
+        );
+        windowEnd = options.reduce((max, o) => (o.end > max ? o.end : max), options[0]!.end);
+      }
+      const myBusy = await getFreeBusy(accessToken, windowStart, windowEnd);
+      await shareMyAvailability(myBusy);
+      show('Shared your availability on the polls 📅');
+    } catch (err) {
+      show(err instanceof Error ? err.message : 'Calendar lookup failed');
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="card stack">
       <div className="row spread row-wrap">
@@ -98,6 +124,14 @@ export function GoogleCalendarCard() {
         <div className="row row-wrap">
           <button className="btn btn-sm" onClick={suggestFromMyCalendar} disabled={busy}>
             {busy ? 'Checking…' : '✨ Suggest times I’m free'}
+          </button>
+          <button
+            className="btn btn-sm"
+            onClick={shareAvailability}
+            disabled={busy}
+            title="Overlay your free/busy on the schedule polls"
+          >
+            📅 Overlay my availability
           </button>
           <button className="btn btn-sm btn-ghost" onClick={disconnect}>
             Disconnect

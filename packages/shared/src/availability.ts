@@ -5,7 +5,7 @@
  */
 import { generateId } from './ids.js';
 import { addMinutes, intervalsOverlap, mergeBusyIntervals, toISO, toMs } from './time.js';
-import type { BusyInterval, ISODateTime, TimeOption } from './types.js';
+import type { BusyInterval, ISODateTime, MemberAvailability, TimeOption } from './types.js';
 
 export interface MemberBusy {
   memberId: string;
@@ -76,6 +76,43 @@ export function isFreeDuring(slot: TimeOption, busy: BusyInterval[]): boolean {
   return !mergeBusyIntervals(busy).some((b) =>
     intervalsOverlap(slot.start, slot.end, b.start, b.end),
   );
+}
+
+export interface OptionAvailability {
+  free: string[];
+  busy: string[];
+  /** Members who haven't shared their calendar yet. */
+  unknown: string[];
+}
+
+/**
+ * For one poll option, classify each member as free / busy / unknown based on
+ * the availability they've shared.
+ */
+export function classifyOption(
+  option: TimeOption,
+  memberIds: string[],
+  availability: MemberAvailability[],
+): OptionAvailability {
+  const byMember = new Map(availability.map((a) => [a.memberId, a.busy]));
+  const free: string[] = [];
+  const busy: string[] = [];
+  const unknown: string[] = [];
+  for (const id of memberIds) {
+    const intervals = byMember.get(id);
+    if (!intervals) unknown.push(id);
+    else if (isFreeDuring(option, intervals)) free.push(id);
+    else busy.push(id);
+  }
+  return { free, busy, unknown };
+}
+
+/** Upsert a member's shared availability, replacing any previous entry. */
+export function upsertAvailability(
+  list: MemberAvailability[],
+  entry: MemberAvailability,
+): MemberAvailability[] {
+  return [...list.filter((a) => a.memberId !== entry.memberId), entry];
 }
 
 /** Annotate a slot with which members are free vs busy. */

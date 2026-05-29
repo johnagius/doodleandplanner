@@ -23,7 +23,9 @@ import {
   undoLastStroke,
   updateActivity,
   updateItem,
+  upsertAvailability,
   type Activity,
+  type BusyInterval,
   type InventoryItem,
   type ItemStatus,
   type Member,
@@ -111,6 +113,9 @@ interface RoomStore {
 
   // chat
   postMessage: (text: string) => Promise<void>;
+
+  // availability
+  shareMyAvailability: (busy: BusyInterval[]) => Promise<void>;
 
   // room admin
   rotateInvite: () => Promise<void>;
@@ -359,6 +364,18 @@ export const useRoomStore = create<RoomStore>((set, get) => {
           s.messages ?? [],
           createMessage({ roomId: s.room.id, authorId: me, text }),
         ),
+      }));
+    },
+
+    async shareMyAvailability(busy) {
+      const me = requireMe();
+      await apply((s) => ({
+        ...s,
+        availability: upsertAvailability(s.availability ?? [], {
+          memberId: me,
+          busy,
+          updatedAt: new Date().toISOString(),
+        }),
       }));
     },
 

@@ -18,7 +18,8 @@ Rooms are shareable via an invite link and can be **password protected**.
 - **Rooms** with a short shareable code, secret invite link (rotatable), and
   optional password protection (PBKDF2 via Web Crypto).
 - **Scheduling polls** — propose time options, everyone votes 👍/🤔/👎, a
-  weighted tally surfaces the best slot, and the organiser can lock it in.
+  weighted tally surfaces the best slot, and the organiser can lock it in. Connect
+  Google Calendar to **overlay each member's free/busy** on every option.
 - **Shared doodle** — a collaborative drawing canvas with a colour palette,
   brush sizes and per-member undo.
 - **Plan** — finalised events, exportable as `.ics`, or pushed straight to
@@ -30,6 +31,9 @@ Rooms are shareable via an invite link and can be **password protected**.
   "who pays whom" settle-up (pick your currency).
 - **Activities** — propose things to do, vote with interest, and auto-build a
   timed **itinerary / running order** for the day.
+- **Discussion** — a per-room chat thread for the group.
+- **Anywhere** — installable **PWA** (works offline), light/dark theme, and
+  **export/import** a room as JSON to back up or move between devices.
 
 ## Monorepo layout
 

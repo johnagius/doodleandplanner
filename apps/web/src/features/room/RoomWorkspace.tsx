@@ -1,4 +1,4 @@
-import { findMember } from '@dap/shared';
+import { computeNudges, findMember } from '@dap/shared';
 import { useState } from 'react';
 import { Avatar, AvatarStack } from '../../components/Avatar.js';
 import { isRealtimeBackend } from '../../lib/storage/index.js';
@@ -41,6 +41,35 @@ export function RoomWorkspace() {
 
   const me = meId ? findMember(state.room, meId) : undefined;
 
+  const nudges = meId
+    ? computeNudges({
+        viewerId: meId,
+        polls: state.polls,
+        inventory: state.inventory,
+        events: state.events,
+        activities: state.activities,
+      })
+    : null;
+
+  const nudgeChips: { label: string; tab: TabId }[] = [];
+  if (nudges) {
+    if (nudges.pollsToVote > 0)
+      nudgeChips.push({
+        label: `🗳️ ${nudges.pollsToVote} poll${nudges.pollsToVote > 1 ? 's' : ''} to vote`,
+        tab: 'schedule',
+      });
+    if (nudges.eventsToRsvp > 0)
+      nudgeChips.push({
+        label: `🗓️ RSVP to ${nudges.eventsToRsvp} event${nudges.eventsToRsvp > 1 ? 's' : ''}`,
+        tab: 'plan',
+      });
+    if (nudges.itemsNeeded > 0)
+      nudgeChips.push({
+        label: `🎒 ${nudges.itemsNeeded} item${nudges.itemsNeeded > 1 ? 's' : ''} unclaimed`,
+        tab: 'inventory',
+      });
+  }
+
   return (
     <div className="container">
       <section className="room-header">
@@ -72,6 +101,15 @@ export function RoomWorkspace() {
             )}
           </div>
         </div>
+        {nudgeChips.length > 0 && (
+          <div className="row row-wrap" aria-label="Things to do" style={{ gap: '0.4rem' }}>
+            {nudgeChips.map((c) => (
+              <button key={c.label} className="nudge-chip" onClick={() => setTab(c.tab)}>
+                {c.label}
+              </button>
+            ))}
+          </div>
+        )}
         <ShareBar />
       </section>
 

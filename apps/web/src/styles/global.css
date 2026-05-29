@@ -936,3 +936,20 @@ label.field {
     padding: 1.1rem;
   }
 }
+
+/* Room "things to do" nudge chips */
+.nudge-chip {
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--warn) 45%, var(--border));
+  background: var(--warn-soft);
+  color: var(--warn);
+  cursor: pointer;
+  transition: filter 0.15s ease;
+}
+.nudge-chip:hover {
+  filter: brightness(0.97);
+}

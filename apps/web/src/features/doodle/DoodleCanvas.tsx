@@ -229,14 +229,19 @@ export function DoodleCanvas() {
     if (!src) return;
     const w = src.clientWidth;
     const h = src.clientHeight;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const out = document.createElement('canvas');
-    out.width = w;
-    out.height = h;
+    out.width = w * dpr;
+    out.height = h * dpr;
     const ctx = out.getContext('2d');
     if (!ctx) return;
+    ctx.scale(dpr, dpr);
+    // Paint strokes first (eraser uses destination-out among them), then fill
+    // white *behind* with destination-over so erased areas don't punch through.
+    for (const stroke of strokes) paintStroke(ctx, w, h, stroke);
+    ctx.globalCompositeOperation = 'destination-over';
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, w, h);
-    for (const stroke of strokes) paintStroke(ctx, w, h, stroke);
     ctx.globalCompositeOperation = 'source-over';
     const url = out.toDataURL('image/png');
     const a = document.createElement('a');

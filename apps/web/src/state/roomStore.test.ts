@@ -116,3 +116,26 @@ describe('roomStore actions', () => {
     expect(store().error).toMatch(/Quantity/);
   });
 });
+
+describe('room settings', () => {
+  it('updates name, description and working hours', async () => {
+    await store().loadRoom(seed.room.slug);
+    await store().updateRoom({
+      name: 'Glamping',
+      description: 'Fancy tents',
+      settings: { defaultSlotMinutes: 120, workingHours: { startHour: 8, endHour: 20 } },
+    });
+    const room = store().state!.room;
+    expect(room.name).toBe('Glamping');
+    expect(room.description).toBe('Fancy tents');
+    expect(room.settings.defaultSlotMinutes).toBe(120);
+    expect(room.settings.workingHours).toEqual({ startHour: 8, endHour: 20 });
+  });
+
+  it('rejects an empty room name', async () => {
+    await store().loadRoom(seed.room.slug);
+    await store().updateRoom({ name: '   ' });
+    expect(store().error).toMatch(/name/i);
+    expect(store().state!.room.name).toBe('Camping');
+  });
+});

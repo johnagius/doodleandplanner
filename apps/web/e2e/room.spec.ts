@@ -124,6 +124,17 @@ test('shows an invite link on the members tab', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Reset link' })).toBeVisible();
 });
 
+test('owner can rename the room in settings', async ({ page }) => {
+  await createRoom(page, 'Old Name');
+  await page.getByRole('tab', { name: /Members/ }).click();
+
+  const settings = page.locator('form', { hasText: 'Room settings' });
+  await settings.getByLabel('Room name').fill('Shiny New Name');
+  await settings.getByRole('button', { name: 'Save settings' }).click();
+
+  await expect(page.getByRole('heading', { name: 'Shiny New Name' })).toBeVisible();
+});
+
 test('track item cost and see the budget split', async ({ page }) => {
   await createRoom(page);
   await page.getByRole('tab', { name: /Inventory/ }).click();

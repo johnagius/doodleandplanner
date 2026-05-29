@@ -19,6 +19,7 @@ import {
   releaseItem,
   removeNote,
   removeOption,
+  renameMember,
   rotateInviteToken,
   scheduleActivity,
   setItemStatus,
@@ -34,6 +35,7 @@ import {
   type ItemStatus,
   type Member,
   type Point,
+  type RoomSettings,
   type RoomState,
   type RsvpStatus,
   type SchedulePoll,
@@ -135,6 +137,12 @@ interface RoomStore {
   // room admin
   rotateInvite: () => Promise<void>;
   setCurrency: (currency: string) => Promise<void>;
+  updateRoom: (patch: {
+    name?: string;
+    description?: string;
+    settings?: Partial<RoomSettings>;
+  }) => Promise<void>;
+  renameMe: (name: string) => Promise<void>;
 }
 
 export const useRoomStore = create<RoomStore>((set, get) => {
@@ -424,6 +432,30 @@ export const useRoomStore = create<RoomStore>((set, get) => {
         ...s,
         room: { ...s.room, settings: { ...s.room.settings, currency } },
       }));
+    },
+
+    async updateRoom(patch) {
+      await apply((s) => {
+        const name = patch.name !== undefined ? patch.name.trim() : s.room.name;
+        if (!name) throw new Error('Room name is required');
+        return {
+          ...s,
+          room: {
+            ...s.room,
+            name,
+            description:
+              patch.description !== undefined
+                ? patch.description.trim() || undefined
+                : s.room.description,
+            settings: { ...s.room.settings, ...patch.settings },
+          },
+        };
+      });
+    },
+
+    async renameMe(name) {
+      const me = requireMe();
+      await apply((s) => ({ ...s, room: renameMember(s.room, me, name) }));
     },
   };
 });

@@ -58,6 +58,19 @@ export function corsHeaders(origin: string | null, allowed: string): Record<stri
   };
 }
 
+/**
+ * True if a raw WebSocket frame is an ephemeral presence message (e.g. a live
+ * cursor). These are relayed to other clients but never persisted.
+ */
+export function isPresenceFrame(raw: string): boolean {
+  try {
+    const data = JSON.parse(raw) as unknown;
+    return !!data && typeof data === 'object' && '__presence' in data;
+  } catch {
+    return false;
+  }
+}
+
 export function json(
   data: unknown,
   init: ResponseInit = {},

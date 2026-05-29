@@ -463,3 +463,29 @@ label.field {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+
+/* Live doodle cursors */
+.remote-cursor {
+  position: absolute;
+  transform: translate(-2px, -2px);
+  pointer-events: none;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.remote-cursor-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: var(--shadow-sm);
+}
+.remote-cursor-label {
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 8px;
+  white-space: nowrap;
+}

@@ -18,8 +18,14 @@ type Listener = (state: RoomState) => void;
  * in-process listener map; cross-tab updates arrive via the window `storage`
  * event. Everything is JSON, so the wire format matches a future HTTP backend.
  */
+type PresenceListener = (payload: unknown) => void;
+
 export class LocalStorageRepository implements Repository {
   private readonly listeners = new Map<string, Set<Listener>>();
+  private readonly presence = new Map<
+    string,
+    { channel: BroadcastChannel; listeners: Set<PresenceListener> }
+  >();
   private storageHandler?: (e: StorageEvent) => void;
 
   constructor(private readonly store: Storage = globalThis.localStorage) {
@@ -112,6 +118,36 @@ export class LocalStorageRepository implements Repository {
     this.listeners.get(state.room.slug)?.forEach((l) => l(state));
   }
 
+  private presenceFor(slug: string) {
+    let entry = this.presence.get(slug);
+    if (!entry) {
+      if (typeof BroadcastChannel === 'undefined') return null;
+      const channel = new BroadcastChannel(`dap:presence:${slug}`);
+      const listeners = new Set<PresenceListener>();
+      channel.onmessage = (e: MessageEvent) => listeners.forEach((l) => l(e.data));
+      entry = { channel, listeners };
+      this.presence.set(slug, entry);
+    }
+    return entry;
+  }
+
+  publishPresence(slug: string, payload: unknown): void {
+    this.presenceFor(slug)?.channel.postMessage(payload);
+  }
+
+  subscribePresence(slug: string, listener: PresenceListener): () => void {
+    const entry = this.presenceFor(slug);
+    if (!entry) return () => undefined;
+    entry.listeners.add(listener);
+    return () => {
+      entry.listeners.delete(listener);
+      if (entry.listeners.size === 0) {
+        entry.channel.close();
+        this.presence.delete(slug);
+      }
+    };
+  }
+
   private attachCrossTab(): void {
     if (typeof window === 'undefined' || this.storageHandler) return;
     this.storageHandler = (e: StorageEvent) => {
@@ -133,5 +169,7 @@ export class LocalStorageRepository implements Repository {
       this.storageHandler = undefined;
     }
     this.listeners.clear();
+    this.presence.forEach((p) => p.channel.close());
+    this.presence.clear();
   }
 }

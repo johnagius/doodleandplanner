@@ -4,7 +4,7 @@
  */
 import type { RoomState } from '@dap/shared';
 import { RoomConflictError, RoomService, isRoomState } from './roomService.js';
-import { corsHeaders, json, route } from './router.js';
+import { corsHeaders, isPresenceFrame, json, route } from './router.js';
 
 export interface Env {
   ROOMS: DurableObjectNamespace;
@@ -81,6 +81,14 @@ export class RoomDurableObject {
       if (room) safeSend(server, JSON.stringify(room));
     });
 
+    // Relay ephemeral presence frames (e.g. live cursors) to everyone else.
+    server.addEventListener('message', (event: MessageEvent) => {
+      const raw = typeof event.data === 'string' ? event.data : '';
+      if (!isPresenceFrame(raw)) return;
+      for (const ws of this.sockets) {
+        if (ws !== server) safeSend(ws, raw);
+      }
+    });
     server.addEventListener('close', () => this.sockets.delete(server));
     server.addEventListener('error', () => this.sockets.delete(server));
 

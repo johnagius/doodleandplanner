@@ -33,6 +33,15 @@ export interface Repository {
    * another tab. Returns an unsubscribe function.
    */
   subscribe(slug: string, listener: (state: RoomState) => void): () => void;
+
+  /**
+   * Broadcast an ephemeral, non-persisted payload (e.g. a live cursor) to other
+   * clients in the room. Optional — backends without a live channel omit it.
+   */
+  publishPresence?(slug: string, payload: unknown): void;
+
+  /** Subscribe to ephemeral presence payloads. Returns an unsubscribe function. */
+  subscribePresence?(slug: string, listener: (payload: unknown) => void): () => void;
 }
 
 export class RoomExistsError extends Error {

@@ -21,7 +21,8 @@ Rooms are shareable via an invite link and can be **password protected**.
   weighted tally surfaces the best slot, and the organiser can lock it in. Connect
   Google Calendar to **overlay each member's free/busy** on every option.
 - **Shared doodle** — a collaborative drawing canvas with a colour palette,
-  brush sizes and per-member undo.
+  brush sizes, per-member undo, and **live cursors** showing where everyone is
+  (across tabs locally; across devices via the Worker).
 - **Plan** — finalised events, exportable as `.ics`, or pushed straight to
   Google Calendar.
 - **Google Calendar** — connect to read your free/busy and auto-suggest times

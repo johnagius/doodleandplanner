@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { corsHeaders, json, route } from '../src/router.js';
+import { corsHeaders, isPresenceFrame, json, route } from '../src/router.js';
 
 describe('route', () => {
   it('routes room CRUD paths', () => {
@@ -38,6 +38,15 @@ describe('corsHeaders', () => {
     expect(corsHeaders('https://evil.com', allowed)['Access-Control-Allow-Origin']).toBe(
       'https://a.com',
     );
+  });
+});
+
+describe('isPresenceFrame', () => {
+  it('detects presence frames and ignores everything else', () => {
+    expect(isPresenceFrame(JSON.stringify({ __presence: { x: 1 } }))).toBe(true);
+    expect(isPresenceFrame(JSON.stringify({ room: {} }))).toBe(false);
+    expect(isPresenceFrame('not json')).toBe(false);
+    expect(isPresenceFrame('null')).toBe(false);
   });
 });
 

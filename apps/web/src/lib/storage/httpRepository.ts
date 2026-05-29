@@ -24,8 +24,11 @@ const INDEX_KEY = 'dap:remote-rooms';
  * WebSocket per room for live updates. A small local index remembers which
  * rooms this device has visited so the home screen can list them.
  */
+type PresenceListener = (payload: unknown) => void;
+
 export class HttpRepository implements Repository {
   private readonly listeners = new Map<string, Set<Listener>>();
+  private readonly presenceListeners = new Map<string, Set<PresenceListener>>();
   private readonly sockets = new Map<string, SocketLike>();
   private readonly store: Storage;
   private readonly fetchFn: typeof fetch;
@@ -108,7 +111,13 @@ export class HttpRepository implements Repository {
     const socket = this.makeSocket(`${wsBase}/api/rooms/${encodeURIComponent(slug)}/ws`);
     socket.addEventListener('message', (ev) => {
       try {
-        const state = JSON.parse(String(ev.data)) as RoomState;
+        const data = JSON.parse(String(ev.data)) as unknown;
+        if (data && typeof data === 'object' && '__presence' in data) {
+          const payload = (data as { __presence: unknown }).__presence;
+          this.presenceListeners.get(slug)?.forEach((l) => l(payload));
+          return;
+        }
+        const state = data as RoomState;
         this.remember(state);
         this.emit(state);
       } catch {
@@ -117,6 +126,26 @@ export class HttpRepository implements Repository {
     });
     socket.addEventListener('close', () => this.sockets.delete(slug));
     this.sockets.set(slug, socket);
+  }
+
+  publishPresence(slug: string, payload: unknown): void {
+    this.ensureSocket(slug);
+    try {
+      this.sockets.get(slug)?.send?.(JSON.stringify({ __presence: payload }));
+    } catch {
+      /* socket not open yet — fine for high-frequency cursor frames */
+    }
+  }
+
+  subscribePresence(slug: string, listener: PresenceListener): () => void {
+    const set = this.presenceListeners.get(slug) ?? new Set<PresenceListener>();
+    set.add(listener);
+    this.presenceListeners.set(slug, set);
+    this.ensureSocket(slug);
+    return () => {
+      set.delete(listener);
+      if (set.size === 0) this.presenceListeners.delete(slug);
+    };
   }
 
   private emit(state: RoomState): void {

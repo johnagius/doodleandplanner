@@ -1,11 +1,14 @@
 import { findMember, MEMBER_PALETTE, type Point, type Stroke } from '@dap/shared';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { applyCursor, isCursor, pruneCursors, type CursorMap } from '../../lib/presence.js';
+import { getRepository } from '../../lib/storage/index.js';
 import { useRoomStore } from '../../state/roomStore.js';
 
 const HEIGHT = 460;
 
 export function DoodleCanvas() {
   const strokes = useRoomStore((s) => s.state!.doodle.strokes);
+  const slug = useRoomStore((s) => s.state!.room.slug);
   const meId = useRoomStore((s) => s.meId)!;
   const me = useRoomStore((s) => findMember(s.state!.room, meId));
   const { draw, undoDoodle, clearDoodle } = useRoomStore();
@@ -14,9 +17,43 @@ export function DoodleCanvas() {
   const containerRef = useRef<HTMLDivElement>(null);
   const drawing = useRef(false);
   const current = useRef<Point[]>([]);
+  const lastSent = useRef(0);
 
   const [color, setColor] = useState(me?.color ?? MEMBER_PALETTE[5]);
   const [width, setWidth] = useState(4);
+  const [cursors, setCursors] = useState<CursorMap>({});
+
+  // Live cursors: subscribe to ephemeral presence and prune stale entries.
+  useEffect(() => {
+    const repo = getRepository();
+    if (!repo.subscribePresence) return;
+    const unsub = repo.subscribePresence(slug, (payload) => {
+      if (isCursor(payload) && payload.memberId !== meId) {
+        setCursors((m) => applyCursor(m, payload));
+      }
+    });
+    const interval = window.setInterval(() => setCursors((m) => pruneCursors(m, Date.now())), 1000);
+    return () => {
+      unsub();
+      window.clearInterval(interval);
+    };
+  }, [slug, meId]);
+
+  function publishCursor(p: Point) {
+    const repo = getRepository();
+    if (!repo.publishPresence || !me) return;
+    const now = Date.now();
+    if (now - lastSent.current < 50) return; // throttle to ~20fps
+    lastSent.current = now;
+    repo.publishPresence(slug, {
+      memberId: meId,
+      name: me.name,
+      color: me.color,
+      x: p.x,
+      y: p.y,
+      at: now,
+    });
+  }
 
   const drawStroke = useCallback(
     (
@@ -86,8 +123,10 @@ export function DoodleCanvas() {
     redraw();
   }
   function onPointerMove(e: React.PointerEvent) {
+    const p = toPoint(e);
+    publishCursor(p);
     if (!drawing.current) return;
-    current.current.push(toPoint(e));
+    current.current.push(p);
     redraw();
   }
   async function onPointerUp() {
@@ -145,7 +184,11 @@ export function DoodleCanvas() {
         </div>
       </div>
 
-      <div ref={containerRef} className="card" style={{ padding: 0, overflow: 'hidden' }}>
+      <div
+        ref={containerRef}
+        className="card"
+        style={{ padding: 0, overflow: 'hidden', position: 'relative' }}
+      >
         <canvas
           ref={canvasRef}
           data-testid="doodle-canvas"
@@ -161,6 +204,19 @@ export function DoodleCanvas() {
           onPointerUp={onPointerUp}
           onPointerLeave={onPointerUp}
         />
+        {Object.values(cursors).map((c) => (
+          <div
+            key={c.memberId}
+            className="remote-cursor"
+            data-testid="remote-cursor"
+            style={{ left: `${c.x * 100}%`, top: `${c.y * 100}%` }}
+          >
+            <span className="remote-cursor-dot" style={{ background: c.color }} />
+            <span className="remote-cursor-label" style={{ background: c.color }}>
+              {c.name}
+            </span>
+          </div>
+        ))}
       </div>
       <p className="muted small" style={{ textAlign: 'center' }}>
         Sketch the venue, the route, the seating plan — whatever helps. Everyone draws on the same

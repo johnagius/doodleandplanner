@@ -22,3 +22,4 @@ export * from './conflicts.js';
 export * from './schema.js';
 export * from './expenses.js';
 export * from './templates.js';
+export * from './responsibilities.js';

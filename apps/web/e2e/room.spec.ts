@@ -163,6 +163,19 @@ test('draw a rectangle shape on the doodle', async ({ page }) => {
   expect(tool).toBe('rect');
 });
 
+test('shows who is doing what on the members tab', async ({ page }) => {
+  await createRoom(page);
+  await page.getByRole('tab', { name: /Inventory/ }).click();
+  await page.getByLabel('Item name').fill('Cooler');
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  await page.getByRole('button', { name: /bring it/ }).click();
+
+  await page.getByRole('tab', { name: /Members/ }).click();
+  const card = page.locator('.card', { hasText: 'Who’s doing what' });
+  await expect(card).toBeVisible();
+  await expect(card.getByText('Cooler')).toBeVisible();
+});
+
 test('shows an invite link on the members tab', async ({ page }) => {
   const slug = await createRoom(page);
   await page.getByRole('tab', { name: /Members/ }).click();

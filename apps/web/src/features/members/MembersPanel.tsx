@@ -1,5 +1,6 @@
-import { buildInviteUrl } from '@dap/shared';
+import { buildInviteUrl, findMember, summarizeResponsibilities } from '@dap/shared';
 import { Avatar } from '../../components/Avatar.js';
+import { formatMoney } from '../../lib/format.js';
 import { downloadRoom } from '../../lib/roomFile.js';
 import { useClipboard } from '../../lib/useClipboard.js';
 import { useRoomStore } from '../../state/roomStore.js';
@@ -86,7 +87,67 @@ export function MembersPanel() {
         </div>
       </div>
 
+      <ResponsibilitiesCard />
       <RoomSettingsCard />
+    </div>
+  );
+}
+
+function ResponsibilitiesCard() {
+  const state = useRoomStore((s) => s.state)!;
+  const currency = state.room.settings.currency;
+  const rollups = summarizeResponsibilities({
+    memberIds: state.room.members.map((m) => m.id),
+    inventory: state.inventory,
+    activities: state.activities,
+    events: state.events,
+    expenses: state.expenses ?? [],
+  });
+
+  // Only show once there's something assigned to anyone.
+  const hasAny = rollups.some(
+    (r) => r.bringing.length || r.keenOn.length || r.going.length || Math.abs(r.net) > 0.005,
+  );
+  if (!hasAny) return null;
+
+  const name = (id: string) => findMember(state.room, id)?.name ?? 'Someone';
+
+  return (
+    <div className="card stack" aria-label="Who's doing what">
+      <h3 className="card-title">🧩 Who’s doing what</h3>
+      <div className="stack" style={{ gap: '0.6rem' }}>
+        {rollups.map((r) => {
+          const member = findMember(state.room, r.memberId);
+          return (
+            <div
+              key={r.memberId}
+              className="row"
+              style={{ gap: '0.6rem', alignItems: 'flex-start' }}
+            >
+              {member && <Avatar member={member} size={26} />}
+              <div className="stack" style={{ gap: '0.15rem', minWidth: 0 }}>
+                <strong className="small">{name(r.memberId)}</strong>
+                <div className="muted small">
+                  {r.bringing.length > 0 && (
+                    <span>🎒 {r.bringing.map((i) => i.name).join(', ')} </span>
+                  )}
+                  {r.going.length > 0 && <span>· ✅ {r.going.length} event(s) </span>}
+                  {r.keenOn.length > 0 && <span>· 🎉 {r.keenOn.length} keen </span>}
+                  {Math.abs(r.net) > 0.005 && (
+                    <span style={{ color: r.net > 0 ? 'var(--success)' : 'var(--danger)' }}>
+                      · {r.net > 0 ? 'owed' : 'owes'} {formatMoney(Math.abs(r.net), currency)}
+                    </span>
+                  )}
+                  {r.bringing.length === 0 &&
+                    r.going.length === 0 &&
+                    r.keenOn.length === 0 &&
+                    Math.abs(r.net) <= 0.005 && <span>nothing yet</span>}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

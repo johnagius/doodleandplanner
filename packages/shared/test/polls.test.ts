@@ -6,9 +6,11 @@ import {
   clearVote,
   closePoll,
   createPoll,
+  isPollDue,
   participantCount,
   removeOption,
   reopenPoll,
+  setPollDeadline,
   tallyPoll,
 } from '../src/polls.js';
 import type { SchedulePoll } from '../src/types.js';
@@ -149,5 +151,38 @@ describe('option editing', () => {
     poll = removeOption(poll, target);
     expect(poll.options).toHaveLength(3);
     expect(poll.votes.some((v) => v.optionId === target)).toBe(false);
+  });
+});
+
+describe('poll deadlines', () => {
+  const opts = [{ start: '2026-06-01T18:00:00Z', end: '2026-06-01T20:00:00Z' }];
+
+  it('stores a deadline on create and can change/clear it', () => {
+    const poll = createPoll({
+      roomId: 'r',
+      title: 'x',
+      options: opts,
+      deadline: '2026-05-30T12:00:00Z',
+    });
+    expect(poll.deadline).toBe('2026-05-30T12:00:00Z');
+    expect(setPollDeadline(poll, '2026-05-31T00:00:00Z').deadline).toBe('2026-05-31T00:00:00Z');
+    expect(setPollDeadline(poll, undefined).deadline).toBeUndefined();
+  });
+
+  it('is due only when open and the deadline has passed', () => {
+    const poll = createPoll({
+      roomId: 'r',
+      title: 'x',
+      options: opts,
+      deadline: '2026-05-30T12:00:00Z',
+    });
+    expect(isPollDue(poll, new Date('2026-05-30T11:59:00Z'))).toBe(false);
+    expect(isPollDue(poll, new Date('2026-05-30T12:01:00Z'))).toBe(true);
+    // A poll with no deadline is never "due".
+    expect(isPollDue(createPoll({ roomId: 'r', title: 'x', options: opts }), new Date())).toBe(
+      false,
+    );
+    // A closed poll is never "due".
+    expect(isPollDue(closePoll(poll), new Date('2026-06-01T00:00:00Z'))).toBe(false);
   });
 });

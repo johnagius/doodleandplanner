@@ -2,6 +2,7 @@ import {
   bestOptions,
   findMember,
   formatSlot,
+  isPollDue,
   participantCount,
   summarizeSlotConflicts,
   type BusyInterval,
@@ -59,8 +60,20 @@ export function PollCard({ pollId }: { pollId: string }) {
               {poll.description}
             </p>
           )}
-          <div className="muted small">
-            {participantCount(poll)} of {state.room.members.length} voted
+          <div className="row small muted" style={{ gap: '0.5rem' }}>
+            <span>
+              {participantCount(poll)} of {state.room.members.length} voted
+            </span>
+            {poll.deadline && !closed && (
+              <span className={isPollDue(poll) ? 'badge badge-warn' : 'badge'}>
+                {isPollDue(poll)
+                  ? '⏰ voting due'
+                  : `⏳ closes ${new Date(poll.deadline).toLocaleDateString([], {
+                      day: 'numeric',
+                      month: 'short',
+                    })}`}
+              </span>
+            )}
           </div>
         </div>
         {isOrganiser && (

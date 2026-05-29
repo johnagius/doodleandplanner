@@ -89,6 +89,8 @@ export interface SchedulePoll {
   finalOptionId?: string;
   /** Whether voters may pick "maybe" in addition to yes/no. */
   allowMaybe: boolean;
+  /** Optional voting deadline; after it, the poll is "due" to be decided. */
+  deadline?: ISODateTime;
   createdAt: ISODateTime;
 }
 

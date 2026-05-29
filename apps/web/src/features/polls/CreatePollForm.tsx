@@ -1,7 +1,12 @@
 import { suggestSlots } from '@dap/shared';
 import { useState, type FormEvent } from 'react';
 import { useToast } from '../../components/Toast.js';
-import { defaultStartLocal, isoToLocalInput, optionsFromLocal } from '../../lib/datetime.js';
+import {
+  defaultStartLocal,
+  isoToLocalInput,
+  localInputToISO,
+  optionsFromLocal,
+} from '../../lib/datetime.js';
 import { getBusyWithEvents } from '../../lib/google/calendar.js';
 import { isGoogleConfigured } from '../../lib/google/config.js';
 import { useGoogleStore } from '../../state/googleStore.js';
@@ -25,6 +30,7 @@ export function CreatePollForm({ onDone }: { onDone: () => void }) {
   const [allowMaybe, setAllowMaybe] = useState(true);
   const [duration, setDuration] = useState(defaultDuration);
   const [options, setOptions] = useState<string[]>([defaultStartLocal(1), defaultStartLocal(2)]);
+  const [deadline, setDeadline] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [suggesting, setSuggesting] = useState(false);
 
@@ -79,7 +85,13 @@ export function CreatePollForm({ onDone }: { onDone: () => void }) {
     const built = optionsFromLocal(options, duration);
     if (!title.trim()) return setError('Give your poll a title');
     if (built.length === 0) return setError('Add at least one time option');
-    await addPoll({ title, description: description || undefined, options: built, allowMaybe });
+    await addPoll({
+      title,
+      description: description || undefined,
+      options: built,
+      allowMaybe,
+      deadline: deadline ? localInputToISO(deadline) : undefined,
+    });
     onDone();
   }
 
@@ -119,6 +131,16 @@ export function CreatePollForm({ onDone }: { onDone: () => void }) {
             <option value={180}>3 hours</option>
             <option value={240}>Half day</option>
           </select>
+        </label>
+        <label className="field">
+          Votes close <span className="muted small">(optional)</span>
+          <input
+            className="input"
+            type="datetime-local"
+            value={deadline}
+            onChange={(e) => setDeadline(e.target.value)}
+            aria-label="Voting deadline"
+          />
         </label>
         <label className="row" style={{ gap: '0.4rem', alignSelf: 'flex-end' }}>
           <input

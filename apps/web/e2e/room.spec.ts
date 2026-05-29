@@ -38,6 +38,17 @@ test('create a scheduling poll and vote on it', async ({ page }) => {
   await expect(pollCard.getByText(/1 of 1 voted/)).toBeVisible();
 });
 
+test('create a poll with a voting deadline', async ({ page }) => {
+  await createRoom(page);
+  await page.getByRole('button', { name: '+ New poll' }).first().click();
+  await page.getByLabel('Poll title').fill('Decide soon');
+  await page.getByLabel('Voting deadline').fill('2030-01-01T12:00');
+  await page.getByRole('button', { name: 'Create poll' }).click();
+
+  const pollCard = page.locator('.card', { hasText: 'Decide soon' });
+  await expect(pollCard.getByText(/closes/)).toBeVisible();
+});
+
 test('overlays shared availability on poll options', async ({ page }) => {
   const slug = await createRoom(page);
   await page.getByRole('button', { name: '+ New poll' }).first().click();

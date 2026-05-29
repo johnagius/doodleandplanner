@@ -12,6 +12,7 @@ export interface CreatePollInput {
   description?: string;
   options: Array<{ start: string; end: string }>;
   allowMaybe?: boolean;
+  deadline?: string;
   now?: () => Date;
 }
 
@@ -35,8 +36,19 @@ export function createPoll(input: CreatePollInput): SchedulePoll {
     votes: [],
     status: 'open',
     allowMaybe: input.allowMaybe ?? true,
+    deadline: input.deadline,
     createdAt: now,
   };
+}
+
+/** Set or clear a poll's voting deadline. */
+export function setPollDeadline(poll: SchedulePoll, deadline: string | undefined): SchedulePoll {
+  return { ...poll, deadline };
+}
+
+/** True when an open poll has a deadline that has passed. */
+export function isPollDue(poll: SchedulePoll, now: Date = new Date()): boolean {
+  return poll.status === 'open' && !!poll.deadline && toMs(poll.deadline) <= now.getTime();
 }
 
 export function addOption(poll: SchedulePoll, start: string, end: string): SchedulePoll {

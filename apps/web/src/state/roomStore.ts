@@ -65,6 +65,7 @@ interface RoomStore {
     description?: string;
     options: { start: string; end: string }[];
     allowMaybe?: boolean;
+    deadline?: string;
   }) => Promise<void>;
   vote: (pollId: string, optionId: string, value: VoteValue) => Promise<void>;
   addPollOption: (pollId: string, start: string, end: string) => Promise<void>;
@@ -287,6 +288,7 @@ export const useRoomStore = create<RoomStore>((set, get) => {
             description: input.description,
             options: input.options.map((o) => ({ start: o.start, end: o.end })),
             allowMaybe: input.allowMaybe,
+            deadline: input.deadline,
           }),
         ],
       }));

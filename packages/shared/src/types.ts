@@ -221,6 +221,8 @@ export interface Message {
 
 /** The complete persisted state for a single room. */
 export interface RoomState {
+  /** Schema version this state was last normalised to. Absent ⇒ legacy (0). */
+  schemaVersion?: number;
   room: Room;
   polls: SchedulePoll[];
   inventory: InventoryItem[];

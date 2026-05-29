@@ -1,4 +1,4 @@
-import type { RoomState } from '@dap/shared';
+import { migrateRoomState, type RoomState } from '@dap/shared';
 
 /** On-disk envelope for an exported room, so imports can be validated. */
 export interface RoomFile {
@@ -39,7 +39,8 @@ export function parseRoomFile(text: string): RoomState {
   ) {
     throw new Error('This room file is missing or malformed');
   }
-  return state;
+  // Upgrade any older exported shape to the current schema.
+  return migrateRoomState(state);
 }
 
 /** Trigger a browser download of the room as a JSON file. */

@@ -1,4 +1,4 @@
-import type { RoomState } from '@dap/shared';
+import { migrateRoomState, type RoomState } from '@dap/shared';
 import { type Repository, RoomExistsError, type RoomSummary } from './repository.js';
 
 const STORE_VERSION = 1;
@@ -40,7 +40,10 @@ export class LocalStorageRepository implements Repository {
     const raw = this.store.getItem(this.key(slug));
     if (!raw) return null;
     try {
-      return JSON.parse(raw) as StoredRoom;
+      const record = JSON.parse(raw) as StoredRoom;
+      // Upgrade any older persisted shape to the current schema on read.
+      record.state = migrateRoomState(record.state);
+      return record;
     } catch {
       return null;
     }

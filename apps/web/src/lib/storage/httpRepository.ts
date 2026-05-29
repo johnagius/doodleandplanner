@@ -1,4 +1,4 @@
-import type { RoomState } from '@dap/shared';
+import { migrateRoomState, type RoomState } from '@dap/shared';
 import { type Repository, RoomExistsError, type RoomSummary } from './repository.js';
 
 type Listener = (state: RoomState) => void;
@@ -62,7 +62,7 @@ export class HttpRepository implements Repository {
     const res = await this.fetchFn(this.url(`/api/rooms/${encodeURIComponent(slug)}`));
     if (res.status === 404) return null;
     if (!res.ok) throw new Error(`Could not load room (${res.status})`);
-    const state = (await res.json()) as RoomState;
+    const state = migrateRoomState(await res.json());
     this.remember(state);
     return state;
   }
@@ -117,7 +117,7 @@ export class HttpRepository implements Repository {
           this.presenceListeners.get(slug)?.forEach((l) => l(payload));
           return;
         }
-        const state = data as RoomState;
+        const state = migrateRoomState(data);
         this.remember(state);
         this.emit(state);
       } catch {

@@ -24,6 +24,36 @@ describe('LocalStorageRepository', () => {
     expect(loaded?.room.id).toBe(state.room.id);
   });
 
+  it('migrates a legacy stored room on read', async () => {
+    // Hand-write a pre-versioning record missing newer fields.
+    const legacy = {
+      version: 1,
+      updatedAt: new Date().toISOString(),
+      state: {
+        room: {
+          id: 'room_legacy',
+          slug: 'legacy1',
+          name: 'Legacy',
+          createdAt: 'x',
+          createdBy: 'm1',
+          inviteToken: 't',
+          members: [{ id: 'm1', name: 'A', color: '#ef4444', role: 'owner', joinedAt: 'x' }],
+        },
+        polls: [],
+        inventory: [],
+        activities: [],
+        events: [],
+        doodle: { id: 'd', roomId: 'room_legacy', strokes: [] },
+      },
+    };
+    localStorage.setItem('dap:room:legacy1', JSON.stringify(legacy));
+    const loaded = await repo.getRoom('legacy1');
+    expect(loaded?.schemaVersion).toBeGreaterThanOrEqual(1);
+    expect(loaded?.messages).toEqual([]);
+    expect(loaded?.availability).toEqual([]);
+    expect(loaded?.room.settings.currency).toBe('EUR');
+  });
+
   it('returns null for unknown slugs', async () => {
     expect(await repo.getRoom('nope')).toBeNull();
   });

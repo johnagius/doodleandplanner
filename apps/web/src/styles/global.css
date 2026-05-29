@@ -845,3 +845,37 @@ label.field {
   border-radius: 8px;
   white-space: nowrap;
 }
+
+/* Summary / printable one-pager */
+.summary-list {
+  margin: 0;
+  padding-left: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.summary-list li {
+  line-height: 1.4;
+}
+
+@media print {
+  /* Print only the summary sheet, full-bleed, no app chrome. */
+  body {
+    background: #fff;
+  }
+  .topbar,
+  .tabs,
+  .room-header,
+  .no-print {
+    display: none !important;
+  }
+  .container {
+    max-width: none;
+    padding: 0;
+  }
+  .summary-sheet {
+    border: none;
+    box-shadow: none;
+    padding: 0;
+  }
+}

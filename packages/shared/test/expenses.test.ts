@@ -67,7 +67,9 @@ describe('combineLedger', () => {
   });
 
   it('merges claimed inventory costs with expenses', () => {
-    const items: InventoryItem[] = [claimItem(createItem({ roomId: 'r', name: 'Tent', cost: 30 }), 'b')];
+    const items: InventoryItem[] = [
+      claimItem(createItem({ roomId: 'r', name: 'Tent', cost: 30 }), 'b'),
+    ];
     const summary = combineLedger([expense({ amount: 90, paidBy: 'a' })], items, ['a', 'b', 'c']);
     expect(summary.total).toBe(120);
     expect(summary.entries).toHaveLength(2);
@@ -75,7 +77,9 @@ describe('combineLedger', () => {
   });
 
   it('produces settlements that clear the combined balances', () => {
-    const items: InventoryItem[] = [claimItem(createItem({ roomId: 'r', name: 'Food', cost: 30 }), 'b')];
+    const items: InventoryItem[] = [
+      claimItem(createItem({ roomId: 'r', name: 'Food', cost: 30 }), 'b'),
+    ];
     const summary = combineLedger([expense({ amount: 90, paidBy: 'a' })], items, ['a', 'b', 'c']);
     const delta = new Map<string, number>();
     for (const s of summary.settlements) {

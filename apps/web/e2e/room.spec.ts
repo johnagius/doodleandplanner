@@ -143,6 +143,24 @@ test('shows an invite link on the members tab', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Reset link' })).toBeVisible();
 });
 
+test('summary tab gathers the plan into a one-pager', async ({ page }) => {
+  await createRoom(page, 'Summit Trip');
+  await page.getByRole('tab', { name: /Plan/ }).click();
+  await page.getByRole('button', { name: '+ Add event' }).click();
+  await page.getByLabel('Title').fill('Summit dinner');
+  await page.getByRole('button', { name: 'Add to plan' }).click();
+  await page.getByRole('tab', { name: /Activities/ }).click();
+  await page.getByLabel('Activity title').fill('Sunrise hike');
+  await page.getByRole('button', { name: 'Propose' }).click();
+
+  await page.getByRole('tab', { name: /Summary/ }).click();
+  const summary = page.locator('.summary');
+  await expect(summary.getByRole('heading', { name: 'Summit Trip' })).toBeVisible();
+  await expect(summary.getByText('Summit dinner')).toBeVisible();
+  await expect(summary.getByText('Sunrise hike')).toBeVisible();
+  await expect(page.getByRole('button', { name: /Print/ })).toBeVisible();
+});
+
 test('owner can rename the room in settings', async ({ page }) => {
   await createRoom(page, 'Old Name');
   await page.getByRole('tab', { name: /Members/ }).click();

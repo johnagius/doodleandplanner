@@ -10,9 +10,18 @@ import { EventsPanel } from '../events/EventsPanel.js';
 import { InventoryPanel } from '../inventory/InventoryPanel.js';
 import { MembersPanel } from '../members/MembersPanel.js';
 import { PollsPanel } from '../polls/PollsPanel.js';
+import { SummaryView } from '../summary/SummaryView.js';
 import { ShareBar } from './ShareBar.js';
 
-type TabId = 'schedule' | 'doodle' | 'plan' | 'inventory' | 'activities' | 'chat' | 'members';
+type TabId =
+  | 'schedule'
+  | 'doodle'
+  | 'plan'
+  | 'inventory'
+  | 'activities'
+  | 'chat'
+  | 'members'
+  | 'summary';
 
 const TABS: { id: TabId; label: string; icon: string }[] = [
   { id: 'schedule', label: 'Schedule', icon: '🗳️' },
@@ -21,6 +30,7 @@ const TABS: { id: TabId; label: string; icon: string }[] = [
   { id: 'inventory', label: 'Inventory', icon: '🎒' },
   { id: 'activities', label: 'Activities', icon: '🎉' },
   { id: 'chat', label: 'Chat', icon: '💬' },
+  { id: 'summary', label: 'Summary', icon: '📋' },
   { id: 'members', label: 'Members', icon: '👥' },
 ];
 
@@ -86,6 +96,7 @@ export function RoomWorkspace() {
         {tab === 'inventory' && <InventoryPanel />}
         {tab === 'activities' && <ActivitiesPanel />}
         {tab === 'chat' && <ChatPanel />}
+        {tab === 'summary' && <SummaryView />}
         {tab === 'members' && <MembersPanel />}
       </div>
     </div>

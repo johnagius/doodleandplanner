@@ -280,11 +280,13 @@ h3 {
   font-size: 1.18rem;
   letter-spacing: -0.02em;
   color: var(--text);
+  min-width: 0;
 }
 .brand:hover {
   text-decoration: none;
 }
 .brand .brand-name {
+  white-space: nowrap;
   background: linear-gradient(120deg, var(--primary-dark), var(--accent-2) 60%, var(--accent));
   -webkit-background-clip: text;
   background-clip: text;
@@ -913,5 +915,24 @@ label.field {
     border: none;
     box-shadow: none;
     padding: 0;
+  }
+}
+
+/* Small-screen tweaks */
+@media (max-width: 480px) {
+  .topbar {
+    padding: 0.55rem 0.85rem;
+  }
+  .brand {
+    font-size: 1.05rem;
+  }
+  .container {
+    padding: 1rem 0.85rem 3rem;
+  }
+  .room-header {
+    padding: 1.1rem 1rem;
+  }
+  .card {
+    padding: 1.1rem;
   }
 }

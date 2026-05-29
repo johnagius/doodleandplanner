@@ -171,6 +171,15 @@ export interface DoodleBoard {
   strokes: Stroke[];
 }
 
+/** A chat message in the room discussion. */
+export interface Message {
+  id: string;
+  roomId: string;
+  authorId: string;
+  text: string;
+  createdAt: ISODateTime;
+}
+
 /** The complete persisted state for a single room. */
 export interface RoomState {
   room: Room;
@@ -179,4 +188,6 @@ export interface RoomState {
   activities: Activity[];
   events: PlannedEvent[];
   doodle: DoodleBoard;
+  /** Room discussion. Optional for backward-compatibility with older states. */
+  messages?: Message[];
 }

@@ -2,6 +2,7 @@ import {
   addMember,
   addOption,
   addStroke,
+  appendMessage,
   castVote,
   claimItem,
   clearBoard,
@@ -9,6 +10,7 @@ import {
   createActivity,
   createEvent,
   createItem,
+  createMessage,
   createPoll,
   eventFromOption,
   linkGoogleAccount,
@@ -106,6 +108,9 @@ interface RoomStore {
   draw: (input: { color: string; width: number; points: Point[] }) => Promise<void>;
   undoDoodle: () => Promise<void>;
   clearDoodle: () => Promise<void>;
+
+  // chat
+  postMessage: (text: string) => Promise<void>;
 
   // room admin
   rotateInvite: () => Promise<void>;
@@ -344,6 +349,17 @@ export const useRoomStore = create<RoomStore>((set, get) => {
 
     async clearDoodle() {
       await apply((s) => ({ ...s, doodle: clearBoard(s.doodle) }));
+    },
+
+    async postMessage(text) {
+      const me = requireMe();
+      await apply((s) => ({
+        ...s,
+        messages: appendMessage(
+          s.messages ?? [],
+          createMessage({ roomId: s.room.id, authorId: me, text }),
+        ),
+      }));
     },
 
     async rotateInvite() {

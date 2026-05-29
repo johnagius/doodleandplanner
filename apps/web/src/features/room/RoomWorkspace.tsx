@@ -4,6 +4,7 @@ import { Avatar, AvatarStack } from '../../components/Avatar.js';
 import { isRealtimeBackend } from '../../lib/storage/index.js';
 import { useRoomStore } from '../../state/roomStore.js';
 import { ActivitiesPanel } from '../activities/ActivitiesPanel.js';
+import { ChatPanel } from '../chat/ChatPanel.js';
 import { DoodleCanvas } from '../doodle/DoodleCanvas.js';
 import { EventsPanel } from '../events/EventsPanel.js';
 import { InventoryPanel } from '../inventory/InventoryPanel.js';
@@ -11,7 +12,7 @@ import { MembersPanel } from '../members/MembersPanel.js';
 import { PollsPanel } from '../polls/PollsPanel.js';
 import { ShareBar } from './ShareBar.js';
 
-type TabId = 'schedule' | 'doodle' | 'plan' | 'inventory' | 'activities' | 'members';
+type TabId = 'schedule' | 'doodle' | 'plan' | 'inventory' | 'activities' | 'chat' | 'members';
 
 const TABS: { id: TabId; label: string; icon: string }[] = [
   { id: 'schedule', label: 'Schedule', icon: '🗳️' },
@@ -19,6 +20,7 @@ const TABS: { id: TabId; label: string; icon: string }[] = [
   { id: 'plan', label: 'Plan', icon: '🗓️' },
   { id: 'inventory', label: 'Inventory', icon: '🎒' },
   { id: 'activities', label: 'Activities', icon: '🎉' },
+  { id: 'chat', label: 'Chat', icon: '💬' },
   { id: 'members', label: 'Members', icon: '👥' },
 ];
 
@@ -83,6 +85,7 @@ export function RoomWorkspace() {
         {tab === 'plan' && <EventsPanel />}
         {tab === 'inventory' && <InventoryPanel />}
         {tab === 'activities' && <ActivitiesPanel />}
+        {tab === 'chat' && <ChatPanel />}
         {tab === 'members' && <MembersPanel />}
       </div>
     </div>

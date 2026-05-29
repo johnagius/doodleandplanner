@@ -103,6 +103,20 @@ test('build an itinerary running order from activities', async ({ page }) => {
   await expect(itinerary.getByText('Hike')).toBeVisible();
 });
 
+test('post messages in the room discussion', async ({ page }) => {
+  await createRoom(page);
+  await page.getByRole('tab', { name: /Chat/ }).click();
+
+  await page.getByLabel('Message').fill('Hello team!');
+  await page.getByRole('button', { name: 'Send' }).click();
+  await page.getByLabel('Message').fill('Who is in?');
+  await page.getByRole('button', { name: 'Send' }).click();
+
+  const log = page.getByTestId('chat-log');
+  await expect(log.getByText('Hello team!')).toBeVisible();
+  await expect(log.getByText('Who is in?')).toBeVisible();
+});
+
 test('export a room and re-import it', async ({ page }, testInfo) => {
   const slug = await createRoom(page, 'Export Trip');
   await page.getByRole('tab', { name: /Members/ }).click();

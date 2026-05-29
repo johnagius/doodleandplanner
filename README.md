@@ -8,8 +8,10 @@ shall we do").
 
 Rooms are shareable via an invite link and can be **password protected**.
 
+**▶︎ Live: https://doodleandplanner.pages.dev**
+
 > Status: actively being built. The app runs **fully client-side** today (works
-> on GitHub Pages with `localStorage`), and is architected so the same domain
+> on Cloudflare Pages with `localStorage`), and is architected so the same domain
 > logic can run in a **Cloudflare Worker + Durable Objects** backend for true
 > real-time, multi-device collaboration.
 
@@ -29,12 +31,18 @@ Rooms are shareable via an invite link and can be **password protected**.
   exportable as `.ics`, or pushed straight to Google Calendar.
 - **Sign in with Google** — one click brings your name + avatar; the app reads
   your free/busy to suggest times and writes the agreed event back.
-- **Inventory** — a checklist of what to bring with claim/coverage tracking, plus
-  optional per-item **costs** that split fairly across the group with a minimal
-  "who pays whom" settle-up (pick your currency).
+- **Inventory** — a checklist of what to bring, grouped by category, with
+  claim/coverage tracking.
+- **Money & split** — log shared **expenses** (paid by one, split across the
+  group) alongside item costs, and get a minimal **"who pays whom"** settle-up
+  in your currency.
 - **Activities** — propose things to do, vote with interest, and auto-build a
   timed **itinerary / running order** for the day.
 - **Discussion** — a per-room chat thread for the group.
+- **Templates** — start a room pre-filled for a Camping trip, Birthday, Dinner
+  party, Game night or City break (or blank).
+- **Trip summary** — a shareable, printable one-pager pulling together the
+  agreed plan, RSVPs, activities, packing list and the money settle-up.
 - **Anywhere** — installable **PWA** (works offline), a **WebGL** animated hero,
   light/dark theme, owner **room settings** (working hours feed the slot finder),
   and **export/import** a room as JSON to back up or move between devices.
@@ -48,8 +56,9 @@ apps/server       Cloudflare Worker + Durable Object for real-time room sync
 ```
 
 - `@dap/shared` holds all the rules — rooms, voting tallies, availability/slot
-  finding, inventory, budget split, activities, itinerary, events, the doodle
-  board, password hashing and invite tokens — with no UI or storage
+  finding, the conflict engine, inventory, the expenses ledger + settle-up,
+  activities, itinerary, events + RSVP, the doodle board, room templates, schema
+  migrations, password hashing and invite tokens — with no UI or storage
   dependencies. This is why it can run in the browser or on the edge unchanged.
 - `apps/web` talks to a `Repository` interface (`src/lib/storage`). The default
   `LocalStorageRepository` persists to the browser and syncs across tabs; the

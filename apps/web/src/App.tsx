@@ -1,4 +1,5 @@
 import { Link, Route, Routes } from 'react-router-dom';
+import { ThemeToggle } from './components/ThemeToggle.js';
 import { ToastProvider } from './components/Toast.js';
 import { HomePage } from './features/home/HomePage.js';
 import { RoomPage } from './features/room/RoomPage.js';
@@ -17,14 +18,17 @@ export function App() {
               Doodle <span className="muted">&amp;</span> Planner
             </span>
           </Link>
-          <a
-            className="btn btn-sm btn-ghost"
-            href="https://github.com/johnagius/doodleandplanner"
-            target="_blank"
-            rel="noreferrer"
-          >
-            GitHub
-          </a>
+          <div className="row" style={{ gap: '0.4rem' }}>
+            <ThemeToggle />
+            <a
+              className="btn btn-sm btn-ghost"
+              href="https://github.com/johnagius/doodleandplanner"
+              target="_blank"
+              rel="noreferrer"
+            >
+              GitHub
+            </a>
+          </div>
         </header>
         <main className="grow">
           <Routes>

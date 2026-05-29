@@ -2,7 +2,11 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { App } from './App.js';
+import { applyTheme, resolveTheme } from './lib/theme.js';
 import './styles/global.css';
+
+// Apply the saved/system theme before first paint to avoid a flash.
+applyTheme(resolveTheme());
 
 // Vite injects BASE_URL from the `base` config; React Router needs it without
 // the trailing slash so deep links work on GitHub Pages (/repo/) and Cloudflare.

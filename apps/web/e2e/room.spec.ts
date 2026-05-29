@@ -56,10 +56,13 @@ test('manage the inventory checklist', async ({ page }) => {
   await createRoom(page);
   await page.getByRole('tab', { name: /Inventory/ }).click();
   await page.getByLabel('Item name').fill('Tent');
+  await page.getByLabel('Category').fill('Gear');
   await page.getByRole('button', { name: 'Add', exact: true }).click();
 
   await expect(page.getByText('Tent')).toBeVisible();
   await expect(page.getByText('unclaimed')).toBeVisible();
+  // Category becomes a section header.
+  await expect(page.locator('.section-label')).toContainText('Gear');
   await page.getByRole('button', { name: /bring it/ }).click();
   await expect(page.getByText(/sorted/)).toBeVisible();
   await expect(page.getByRole('button', { name: /bring it/ })).toHaveCount(0);

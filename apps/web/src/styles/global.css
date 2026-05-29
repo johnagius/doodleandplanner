@@ -340,6 +340,16 @@ h3 {
   margin: 0;
 }
 
+/* Section label (e.g. inventory category) */
+.section-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 0.5rem 0.25rem 0;
+}
+
 .stack {
   display: flex;
   flex-direction: column;

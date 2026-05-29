@@ -9,6 +9,22 @@ async function createRoom(page: Page, name = 'E2E Adventure'): Promise<string> {
   return page.url().split('/r/')[1]!.split('?')[0]!;
 }
 
+test('create a room from the Camping template (pre-filled inventory)', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('radio', { name: /Camping trip/ }).click();
+  await page.getByLabel('Room name').fill('Forest Weekend');
+  await page.getByLabel('Your name').fill('Robin');
+  await page.getByRole('button', { name: 'Create room' }).click();
+  await expect(page.getByRole('heading', { name: 'Forest Weekend' })).toBeVisible();
+
+  await page.getByRole('tab', { name: /Inventory/ }).click();
+  await expect(page.getByText('Tent')).toBeVisible();
+  await expect(page.locator('.section-label').filter({ hasText: 'Gear' })).toBeVisible();
+
+  await page.getByRole('tab', { name: /Activities/ }).click();
+  await expect(page.getByRole('heading', { name: 'Hiking' })).toBeVisible();
+});
+
 test('create a scheduling poll and vote on it', async ({ page }) => {
   await createRoom(page);
   await page.getByRole('button', { name: '+ New poll' }).click();

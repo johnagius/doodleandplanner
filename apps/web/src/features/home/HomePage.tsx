@@ -1,3 +1,4 @@
+import { ROOM_TEMPLATES } from '@dap/shared';
 import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { HeroCanvas } from '../../components/HeroCanvas.js';
@@ -150,6 +151,7 @@ function CreateRoomCard({ onCreated }: { onCreated: (slug: string) => void }) {
   const [ownerName, setOwnerName] = useState(getPreferredName());
   const [description, setDescription] = useState('');
   const [password, setPassword] = useState('');
+  const [templateId, setTemplateId] = useState('blank');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -164,6 +166,7 @@ function CreateRoomCard({ onCreated }: { onCreated: (slug: string) => void }) {
         ownerName,
         description: description || undefined,
         password: password || undefined,
+        templateId,
       });
       onCreated(slug);
     } catch (err) {
@@ -183,6 +186,24 @@ function CreateRoomCard({ onCreated }: { onCreated: (slug: string) => void }) {
           }
         }}
       />
+      <div className="field">
+        Start from a template
+        <div className="template-grid" role="radiogroup" aria-label="Room template">
+          {ROOM_TEMPLATES.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              role="radio"
+              aria-checked={templateId === t.id}
+              className={`template-chip ${templateId === t.id ? 'selected' : ''}`}
+              onClick={() => setTemplateId(t.id)}
+              title={t.description}
+            >
+              <span aria-hidden>{t.icon}</span> {t.name}
+            </button>
+          ))}
+        </div>
+      </div>
       <label className="field">
         Room name
         <input

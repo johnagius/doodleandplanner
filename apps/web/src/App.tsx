@@ -14,9 +14,7 @@ export function App() {
             <span className="logo" aria-hidden>
               ✏️
             </span>
-            <span>
-              Doodle <span className="muted">&amp;</span> Planner
-            </span>
+            <span className="brand-name">Doodle &amp; Planner</span>
           </Link>
           <div className="row" style={{ gap: '0.4rem' }}>
             <ThemeToggle />

@@ -1,0 +1,18 @@
+{
+  "name": "Doodle & Planner",
+  "short_name": "Doodle&Plan",
+  "description": "Plan get-togethers with friends: vote on dates, sketch ideas, sort who brings what, and push the plan to Google Calendar.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "background_color": "#f6f7fb",
+  "theme_color": "#6366f1",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any maskable"
+    }
+  ]
+}

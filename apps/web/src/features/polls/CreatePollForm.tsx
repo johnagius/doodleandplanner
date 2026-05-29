@@ -1,10 +1,24 @@
+import { suggestSlots } from '@dap/shared';
 import { useState, type FormEvent } from 'react';
-import { defaultStartLocal, optionsFromLocal } from '../../lib/datetime.js';
+import { useToast } from '../../components/Toast.js';
+import { defaultStartLocal, isoToLocalInput, optionsFromLocal } from '../../lib/datetime.js';
+import { getBusyWithEvents } from '../../lib/google/calendar.js';
+import { isGoogleConfigured } from '../../lib/google/config.js';
+import { useGoogleStore } from '../../state/googleStore.js';
 import { useRoomStore } from '../../state/roomStore.js';
 
+function addDays(date: Date, days: number): Date {
+  const d = new Date(date);
+  d.setDate(d.getDate() + days);
+  return d;
+}
+
 export function CreatePollForm({ onDone }: { onDone: () => void }) {
-  const defaultDuration = useRoomStore((s) => s.state!.room.settings.defaultSlotMinutes);
+  const room = useRoomStore((s) => s.state!.room);
+  const defaultDuration = room.settings.defaultSlotMinutes;
   const addPoll = useRoomStore((s) => s.addPoll);
+  const { email, token } = useGoogleStore();
+  const { show } = useToast();
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -12,6 +26,9 @@ export function CreatePollForm({ onDone }: { onDone: () => void }) {
   const [duration, setDuration] = useState(defaultDuration);
   const [options, setOptions] = useState<string[]>([defaultStartLocal(1), defaultStartLocal(2)]);
   const [error, setError] = useState<string | null>(null);
+  const [suggesting, setSuggesting] = useState(false);
+
+  const canSuggest = isGoogleConfigured() && !!email;
 
   function setOption(i: number, value: string) {
     setOptions((prev) => prev.map((o, idx) => (idx === i ? value : o)));
@@ -21,6 +38,39 @@ export function CreatePollForm({ onDone }: { onDone: () => void }) {
   }
   function removeOptionRow(i: number) {
     setOptions((prev) => prev.filter((_, idx) => idx !== i));
+  }
+
+  async function suggestFreeTimes() {
+    setSuggesting(true);
+    setError(null);
+    try {
+      const accessToken = await token();
+      const now = new Date();
+      const windowStart = now.toISOString();
+      const windowEnd = addDays(now, 10).toISOString();
+      const busy = await getBusyWithEvents(accessToken, windowStart, windowEnd);
+      const suggestions = suggestSlots({
+        windowStart,
+        windowEnd,
+        durationMinutes: duration,
+        stepMinutes: 30,
+        workingHours: room.settings.workingHours,
+        hourOf: (d) => d.getHours(),
+        members: [{ memberId: 'me', busy }],
+        minFree: 1,
+        limit: 5,
+      });
+      if (suggestions.length === 0) {
+        show('No free slots found in the next 10 days');
+        return;
+      }
+      setOptions(suggestions.map((s) => isoToLocalInput(s.option.start)));
+      show(`Filled in ${suggestions.length} times you’re free ✨`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Calendar lookup failed');
+    } finally {
+      setSuggesting(false);
+    }
   }
 
   async function submit(e: FormEvent) {
@@ -81,7 +131,19 @@ export function CreatePollForm({ onDone }: { onDone: () => void }) {
       </div>
 
       <div className="stack" style={{ gap: '0.5rem' }}>
-        <strong className="small">Time options</strong>
+        <div className="row spread row-wrap">
+          <strong className="small">Time options</strong>
+          {canSuggest && (
+            <button
+              type="button"
+              className="btn btn-sm"
+              onClick={suggestFreeTimes}
+              disabled={suggesting}
+            >
+              {suggesting ? 'Checking…' : '✨ Suggest free times'}
+            </button>
+          )}
+        </div>
         {options.map((opt, i) => (
           <div className="row" key={i}>
             <input

@@ -1,5 +1,13 @@
-import { formatSlot, toGoogleEvent, type PlannedEvent } from '@dap/shared';
+import {
+  findMember,
+  formatSlot,
+  tallyRsvps,
+  toGoogleEvent,
+  type PlannedEvent,
+  type RsvpStatus,
+} from '@dap/shared';
 import { useState, type FormEvent } from 'react';
+import { Avatar } from '../../components/Avatar.js';
 import { useToast } from '../../components/Toast.js';
 import { insertCalendarEvent } from '../../lib/google/calendar.js';
 import { isGoogleConfigured } from '../../lib/google/config.js';
@@ -138,14 +146,33 @@ function AddEventForm({
   );
 }
 
+const RSVP_OPTIONS: { value: RsvpStatus; label: string }[] = [
+  { value: 'going', label: '✅ Going' },
+  { value: 'maybe', label: '🤔 Maybe' },
+  { value: 'declined', label: '🚫 Can’t' },
+];
+
 function EventCard({ event, onDelete }: { event: PlannedEvent; onDelete: () => void }) {
   const email = useGoogleStore((s) => s.email);
   const getToken = useGoogleStore((s) => s.token);
   const attachGoogleId = useRoomStore((s) => s.attachGoogleId);
+  const room = useRoomStore((s) => s.state!.room);
+  const meId = useRoomStore((s) => s.meId)!;
+  const rsvp = useRoomStore((s) => s.rsvp);
   const { show } = useToast();
   const [pushing, setPushing] = useState(false);
 
   const canPush = isGoogleConfigured() && email && !event.googleEventId;
+  const tally = tallyRsvps(
+    event,
+    room.members.map((m) => m.id),
+  );
+  const myStatus = event.rsvps?.[meId];
+  const avatarsFor = (ids: string[]) =>
+    ids
+      .map((id) => findMember(room, id))
+      .filter(Boolean)
+      .map((m) => m!);
 
   async function pushToGoogle() {
     setPushing(true);
@@ -162,29 +189,71 @@ function EventCard({ event, onDelete }: { event: PlannedEvent; onDelete: () => v
   }
 
   return (
-    <div className="card row spread row-wrap" style={{ gap: '0.75rem' }}>
-      <div>
-        <div className="row" style={{ gap: '0.5rem' }}>
-          <strong>{event.title}</strong>
-          {event.googleEventId && <span className="badge badge-success">📅 in Google</span>}
+    <div className="card stack" style={{ gap: '0.75rem' }}>
+      <div className="row spread row-wrap" style={{ gap: '0.75rem' }}>
+        <div>
+          <div className="row" style={{ gap: '0.5rem' }}>
+            <strong>{event.title}</strong>
+            {event.googleEventId && <span className="badge badge-success">📅 in Google</span>}
+          </div>
+          <div className="muted small">{formatSlot(event.start, event.end)}</div>
+          {event.location && <div className="small">📍 {event.location}</div>}
+          {event.description && <div className="muted small">{event.description}</div>}
         </div>
-        <div className="muted small">{formatSlot(event.start, event.end)}</div>
-        {event.location && <div className="small">📍 {event.location}</div>}
-        {event.description && <div className="muted small">{event.description}</div>}
-      </div>
-      <div className="row">
-        {canPush && (
-          <button className="btn btn-sm" onClick={pushToGoogle} disabled={pushing}>
-            {pushing ? 'Adding…' : '📅 Add to Google'}
+        <div className="row">
+          {canPush && (
+            <button className="btn btn-sm" onClick={pushToGoogle} disabled={pushing}>
+              {pushing ? 'Adding…' : '📅 Add to Google'}
+            </button>
+          )}
+          <button className="btn btn-sm" onClick={() => downloadICS(event)} title="Download .ics">
+            ⬇ .ics
           </button>
-        )}
-        <button className="btn btn-sm" onClick={() => downloadICS(event)} title="Download .ics">
-          ⬇ .ics
-        </button>
-        <button className="btn btn-sm btn-danger" onClick={onDelete}>
-          Remove
-        </button>
+          <button className="btn btn-sm btn-danger" onClick={onDelete}>
+            Remove
+          </button>
+        </div>
       </div>
+
+      <div className="rsvp-bar row spread row-wrap" style={{ gap: '0.75rem' }}>
+        <div
+          className="row"
+          role="group"
+          aria-label={`RSVP for ${event.title}`}
+          style={{ gap: '0.35rem' }}
+        >
+          {RSVP_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              className={`btn btn-sm ${myStatus === opt.value ? 'btn-primary' : ''}`}
+              aria-pressed={myStatus === opt.value}
+              onClick={() => rsvp(event.id, opt.value)}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+        <div className="row small muted" style={{ gap: '0.6rem' }}>
+          <span
+            title={avatarsFor(tally.going)
+              .map((m) => m.name)
+              .join(', ')}
+          >
+            {tally.going.length} going
+          </span>
+          {tally.maybe.length > 0 && <span>· {tally.maybe.length} maybe</span>}
+          {tally.declined.length > 0 && <span>· {tally.declined.length} can’t</span>}
+          {tally.awaiting.length > 0 && <span>· {tally.awaiting.length} no reply</span>}
+        </div>
+      </div>
+
+      {tally.going.length > 0 && (
+        <div className="row" style={{ gap: 3 }}>
+          {avatarsFor(tally.going).map((m) => (
+            <Avatar key={m.id} member={m} size={24} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

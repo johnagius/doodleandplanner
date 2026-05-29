@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { attachGoogleEventId, createEvent, eventFromOption, toGoogleEvent } from '../src/events.js';
+import {
+  attachGoogleEventId,
+  createEvent,
+  eventFromOption,
+  setRsvp,
+  tallyRsvps,
+  toGoogleEvent,
+} from '../src/events.js';
 
 describe('createEvent', () => {
   it('creates an event and validates the time range', () => {
@@ -68,5 +75,48 @@ describe('google calendar conversion', () => {
       end: '2026-06-01T18:00:00Z',
     });
     expect(attachGoogleEventId(evt, 'gcal_123').googleEventId).toBe('gcal_123');
+  });
+});
+
+describe('RSVPs', () => {
+  const base = () =>
+    createEvent({
+      roomId: 'r',
+      title: 'BBQ',
+      start: '2026-06-01T17:00:00Z',
+      end: '2026-06-01T21:00:00Z',
+    });
+
+  it('sets a member RSVP', () => {
+    const e = setRsvp(base(), 'm1', 'going');
+    expect(e.rsvps).toEqual({ m1: 'going' });
+  });
+
+  it('toggles off when the same status is chosen again', () => {
+    let e = setRsvp(base(), 'm1', 'going');
+    e = setRsvp(e, 'm1', 'going');
+    expect(e.rsvps).toEqual({});
+  });
+
+  it('changes status without removing', () => {
+    let e = setRsvp(base(), 'm1', 'going');
+    e = setRsvp(e, 'm1', 'maybe');
+    expect(e.rsvps).toEqual({ m1: 'maybe' });
+  });
+
+  it('tallies against the roster, listing those awaiting', () => {
+    let e = base();
+    e = setRsvp(e, 'a', 'going');
+    e = setRsvp(e, 'b', 'declined');
+    e = setRsvp(e, 'c', 'maybe');
+    const t = tallyRsvps(e, ['a', 'b', 'c', 'd']);
+    expect(t.going).toEqual(['a']);
+    expect(t.declined).toEqual(['b']);
+    expect(t.maybe).toEqual(['c']);
+    expect(t.awaiting).toEqual(['d']);
+  });
+
+  it('handles an event with no RSVPs', () => {
+    expect(tallyRsvps(base(), ['a', 'b'])).toMatchObject({ going: [], awaiting: ['a', 'b'] });
   });
 });

@@ -1,7 +1,7 @@
 /** Finalised events and conversion to/from Google Calendar resources. */
 import { generateId } from './ids.js';
 import { toMs } from './time.js';
-import type { PlannedEvent, SchedulePoll, TimeOption } from './types.js';
+import type { PlannedEvent, RsvpStatus, SchedulePoll, TimeOption } from './types.js';
 
 export interface CreateEventInput {
   roomId: string;
@@ -47,6 +47,43 @@ export function eventFromOption(
 
 export function attachGoogleEventId(event: PlannedEvent, googleEventId: string): PlannedEvent {
   return { ...event, googleEventId };
+}
+
+/** Set (or toggle off) a member's RSVP. Re-selecting the same status clears it. */
+export function setRsvp(event: PlannedEvent, memberId: string, status: RsvpStatus): PlannedEvent {
+  const current = event.rsvps ?? {};
+  const next = { ...current };
+  if (next[memberId] === status) {
+    delete next[memberId];
+  } else {
+    next[memberId] = status;
+  }
+  return { ...event, rsvps: next };
+}
+
+export interface RsvpTally {
+  going: string[];
+  maybe: string[];
+  declined: string[];
+  /** Member ids with no response yet (from the supplied roster). */
+  awaiting: string[];
+}
+
+/** Tally RSVPs for an event against the full member roster. */
+export function tallyRsvps(event: PlannedEvent, memberIds: string[]): RsvpTally {
+  const rsvps = event.rsvps ?? {};
+  const going: string[] = [];
+  const maybe: string[] = [];
+  const declined: string[] = [];
+  const awaiting: string[] = [];
+  for (const id of memberIds) {
+    const status = rsvps[id];
+    if (status === 'going') going.push(id);
+    else if (status === 'maybe') maybe.push(id);
+    else if (status === 'declined') declined.push(id);
+    else awaiting.push(id);
+  }
+  return { going, maybe, declined, awaiting };
 }
 
 /** The subset of the Google Calendar event resource we create. */

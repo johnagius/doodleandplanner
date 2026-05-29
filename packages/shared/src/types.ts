@@ -152,6 +152,8 @@ export interface Activity {
   createdAt: ISODateTime;
 }
 
+export type RsvpStatus = 'going' | 'maybe' | 'declined';
+
 export interface PlannedEvent {
   id: string;
   roomId: string;
@@ -162,6 +164,8 @@ export interface PlannedEvent {
   description?: string;
   /** Set after the event is pushed to Google Calendar. */
   googleEventId?: string;
+  /** Per-member attendance responses, keyed by member id. */
+  rsvps?: Record<string, RsvpStatus>;
   createdAt: ISODateTime;
 }
 

@@ -544,6 +544,11 @@ label.field {
   font-weight: 600;
 }
 
+.rsvp-bar {
+  border-top: 1px solid var(--border);
+  padding-top: 0.6rem;
+}
+
 /* Chat */
 .chat-log {
   display: flex;

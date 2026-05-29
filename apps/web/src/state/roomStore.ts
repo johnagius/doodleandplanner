@@ -19,6 +19,7 @@ import {
   rotateInviteToken,
   scheduleActivity,
   setItemStatus,
+  setRsvp,
   toggleInterest,
   undoLastStroke,
   updateActivity,
@@ -31,6 +32,7 @@ import {
   type Member,
   type Point,
   type RoomState,
+  type RsvpStatus,
   type SchedulePoll,
   type TimeOption,
   type VoteValue,
@@ -74,6 +76,7 @@ interface RoomStore {
   }) => Promise<void>;
   deleteEvent: (eventId: string) => Promise<void>;
   attachGoogleId: (eventId: string, googleEventId: string) => Promise<void>;
+  rsvp: (eventId: string, status: RsvpStatus) => Promise<void>;
 
   // inventory
   addItem: (input: {
@@ -260,6 +263,14 @@ export const useRoomStore = create<RoomStore>((set, get) => {
       await apply((s) => ({
         ...s,
         events: s.events.map((e) => (e.id === eventId ? { ...e, googleEventId } : e)),
+      }));
+    },
+
+    async rsvp(eventId, status) {
+      const me = requireMe();
+      await apply((s) => ({
+        ...s,
+        events: s.events.map((e) => (e.id === eventId ? setRsvp(e, me, status) : e)),
       }));
     },
 

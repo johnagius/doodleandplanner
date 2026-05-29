@@ -166,7 +166,7 @@ test('export a room and re-import it', async ({ page }, testInfo) => {
   await expect(page.getByRole('heading', { name: 'Export Trip' })).toBeVisible();
 });
 
-test('add an event to the plan', async ({ page }) => {
+test('add an event to the plan and RSVP', async ({ page }) => {
   await createRoom(page);
   await page.getByRole('tab', { name: /Plan/ }).click();
   await page.getByRole('button', { name: '+ Add event' }).click();
@@ -174,4 +174,9 @@ test('add an event to the plan', async ({ page }) => {
   await page.getByRole('button', { name: 'Add to plan' }).click();
   await expect(page.getByText('Kickoff dinner')).toBeVisible();
   await expect(page.getByRole('button', { name: /\.ics/ })).toBeVisible();
+
+  const card = page.locator('.card', { hasText: 'Kickoff dinner' });
+  await expect(card.getByText(/0 going/)).toBeVisible();
+  await card.getByRole('button', { name: /Going/ }).click();
+  await expect(card.getByText(/1 going/)).toBeVisible();
 });

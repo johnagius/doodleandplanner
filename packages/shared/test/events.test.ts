@@ -1,10 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  attachGoogleEventId,
-  createEvent,
-  eventFromOption,
-  toGoogleEvent,
-} from '../src/events.js';
+import { attachGoogleEventId, createEvent, eventFromOption, toGoogleEvent } from '../src/events.js';
 
 describe('createEvent', () => {
   it('creates an event and validates the time range', () => {
@@ -18,10 +13,20 @@ describe('createEvent', () => {
     expect(evt.title).toBe('BBQ');
     expect(evt.location).toBe('The Park');
     expect(() =>
-      createEvent({ roomId: 'r', title: 'x', start: '2026-06-01T21:00:00Z', end: '2026-06-01T17:00:00Z' }),
+      createEvent({
+        roomId: 'r',
+        title: 'x',
+        start: '2026-06-01T21:00:00Z',
+        end: '2026-06-01T17:00:00Z',
+      }),
     ).toThrow(/after/);
     expect(() =>
-      createEvent({ roomId: 'r', title: ' ', start: '2026-06-01T17:00:00Z', end: '2026-06-01T21:00:00Z' }),
+      createEvent({
+        roomId: 'r',
+        title: ' ',
+        start: '2026-06-01T17:00:00Z',
+        end: '2026-06-01T21:00:00Z',
+      }),
     ).toThrow(/title/);
   });
 });

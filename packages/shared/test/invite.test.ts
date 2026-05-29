@@ -1,10 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  buildInvitePath,
-  buildInviteUrl,
-  parseInviteToken,
-  verifyInvite,
-} from '../src/invite.js';
+import { buildInvitePath, buildInviteUrl, parseInviteToken, verifyInvite } from '../src/invite.js';
 
 describe('invite links', () => {
   it('builds an in-app path', () => {

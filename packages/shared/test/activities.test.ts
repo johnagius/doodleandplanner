@@ -50,9 +50,21 @@ describe('scheduleActivity & updateActivity', () => {
 
 describe('rankActivities', () => {
   it('ranks by interest count then creation order', () => {
-    const a = { ...createActivity({ roomId: 'r', title: 'A', proposedBy: 'm1' }), createdAt: '2026-01-01T00:00:00Z', interested: ['x'] };
-    const b = { ...createActivity({ roomId: 'r', title: 'B', proposedBy: 'm1' }), createdAt: '2026-01-02T00:00:00Z', interested: ['x', 'y', 'z'] };
-    const c = { ...createActivity({ roomId: 'r', title: 'C', proposedBy: 'm1' }), createdAt: '2026-01-03T00:00:00Z', interested: ['x'] };
+    const a = {
+      ...createActivity({ roomId: 'r', title: 'A', proposedBy: 'm1' }),
+      createdAt: '2026-01-01T00:00:00Z',
+      interested: ['x'],
+    };
+    const b = {
+      ...createActivity({ roomId: 'r', title: 'B', proposedBy: 'm1' }),
+      createdAt: '2026-01-02T00:00:00Z',
+      interested: ['x', 'y', 'z'],
+    };
+    const c = {
+      ...createActivity({ roomId: 'r', title: 'C', proposedBy: 'm1' }),
+      createdAt: '2026-01-03T00:00:00Z',
+      interested: ['x'],
+    };
     const ranked = rankActivities([a, b, c]);
     expect(ranked.map((r) => r.title)).toEqual(['B', 'A', 'C']);
   });

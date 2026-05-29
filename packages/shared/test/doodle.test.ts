@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { addStroke, clearBoard, removeStroke, strokeBounds, undoLastStroke } from '../src/doodle.js';
+import {
+  addStroke,
+  clearBoard,
+  removeStroke,
+  strokeBounds,
+  undoLastStroke,
+} from '../src/doodle.js';
 import type { DoodleBoard } from '../src/types.js';
 
 function board(): DoodleBoard {

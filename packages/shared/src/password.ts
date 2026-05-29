@@ -16,7 +16,11 @@ function subtle(): SubtleCrypto {
   return s;
 }
 
-async function deriveBits(password: string, salt: Uint8Array, iterations: number): Promise<Uint8Array> {
+async function deriveBits(
+  password: string,
+  salt: Uint8Array,
+  iterations: number,
+): Promise<Uint8Array> {
   const enc = new TextEncoder();
   const keyMaterial = await subtle().importKey(
     'raw',
@@ -39,7 +43,10 @@ export interface HashOptions {
   salt?: Uint8Array;
 }
 
-export async function hashPassword(password: string, options: HashOptions = {}): Promise<PasswordHash> {
+export async function hashPassword(
+  password: string,
+  options: HashOptions = {},
+): Promise<PasswordHash> {
   if (password.length === 0) throw new Error('Password must not be empty');
   const iterations = options.iterations ?? DEFAULT_ITERATIONS;
   const salt = options.salt ?? globalThis.crypto.getRandomValues(new Uint8Array(16));

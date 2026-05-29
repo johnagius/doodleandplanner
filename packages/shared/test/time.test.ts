@@ -38,7 +38,9 @@ describe('mergeBusyIntervals', () => {
       { start: '2026-06-01T09:30:00Z', end: '2026-06-01T11:00:00Z' },
       { start: '2026-06-01T11:00:00Z', end: '2026-06-01T12:00:00Z' },
     ]);
-    expect(merged).toEqual([{ start: '2026-06-01T09:00:00.000Z', end: '2026-06-01T12:00:00.000Z' }]);
+    expect(merged).toEqual([
+      { start: '2026-06-01T09:00:00.000Z', end: '2026-06-01T12:00:00.000Z' },
+    ]);
   });
 
   it('drops zero/negative-length intervals and keeps disjoint ones', () => {
@@ -58,9 +60,7 @@ describe('mergeBusyIntervals', () => {
 describe('freeGaps', () => {
   it('returns the whole window when nothing is busy', () => {
     const gaps = freeGaps('2026-06-01T09:00:00Z', '2026-06-01T17:00:00Z', []);
-    expect(gaps).toEqual([
-      { start: '2026-06-01T09:00:00.000Z', end: '2026-06-01T17:00:00.000Z' },
-    ]);
+    expect(gaps).toEqual([{ start: '2026-06-01T09:00:00.000Z', end: '2026-06-01T17:00:00.000Z' }]);
   });
 
   it('subtracts busy intervals to leave the gaps', () => {
@@ -80,9 +80,7 @@ describe('freeGaps', () => {
       { start: '2026-06-01T08:00:00Z', end: '2026-06-01T10:00:00Z' },
       { start: '2026-06-01T16:00:00Z', end: '2026-06-01T18:00:00Z' },
     ]);
-    expect(gaps).toEqual([
-      { start: '2026-06-01T10:00:00.000Z', end: '2026-06-01T16:00:00.000Z' },
-    ]);
+    expect(gaps).toEqual([{ start: '2026-06-01T10:00:00.000Z', end: '2026-06-01T16:00:00.000Z' }]);
   });
 
   it('returns nothing when fully busy', () => {

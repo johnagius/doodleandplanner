@@ -17,7 +17,11 @@ const fixedNow = () => new Date('2026-05-29T12:00:00Z');
 
 describe('createRoom', () => {
   it('creates a room with an owner member', async () => {
-    const { room, owner } = await createRoom({ name: 'Ski Trip', ownerName: 'Alice', now: fixedNow });
+    const { room, owner } = await createRoom({
+      name: 'Ski Trip',
+      ownerName: 'Alice',
+      now: fixedNow,
+    });
     expect(room.name).toBe('Ski Trip');
     expect(room.slug).toMatch(/^[a-z2-9]{6}$/);
     expect(room.inviteToken).toBeTruthy();

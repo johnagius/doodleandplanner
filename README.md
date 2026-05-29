@@ -19,22 +19,25 @@ Rooms are shareable via an invite link and can be **password protected**.
   optional password protection (PBKDF2 via Web Crypto).
 - **Scheduling polls** — propose time options, everyone votes 👍/🤔/👎, a
   weighted tally surfaces the best slot, and the organiser can lock it in. Connect
-  Google Calendar to **overlay each member's free/busy** on every option.
-- **Shared doodle** — a collaborative drawing canvas with a colour palette,
-  brush sizes, per-member undo, and **live cursors** showing where everyone is
-  (across tabs locally; across devices via the Worker).
-- **Plan** — finalised events, exportable as `.ics`, or pushed straight to
-  Google Calendar.
-- **Google Calendar** — connect to read your free/busy and auto-suggest times
-  you're free, and write the agreed event back to your calendar.
+  Google Calendar and a **smart, conflict-aware overlay** shows who's free vs who
+  **can't make it and why** — naming the clashing event ("Alex: Dentist") and
+  treating tentative/incidental overlaps as soft warnings rather than vetoes.
+- **Shared doodle** — a collaborative canvas with pen, **shapes** (line, rect,
+  ellipse), an eraser, **draggable sticky notes**, a colour palette, per-member
+  undo, and **live cursors** (across tabs locally; across devices via the Worker).
+- **Plan** — finalised events with **RSVP / headcount** (going / maybe / can't),
+  exportable as `.ics`, or pushed straight to Google Calendar.
+- **Sign in with Google** — one click brings your name + avatar; the app reads
+  your free/busy to suggest times and writes the agreed event back.
 - **Inventory** — a checklist of what to bring with claim/coverage tracking, plus
   optional per-item **costs** that split fairly across the group with a minimal
   "who pays whom" settle-up (pick your currency).
 - **Activities** — propose things to do, vote with interest, and auto-build a
   timed **itinerary / running order** for the day.
 - **Discussion** — a per-room chat thread for the group.
-- **Anywhere** — installable **PWA** (works offline), light/dark theme, and
-  **export/import** a room as JSON to back up or move between devices.
+- **Anywhere** — installable **PWA** (works offline), a **WebGL** animated hero,
+  light/dark theme, owner **room settings** (working hours feed the slot finder),
+  and **export/import** a room as JSON to back up or move between devices.
 
 ## Monorepo layout
 

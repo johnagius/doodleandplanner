@@ -152,6 +152,20 @@ export interface Activity {
   createdAt: ISODateTime;
 }
 
+/** A shared expense paid by one member, split across a set of members. */
+export interface Expense {
+  id: string;
+  roomId: string;
+  description: string;
+  amount: number;
+  /** Member id who paid. */
+  paidBy: string;
+  /** Members the cost is split between. Empty ⇒ split across everyone. */
+  sharedWith: string[];
+  category?: string;
+  createdAt: ISODateTime;
+}
+
 export type RsvpStatus = 'going' | 'maybe' | 'declined';
 
 export interface PlannedEvent {
@@ -233,4 +247,6 @@ export interface RoomState {
   messages?: Message[];
   /** Per-member calendar availability shared for poll overlays. Optional. */
   availability?: MemberAvailability[];
+  /** Shared expenses for cost-splitting (older states omit this). */
+  expenses?: Expense[];
 }

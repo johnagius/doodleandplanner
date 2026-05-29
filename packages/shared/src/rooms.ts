@@ -68,6 +68,7 @@ export function emptyRoomState(room: Room): RoomState {
     doodle: { id: generateId('doodle'), roomId: room.id, strokes: [] },
     messages: [],
     availability: [],
+    expenses: [],
   };
 }
 

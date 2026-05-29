@@ -20,3 +20,4 @@ export * from './itinerary.js';
 export * from './chat.js';
 export * from './conflicts.js';
 export * from './schema.js';
+export * from './expenses.js';

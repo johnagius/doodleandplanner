@@ -10,6 +10,7 @@ import {
   closePoll,
   createActivity,
   createEvent,
+  createExpense,
   createItem,
   createMessage,
   createPoll,
@@ -133,6 +134,16 @@ interface RoomStore {
 
   // availability
   shareMyAvailability: (busy: BusyInterval[]) => Promise<void>;
+
+  // expenses
+  addExpense: (input: {
+    description: string;
+    amount: number;
+    paidBy: string;
+    sharedWith?: string[];
+    category?: string;
+  }) => Promise<void>;
+  removeExpense: (expenseId: string) => Promise<void>;
 
   // room admin
   rotateInvite: () => Promise<void>;
@@ -420,6 +431,20 @@ export const useRoomStore = create<RoomStore>((set, get) => {
           busy,
           updatedAt: new Date().toISOString(),
         }),
+      }));
+    },
+
+    async addExpense(input) {
+      await apply((s) => ({
+        ...s,
+        expenses: [...(s.expenses ?? []), createExpense({ roomId: s.room.id, ...input })],
+      }));
+    },
+
+    async removeExpense(expenseId) {
+      await apply((s) => ({
+        ...s,
+        expenses: (s.expenses ?? []).filter((e) => e.id !== expenseId),
       }));
     },
 

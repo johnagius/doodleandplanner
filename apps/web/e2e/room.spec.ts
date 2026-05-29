@@ -146,10 +146,26 @@ test('track item cost and see the budget split', async ({ page }) => {
   await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('button', { name: /bring it/ }).click();
 
-  const budget = page.locator('.card', { hasText: 'Budget' });
-  await expect(budget.getByText('Spent so far')).toBeVisible();
-  await expect(budget.getByText('Per person')).toBeVisible();
-  await expect(budget.getByText('€90.00').first()).toBeVisible();
+  const money = page.locator('.card', { hasText: 'Money' });
+  await expect(money.getByText('Total')).toBeVisible();
+  await expect(money.getByText('Per person')).toBeVisible();
+  await expect(money.getByText('€90.00').first()).toBeVisible();
+});
+
+test('add a shared expense and see the split', async ({ page }) => {
+  await createRoom(page);
+  await page.getByRole('tab', { name: /Inventory/ }).click();
+
+  // The Money card appears once there's something to split.
+  const money = page.locator('.card', { hasText: 'Money' });
+  await money.getByRole('button', { name: '+ Expense' }).click();
+  await money.getByLabel('Expense description').fill('Petrol');
+  await money.getByLabel('Expense amount').fill('60');
+  await money.getByRole('button', { name: 'Add', exact: true }).click();
+
+  await expect(money.getByText('Petrol')).toBeVisible();
+  await expect(money.getByText(/Total/)).toBeVisible();
+  await expect(money.getByText(/Settle up|Balances/)).toBeVisible();
 });
 
 test('build an itinerary running order from activities', async ({ page }) => {

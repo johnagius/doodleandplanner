@@ -13,6 +13,7 @@ import { DEFAULT_ROOM_SETTINGS } from './rooms.js';
 import type {
   Activity,
   DoodleBoard,
+  Expense,
   InventoryItem,
   MemberAvailability,
   Message,
@@ -91,6 +92,7 @@ function toV1(raw: AnyRecord): AnyRecord {
     doodle: normalizeDoodle(raw.doodle, room.id),
     messages: asArray<Message>(raw.messages),
     availability: asArray<MemberAvailability>(raw.availability),
+    expenses: asArray<Expense>(raw.expenses),
   };
 }
 

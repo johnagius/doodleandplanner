@@ -35,6 +35,11 @@ jobs:
           # Optional: point the site at the deployed Cloudflare Worker for
           # real-time, multi-device rooms. Leave unset for client-only mode.
           VITE_API_BASE: ${{ vars.API_BASE }}
+      - name: Add GitHub Pages SPA 404 fallback
+        # 404.html lives outside Vite's public/ so it ships ONLY to GitHub Pages
+        # (Cloudflare Pages uses _redirects instead). It restores deep links on
+        # project sites that lack server-side rewrites.
+        run: cp apps/web/gh-pages/404.html apps/web/dist/404.html
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

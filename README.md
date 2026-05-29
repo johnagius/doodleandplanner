@@ -113,10 +113,26 @@ and publishes `apps/web/dist`. In the repo settings, set **Pages → Source** to
 project sites. Optionally set a repository variable `GOOGLE_CLIENT_ID` to enable
 calendar features on the deployed site.
 
-### Cloudflare Pages
+### Cloudflare Pages (recommended)
 
-Build command `npm run build`, output directory `apps/web/dist`. The included
-`_redirects` file serves the SPA.
+Connect this repo as a Cloudflare **Pages** project (Workers & Pages → Create →
+Pages → Connect to Git) with:
+
+| Setting                | Value                    |
+| ---------------------- | ------------------------ |
+| Framework preset       | None                     |
+| Build command          | `npm run build`          |
+| Build output directory | `apps/web/dist`          |
+| Root directory         | `/` (repo root)          |
+| Node version           | 20 (pinned via `.nvmrc`) |
+
+It serves at the project root, so no base path is needed, and the bundled
+`_redirects` (`/* /index.html 200`) makes client-side routing work. Optional
+environment variables: `VITE_GOOGLE_CLIENT_ID` (Calendar) and `VITE_API_BASE`
+(the real-time Worker URL). Every push to `main` then auto-deploys.
+
+For a one-off manual deploy instead: `npm run build` then
+`npx wrangler pages deploy apps/web/dist --project-name doodleandplanner`.
 
 ### Cloudflare Worker (real-time backend)
 

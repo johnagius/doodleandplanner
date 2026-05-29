@@ -73,9 +73,13 @@ Run `npm run test:e2e` when touching UI flows. Playwright needs Chromium
 
 ## Deployment
 
+- **Cloudflare Pages (recommended):** connect the repo as a Pages project — build
+  command `npm run build`, output dir `apps/web/dist`, Node 20 (`.nvmrc`). Serves
+  at root (no base path); `apps/web/public/_redirects` handles SPA routing.
 - **GitHub Pages:** `.github/workflows/deploy.yml` builds on push to `main` with
   `VITE_BASE_PATH=/doodleandplanner/` and publishes `apps/web/dist`. One-time:
-  set **Settings → Pages → Source: GitHub Actions**.
+  set **Settings → Pages → Source: GitHub Actions** (NOT "Deploy from a branch",
+  which just renders the README).
 - **Google Calendar (optional):** repo variable `GOOGLE_CLIENT_ID`.
 - **Cloudflare Worker (optional, real-time):** `cd apps/server && npx wrangler
 deploy`, then set repo variable `API_BASE` to the Worker URL so the Pages

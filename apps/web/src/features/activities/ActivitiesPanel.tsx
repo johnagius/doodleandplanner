@@ -16,7 +16,8 @@ import { useRoomStore } from '../../state/roomStore.js';
 export function ActivitiesPanel() {
   const state = useRoomStore((s) => s.state)!;
   const meId = useRoomStore((s) => s.meId)!;
-  const { addActivity, toggleActivityInterest, removeActivity } = useRoomStore();
+  const { addActivity, toggleActivityInterest, removeActivity, scheduleActivityAt } =
+    useRoomStore();
 
   const ranked = rankActivities(state.activities);
 
@@ -46,6 +47,7 @@ export function ActivitiesPanel() {
                 canDelete={activity.proposedBy === meId || state.room.createdBy === meId}
                 onToggle={() => toggleActivityInterest(activity.id)}
                 onRemove={() => removeActivity(activity.id)}
+                onSchedule={(iso) => scheduleActivityAt(activity.id, iso)}
               />
             ))}
           </div>
@@ -122,6 +124,7 @@ function ActivityCard({
   canDelete,
   onToggle,
   onRemove,
+  onSchedule,
 }: {
   activity: Activity;
   interestedMembers: { name: string; color: string }[];
@@ -130,7 +133,9 @@ function ActivityCard({
   canDelete: boolean;
   onToggle: () => void;
   onRemove: () => void;
+  onSchedule: (iso: string | undefined) => void;
 }) {
+  const [pinning, setPinning] = useState(false);
   return (
     <div className="card stack" style={{ gap: '0.6rem' }}>
       <div className="row spread">
@@ -144,8 +149,17 @@ function ActivityCard({
           {activity.description}
         </p>
       )}
-      <div className="row small muted" style={{ gap: '0.5rem' }}>
+      <div className="row small muted row-wrap" style={{ gap: '0.5rem' }}>
         {activity.durationMinutes && <span className="badge">{activity.durationMinutes} min</span>}
+        {activity.scheduledAt && (
+          <span className="badge badge-primary">
+            📌 {formatSlot(activity.scheduledAt, activity.scheduledAt).split(',')[0]}{' '}
+            {new Date(activity.scheduledAt).toLocaleTimeString([], {
+              hour: '2-digit',
+              minute: '2-digit',
+            })}
+          </span>
+        )}
         {proposer && <span>proposed by {proposer}</span>}
       </div>
       <div className="row" style={{ gap: 4 }}>
@@ -153,10 +167,46 @@ function ActivityCard({
           <Avatar key={i} member={m} size={24} />
         ))}
       </div>
+      {pinning && (
+        <div className="row row-wrap" style={{ gap: '0.4rem' }}>
+          <input
+            className="input grow"
+            type="datetime-local"
+            defaultValue={activity.scheduledAt ? isoToLocalInput(activity.scheduledAt) : ''}
+            aria-label="Pinned time"
+            onChange={(e) =>
+              onSchedule(e.target.value ? localInputToISO(e.target.value) : undefined)
+            }
+          />
+          {activity.scheduledAt && (
+            <button
+              className="btn btn-sm"
+              onClick={() => {
+                onSchedule(undefined);
+                setPinning(false);
+              }}
+            >
+              Unpin
+            </button>
+          )}
+        </div>
+      )}
       <div className="row spread">
-        <button className={`btn btn-sm ${mineInterested ? 'btn-primary' : ''}`} onClick={onToggle}>
-          {mineInterested ? '✓ I’m in' : 'I’m in'}
-        </button>
+        <div className="row" style={{ gap: 4 }}>
+          <button
+            className={`btn btn-sm ${mineInterested ? 'btn-primary' : ''}`}
+            onClick={onToggle}
+          >
+            {mineInterested ? '✓ I’m in' : 'I’m in'}
+          </button>
+          <button
+            className="btn btn-sm"
+            onClick={() => setPinning((v) => !v)}
+            aria-label="Pin a time"
+          >
+            📌
+          </button>
+        </div>
         {canDelete && (
           <button className="btn btn-sm btn-danger" onClick={onRemove}>
             Remove

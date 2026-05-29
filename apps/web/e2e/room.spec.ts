@@ -104,6 +104,12 @@ test('propose an activity and express interest', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Sunset hike' })).toBeVisible();
   await page.getByRole('button', { name: /I.?m in/ }).click();
   await expect(page.getByText('1 keen')).toBeVisible();
+
+  // Pin a time and confirm the 📌 badge appears.
+  const card = page.locator('.card', { hasText: 'Sunset hike' });
+  await card.getByRole('button', { name: 'Pin a time' }).click();
+  await card.getByLabel('Pinned time').fill('2030-07-01T09:30');
+  await expect(card.locator('.badge', { hasText: '📌' })).toBeVisible();
 });
 
 test('draw on the shared doodle and persist strokes', async ({ page }) => {

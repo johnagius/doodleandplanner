@@ -1,0 +1,19 @@
+# Cloudflare Worker for Doodle & Planner real-time room sync.
+# Deploy with: npx wrangler deploy   (from apps/server)
+name = "doodleandplanner-api"
+main = "src/index.ts"
+compatibility_date = "2024-11-06"
+
+# One Durable Object instance per room holds the room state and fans out live
+# updates to every connected client over WebSockets.
+[[durable_objects.bindings]]
+name = "ROOMS"
+class_name = "RoomDurableObject"
+
+[[migrations]]
+tag = "v1"
+new_classes = ["RoomDurableObject"]
+
+# Lock CORS to your deployed front-ends (comma-separated). "*" allows any origin.
+[vars]
+ALLOWED_ORIGINS = "*"

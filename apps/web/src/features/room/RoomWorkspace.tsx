@@ -1,6 +1,7 @@
 import { findMember } from '@dap/shared';
 import { useState } from 'react';
 import { Avatar, AvatarStack } from '../../components/Avatar.js';
+import { isRealtimeBackend } from '../../lib/storage/index.js';
 import { useRoomStore } from '../../state/roomStore.js';
 import { ActivitiesPanel } from '../activities/ActivitiesPanel.js';
 import { DoodleCanvas } from '../doodle/DoodleCanvas.js';
@@ -41,6 +42,16 @@ export function RoomWorkspace() {
             )}
           </div>
           <div className="row">
+            <span
+              className={`badge ${isRealtimeBackend() ? 'badge-success' : ''}`}
+              title={
+                isRealtimeBackend()
+                  ? 'Changes sync live to everyone in the room'
+                  : 'Saved on this device and synced across your tabs'
+              }
+            >
+              {isRealtimeBackend() ? '🟢 Live sync' : '🔵 This device'}
+            </span>
             <AvatarStack members={state.room.members} />
             {me && (
               <span className="row small" style={{ gap: 6 }}>

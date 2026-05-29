@@ -4,14 +4,14 @@
  * Works in the browser and in Node >= 20. Rooms are optionally password
  * protected; we never store the plaintext, only a salted derived key.
  */
-import { fromBase64Url, safeEqual, toBase64Url } from './ids.js';
+import { fromBase64Url, safeEqual, toBase64Url, webCrypto } from './ids.js';
 import type { PasswordHash } from './types.js';
 
 const DEFAULT_ITERATIONS = 100_000;
 const KEY_LENGTH_BITS = 256;
 
 function subtle(): SubtleCrypto {
-  const s = globalThis.crypto?.subtle;
+  const s = webCrypto().subtle;
   if (!s) throw new Error('SubtleCrypto is not available in this environment');
   return s;
 }
@@ -49,7 +49,7 @@ export async function hashPassword(
 ): Promise<PasswordHash> {
   if (password.length === 0) throw new Error('Password must not be empty');
   const iterations = options.iterations ?? DEFAULT_ITERATIONS;
-  const salt = options.salt ?? globalThis.crypto.getRandomValues(new Uint8Array(16));
+  const salt = options.salt ?? webCrypto().getRandomValues(new Uint8Array(16));
   const derived = await deriveBits(password, salt, iterations);
   return {
     algorithm: 'PBKDF2-SHA256',

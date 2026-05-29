@@ -36,16 +36,20 @@ Rooms are shareable via an invite link and can be **password protected**.
 ```
 packages/shared   Framework-agnostic domain logic (pure, serialisable, unit-tested)
 apps/web          React + Vite front-end (the deployable app)
+apps/server       Cloudflare Worker + Durable Object for real-time room sync
 ```
 
 - `@dap/shared` holds all the rules — rooms, voting tallies, availability/slot
-  finding, inventory, activities, events, the doodle board, password hashing and
-  invite tokens — with no UI or storage dependencies. This is why it can run in
-  the browser or on the edge unchanged.
+  finding, inventory, budget split, activities, itinerary, events, the doodle
+  board, password hashing and invite tokens — with no UI or storage
+  dependencies. This is why it can run in the browser or on the edge unchanged.
 - `apps/web` talks to a `Repository` interface (`src/lib/storage`). The default
-  `LocalStorageRepository` persists to the browser and syncs across tabs; a
-  `CloudflareRepository` (HTTP + WebSocket) can be slotted in without touching
-  the UI.
+  `LocalStorageRepository` persists to the browser and syncs across tabs; the
+  `HttpRepository` (REST + WebSocket) talks to the Worker for true multi-device
+  collaboration — selected automatically when `VITE_API_BASE` is set.
+- `apps/server` is the Cloudflare Worker. Each room is a **Durable Object** that
+  owns the canonical state and fans every change out to connected clients over
+  WebSockets. It reuses `@dap/shared`, so the front-end and edge share one model.
 
 ## Getting started
 
@@ -107,12 +111,31 @@ calendar features on the deployed site.
 ### Cloudflare Pages
 
 Build command `npm run build`, output directory `apps/web/dist`. The included
-`_redirects` file serves the SPA. Cloudflare also hosts the planned real-time
-Worker backend (see the roadmap).
+`_redirects` file serves the SPA.
+
+### Cloudflare Worker (real-time backend)
+
+For true multi-device rooms (everyone sees changes live), deploy the Worker:
+
+```bash
+cd apps/server
+npx wrangler deploy        # first run: npx wrangler login
+```
+
+This provisions the `RoomDurableObject` (one instance per room) behind a URL
+like `https://doodleandplanner-api.<account>.workers.dev`. Then build the
+front-end pointing at it:
+
+```bash
+VITE_API_BASE="https://doodleandplanner-api.<account>.workers.dev" npm run build
+```
+
+or set an `API_BASE` repository variable so the GitHub Pages workflow wires it
+in automatically. With `VITE_API_BASE` unset the app stays fully client-side.
+Lock down `ALLOWED_ORIGINS` in `apps/server/wrangler.toml` to your site origins.
 
 ## Roadmap
 
-- Cloudflare Worker + Durable Object backend (real multiplayer, server-verified
-  passwords/invites, live cursors on the doodle).
+- Server-verified passwords/invites and live cursors on the doodle.
 - Per-member calendar overlay so polls show everyone's availability at a glance.
 - Recurring events and richer activity scheduling.

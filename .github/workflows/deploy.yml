@@ -32,6 +32,9 @@ jobs:
           # Project sites are served from https://<user>.github.io/<repo>/
           VITE_BASE_PATH: /doodleandplanner/
           VITE_GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID }}
+          # Optional: point the site at the deployed Cloudflare Worker for
+          # real-time, multi-device rooms. Leave unset for client-only mode.
+          VITE_API_BASE: ${{ vars.API_BASE }}
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

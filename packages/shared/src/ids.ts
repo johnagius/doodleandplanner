@@ -5,12 +5,21 @@
  * browsers and in Node >= 20, so the same code runs client- and server-side.
  */
 
-function getCrypto(): Crypto {
-  const c = globalThis.crypto;
+/**
+ * Resolve the Web Crypto instance in a way that type-checks under DOM, Node and
+ * Cloudflare Workers lib sets (where `crypto` is a bare global, not a property
+ * of `globalThis`'s type). Exported so other modules share one accessor.
+ */
+export function webCrypto(): Crypto {
+  const c = (globalThis as { crypto?: Crypto }).crypto;
   if (!c || typeof c.getRandomValues !== 'function') {
     throw new Error('Web Crypto API is not available in this environment');
   }
   return c;
+}
+
+function getCrypto(): Crypto {
+  return webCrypto();
 }
 
 /** A UUID, optionally namespaced with a short prefix (e.g. `room_…`). */

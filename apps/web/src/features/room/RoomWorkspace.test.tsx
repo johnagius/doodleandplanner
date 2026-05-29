@@ -74,7 +74,8 @@ describe('RoomWorkspace', () => {
     const user = userEvent.setup();
     renderWorkspace();
 
-    await user.click(screen.getByRole('button', { name: '+ New poll' }));
+    // Header + empty-state both offer "+ New poll"; the header one is first.
+    await user.click(screen.getAllByRole('button', { name: '+ New poll' })[0]!);
     await user.type(screen.getByLabelText('Poll title'), 'Which evening?');
     await user.click(screen.getByRole('button', { name: 'Create poll' }));
 

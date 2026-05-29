@@ -9,6 +9,7 @@ import {
 } from '@dap/shared';
 import { useState, type FormEvent } from 'react';
 import { Avatar } from '../../components/Avatar.js';
+import { EmptyState } from '../../components/EmptyState.js';
 import { defaultStartLocal, isoToLocalInput, localInputToISO } from '../../lib/datetime.js';
 import { useRoomStore } from '../../state/roomStore.js';
 
@@ -24,7 +25,11 @@ export function ActivitiesPanel() {
       <AddActivityForm onAdd={(input) => addActivity(input)} />
 
       {ranked.length === 0 ? (
-        <div className="empty">No ideas yet. What should everyone do together? 🎉</div>
+        <EmptyState
+          icon="🎉"
+          title="No ideas yet"
+          hint="Propose things to do — everyone votes with interest, and you can build a running order for the day."
+        />
       ) : (
         <>
           <div className="grid grid-2">

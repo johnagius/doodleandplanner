@@ -27,7 +27,7 @@ test('create a room from the Camping template (pre-filled inventory)', async ({ 
 
 test('create a scheduling poll and vote on it', async ({ page }) => {
   await createRoom(page);
-  await page.getByRole('button', { name: '+ New poll' }).click();
+  await page.getByRole('button', { name: '+ New poll' }).first().click();
   await page.getByLabel('Poll title').fill('Movie night?');
   await page.getByRole('button', { name: 'Create poll' }).click();
 
@@ -40,7 +40,7 @@ test('create a scheduling poll and vote on it', async ({ page }) => {
 
 test('overlays shared availability on poll options', async ({ page }) => {
   const slug = await createRoom(page);
-  await page.getByRole('button', { name: '+ New poll' }).click();
+  await page.getByRole('button', { name: '+ New poll' }).first().click();
   await page.getByLabel('Poll title').fill('Movie night?');
   await page.getByRole('button', { name: 'Create poll' }).click();
   await expect(page.getByRole('heading', { name: 'Movie night?' })).toBeVisible();

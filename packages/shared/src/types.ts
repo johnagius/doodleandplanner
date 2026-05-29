@@ -104,6 +104,12 @@ export interface OptionTally {
 export interface BusyInterval {
   start: ISODateTime;
   end: ISODateTime;
+  /** Human label of the blocking event (e.g. "Dentist"), when known. */
+  title?: string;
+  /** 'tentative' is a soft conflict; defaults to a hard 'busy' block. */
+  status?: 'busy' | 'tentative';
+  /** All-day events get friendlier display. */
+  allDay?: boolean;
 }
 
 /** A member's shared busy intervals, used to overlay availability on polls. */

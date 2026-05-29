@@ -26,7 +26,13 @@ async function seed() {
     availability: [
       {
         memberId: owner.id,
-        busy: [{ start: '2026-06-01T10:30:00.000Z', end: '2026-06-01T10:45:00.000Z' }],
+        busy: [
+          {
+            start: '2026-06-01T10:30:00.000Z',
+            end: '2026-06-01T10:45:00.000Z',
+            title: 'Standup',
+          },
+        ],
         updatedAt: '2026-05-01T00:00:00.000Z',
       },
     ],
@@ -49,8 +55,8 @@ beforeEach(() => {
   });
 });
 
-describe('PollCard availability overlay', () => {
-  it('shows free/busy counts from shared availability', async () => {
+describe('PollCard conflict overlay', () => {
+  it('shows conflict counts and names the clashing event', async () => {
     const pollId = await seed();
     render(
       <ToastProvider>
@@ -59,8 +65,10 @@ describe('PollCard availability overlay', () => {
         </MemoryRouter>
       </ToastProvider>,
     );
-    // Option 1: Alice busy. Option 2: Alice free.
-    expect(screen.getByText(/1 busy/)).toBeInTheDocument();
-    expect(screen.getByText(/1 free/)).toBeInTheDocument();
+    // Option 1: Alice has a hard clash (15m of 60m). Option 2: she's free.
+    expect(screen.getByText(/can’t make it/)).toBeInTheDocument();
+    expect(screen.getByText(/free/)).toBeInTheDocument();
+    // The blocking event name surfaces in the explanation.
+    expect(screen.getByText(/Standup/)).toBeInTheDocument();
   });
 });

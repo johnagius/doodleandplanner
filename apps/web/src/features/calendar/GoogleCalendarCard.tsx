@@ -1,7 +1,7 @@
 import { suggestSlots } from '@dap/shared';
 import { useState } from 'react';
 import { useToast } from '../../components/Toast.js';
-import { getFreeBusy } from '../../lib/google/calendar.js';
+import { getBusyWithEvents, getFreeBusy } from '../../lib/google/calendar.js';
 import { isGoogleConfigured } from '../../lib/google/config.js';
 import { useGoogleStore } from '../../state/googleStore.js';
 import { useRoomStore } from '../../state/roomStore.js';
@@ -95,7 +95,8 @@ export function GoogleCalendarCard() {
         );
         windowEnd = options.reduce((max, o) => (o.end > max ? o.end : max), options[0]!.end);
       }
-      const myBusy = await getFreeBusy(accessToken, windowStart, windowEnd);
+      // Rich busy intervals (with event titles) so polls can explain clashes.
+      const myBusy = await getBusyWithEvents(accessToken, windowStart, windowEnd);
       await shareMyAvailability(myBusy);
       show('Shared your availability on the polls 📅');
     } catch (err) {

@@ -1,10 +1,12 @@
 import {
   bestOptions,
-  classifyOption,
   findMember,
   formatSlot,
   participantCount,
+  summarizeSlotConflicts,
+  type BusyInterval,
   type OptionTally,
+  type SlotConflictSummary,
   type TimeOption,
   type VoteValue,
 } from '@dap/shared';
@@ -32,6 +34,9 @@ export function PollCard({ pollId }: { pollId: string }) {
   const memberIds = state.room.members.map((m) => m.id);
   const availability = state.availability ?? [];
   const hasAvailability = availability.length > 0;
+  const busyByMember = new Map<string, BusyInterval[]>(
+    availability.map((a) => [a.memberId, a.busy]),
+  );
   const names = (ids: string[]) => ids.map((id) => findMember(state.room, id)?.name ?? '?');
 
   const myVote = (optionId: string): VoteValue | undefined =>
@@ -76,7 +81,9 @@ export function PollCard({ pollId }: { pollId: string }) {
         {poll.options.map((option) => {
           const tally = tallyById.get(option.id);
           const isWinner = closed ? poll.finalOptionId === option.id : option.id === topId;
-          const cls = hasAvailability ? classifyOption(option, memberIds, availability) : undefined;
+          const conflict = hasAvailability
+            ? summarizeSlotConflicts(option, memberIds, busyByMember)
+            : undefined;
           return (
             <OptionRow
               key={option.id}
@@ -87,8 +94,8 @@ export function PollCard({ pollId }: { pollId: string }) {
               closed={closed}
               allowMaybe={poll.allowMaybe}
               myVote={myVote(option.id)}
-              freeNames={cls ? names(cls.free) : undefined}
-              busyNames={cls ? names(cls.busy) : undefined}
+              conflict={conflict}
+              names={names}
               voters={(tally?.yesMembers ?? [])
                 .map((id) => findMember(state.room, id))
                 .filter(Boolean)
@@ -113,8 +120,8 @@ function OptionRow({
   closed,
   allowMaybe,
   myVote,
-  freeNames,
-  busyNames,
+  conflict,
+  names,
   voters,
   onVote,
   canFinalize,
@@ -128,8 +135,8 @@ function OptionRow({
   closed: boolean;
   allowMaybe: boolean;
   myVote?: VoteValue;
-  freeNames?: string[];
-  busyNames?: string[];
+  conflict?: SlotConflictSummary;
+  names: (ids: string[]) => string[];
   voters: { name: string; color: string }[];
   onVote: (value: VoteValue) => void;
   canFinalize: boolean;
@@ -138,6 +145,17 @@ function OptionRow({
 }) {
   const score = tally?.score ?? 0;
   const values: VoteValue[] = allowMaybe ? ['yes', 'maybe', 'no'] : ['yes', 'no'];
+
+  // Collect the named events that hard-block this slot, for an explainable tooltip.
+  const clashNotes = conflict
+    ? conflict.perMember
+        .filter((m) => m.conflict.severity === 'hard')
+        .map((m) => {
+          const who = names([m.memberId])[0] ?? 'Someone';
+          const why = m.conflict.reasons[0]?.title ?? 'busy';
+          return `${who}: ${why}`;
+        })
+    : [];
 
   return (
     <div
@@ -165,17 +183,36 @@ function OptionRow({
         <span style={{ width: `${(score / maxScore) * 100}%` }} />
       </div>
 
-      {(freeNames?.length || busyNames?.length) && (
-        <div className="row small" style={{ gap: '0.75rem' }}>
-          {freeNames && freeNames.length > 0 && (
-            <span style={{ color: 'var(--success)' }} title={`Free: ${freeNames.join(', ')}`}>
-              📅 {freeNames.length} free
-            </span>
-          )}
-          {busyNames && busyNames.length > 0 && (
-            <span style={{ color: 'var(--danger)' }} title={`Busy: ${busyNames.join(', ')}`}>
-              ⛔ {busyNames.length} busy
-            </span>
+      {conflict && (conflict.free.length || conflict.soft.length || conflict.hard.length) > 0 && (
+        <div className="stack" style={{ gap: '0.25rem' }}>
+          <div className="row small" style={{ gap: '0.75rem' }}>
+            {conflict.free.length > 0 && (
+              <span
+                style={{ color: 'var(--success)' }}
+                title={`Free: ${names(conflict.free).join(', ')}`}
+              >
+                ✅ {conflict.free.length} free
+              </span>
+            )}
+            {conflict.soft.length > 0 && (
+              <span
+                style={{ color: 'var(--warn)' }}
+                title={`Maybe: ${names(conflict.soft).join(', ')}`}
+              >
+                ⚠️ {conflict.soft.length} tentative
+              </span>
+            )}
+            {conflict.hard.length > 0 && (
+              <span style={{ color: 'var(--danger)' }} title={clashNotes.join(' · ')}>
+                ⛔ {conflict.hard.length} can’t make it
+              </span>
+            )}
+          </div>
+          {clashNotes.length > 0 && (
+            <div className="muted" style={{ fontSize: '0.72rem' }}>
+              Clashes: {clashNotes.slice(0, 3).join(' · ')}
+              {clashNotes.length > 3 ? ` +${clashNotes.length - 3} more` : ''}
+            </div>
           )}
         </div>
       )}

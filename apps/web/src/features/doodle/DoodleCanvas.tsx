@@ -29,6 +29,9 @@ function paintStroke(
   const pts = stroke.points;
   if (pts.length === 0) return;
   const tool = stroke.tool ?? 'pen';
+  // The eraser truly removes pixels (theme-independent) via compositing,
+  // rather than painting a background colour.
+  ctx.globalCompositeOperation = tool === 'eraser' ? 'destination-out' : 'source-over';
   ctx.strokeStyle = stroke.color;
   ctx.fillStyle = stroke.color;
   ctx.lineWidth = stroke.width;
@@ -157,6 +160,8 @@ export function DoodleCanvas() {
         tool: drawTool,
       });
     }
+    // Reset compositing so a trailing eraser stroke can't affect the next frame.
+    ctx.globalCompositeOperation = 'source-over';
   }, [strokes, color, width]);
 
   useEffect(() => {
@@ -197,7 +202,9 @@ export function DoodleCanvas() {
     redraw();
   }
 
-  async function onPointerUp() {
+  async function onPointerUp(e: React.PointerEvent) {
+    const canvas = canvasRef.current;
+    if (canvas?.hasPointerCapture(e.pointerId)) canvas.releasePointerCapture(e.pointerId);
     if (!drawing.current) return;
     drawing.current = false;
     const points = current.current;

@@ -25,7 +25,7 @@ export function addStroke(board: DoodleBoard, input: AddStrokeInput): DoodleBoar
     memberId: input.memberId,
     color: input.color,
     width: input.width,
-    points: input.points,
+    points: [...input.points], // copy so later caller mutation can't corrupt the board
     tool,
     createdAt: (input.now ?? (() => new Date()))().toISOString(),
   };

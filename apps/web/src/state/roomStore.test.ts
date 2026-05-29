@@ -139,3 +139,54 @@ describe('room settings', () => {
     expect(store().state!.room.name).toBe('Camping');
   });
 });
+
+describe('realtime: optimistic update vs subscription echo', () => {
+  it('ignores an inbound state while a local write is in flight', async () => {
+    // A repository we can drive: capture the subscribe listener, and hold
+    // saveRoom until we release it (simulating a slow round-trip).
+    let listener: ((s: RoomState) => void) | null = null;
+    let releaseSave: (() => void) | null = null;
+    const base = await (async () => {
+      const { room } = await createRoom({ name: 'Race', ownerName: 'Ann' });
+      return emptyRoomState(room);
+    })();
+
+    const repo = {
+      async createRoom() {},
+      async getRoom() {
+        return base;
+      },
+      async saveRoom(s: RoomState) {
+        await new Promise<void>((res) => (releaseSave = res));
+        return s;
+      },
+      async deleteRoom() {},
+      async listRooms() {
+        return [];
+      },
+      subscribe(_slug: string, l: (s: RoomState) => void) {
+        listener = l;
+        return () => {};
+      },
+    };
+    setRepository(repo as never);
+    setIdentity(base.room.id, base.room.members[0]!.id);
+    await store().loadRoom(base.room.slug);
+
+    // Begin a local edit; saveRoom is now pending (awaiting release).
+    const writing = store().addItem({ name: 'Local item' });
+    expect(store().state!.inventory).toHaveLength(1);
+
+    // A STALE echo (no items) arrives mid-write — must be ignored.
+    listener!({ ...base, inventory: [] });
+    expect(store().state!.inventory).toHaveLength(1);
+
+    // Release the save; the write completes.
+    releaseSave!();
+    await writing;
+
+    // After the write settles, fresh inbound updates are accepted again.
+    listener!({ ...base, room: { ...base.room, name: 'FromServer' } });
+    expect(store().state!.room.name).toBe('FromServer');
+  });
+});

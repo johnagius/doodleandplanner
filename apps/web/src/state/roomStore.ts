@@ -160,6 +160,11 @@ export const useRoomStore = create<RoomStore>((set, get) => {
   // Resolved lazily so tests can swap the backend via setRepository().
   const repo = () => getRepository();
 
+  // Count of in-flight local saves. While > 0 our optimistic state is
+  // authoritative, so we ignore inbound subscription updates (which may be the
+  // echo of an earlier save arriving after a newer local edit — finding #11).
+  let pendingWrites = 0;
+
   /** Apply a pure update to the current room and persist it. */
   async function apply(updater: (state: RoomState) => RoomState): Promise<void> {
     const current = get().state;
@@ -172,7 +177,18 @@ export const useRoomStore = create<RoomStore>((set, get) => {
       return;
     }
     set({ state: next, error: null });
-    await repo().saveRoom(next);
+    pendingWrites++;
+    try {
+      await repo().saveRoom(next);
+    } finally {
+      pendingWrites--;
+    }
+  }
+
+  /** Accept an inbound (remote) state only when we have no local write pending. */
+  function onIncoming(incoming: RoomState): void {
+    if (pendingWrites > 0) return;
+    set({ state: incoming });
   }
 
   const requireMe = (): string => {
@@ -196,7 +212,7 @@ export const useRoomStore = create<RoomStore>((set, get) => {
         set({ state: null, meId: null, loading: false, unsubscribe: null });
         return;
       }
-      const unsub = repo().subscribe(slug, (incoming) => set({ state: incoming }));
+      const unsub = repo().subscribe(slug, onIncoming);
       set({
         state,
         meId: getIdentity(state.room.id),

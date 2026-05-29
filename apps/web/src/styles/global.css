@@ -575,6 +575,41 @@ label.field {
   overflow-wrap: anywhere;
 }
 
+/* Sticky notes on the doodle */
+.sticky-note {
+  position: absolute;
+  transform: translate(-4px, -4px);
+  max-width: 160px;
+  min-width: 64px;
+  padding: 0.5rem 0.6rem;
+  border-radius: 6px;
+  color: #1f2333;
+  font-size: 0.82rem;
+  font-weight: 600;
+  box-shadow: var(--shadow-md);
+  cursor: grab;
+  touch-action: none;
+  overflow-wrap: anywhere;
+  rotate: -1.5deg;
+}
+.sticky-note:active {
+  cursor: grabbing;
+}
+.sticky-note-x {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+}
+
 /* Live doodle cursors */
 .remote-cursor {
   position: absolute;

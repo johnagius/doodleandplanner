@@ -96,6 +96,26 @@ test('draw on the shared doodle and persist strokes', async ({ page }) => {
   expect(strokeCount).toBeGreaterThan(0);
 });
 
+test('draw a rectangle shape on the doodle', async ({ page }) => {
+  const slug = await createRoom(page);
+  await page.getByRole('tab', { name: /Doodle/ }).click();
+  await page.getByRole('button', { name: 'Rectangle' }).click();
+
+  const canvas = page.getByTestId('doodle-canvas');
+  const box = (await canvas.boundingBox())!;
+  await page.mouse.move(box.x + 50, box.y + 50);
+  await page.mouse.down();
+  await page.mouse.move(box.x + 200, box.y + 150, { steps: 6 });
+  await page.mouse.up();
+
+  const tool = await page.evaluate((s) => {
+    const raw = localStorage.getItem(`dap:room:${s}`);
+    const strokes = raw ? JSON.parse(raw).state.doodle.strokes : [];
+    return strokes.at(-1)?.tool;
+  }, slug);
+  expect(tool).toBe('rect');
+});
+
 test('shows an invite link on the members tab', async ({ page }) => {
   const slug = await createRoom(page);
   await page.getByRole('tab', { name: /Members/ }).click();

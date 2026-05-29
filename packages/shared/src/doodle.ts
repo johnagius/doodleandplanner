@@ -1,18 +1,24 @@
 /** Collaborative drawing board: append-only strokes with per-member undo. */
 import { generateId } from './ids.js';
-import type { DoodleBoard, Point, Stroke } from './types.js';
+import type { DoodleBoard, Point, StickyNote, Stroke, StrokeTool } from './types.js';
 
 export interface AddStrokeInput {
   memberId: string;
   color: string;
   width: number;
   points: Point[];
+  tool?: StrokeTool;
   now?: () => Date;
 }
 
 export function addStroke(board: DoodleBoard, input: AddStrokeInput): DoodleBoard {
   if (input.points.length === 0) throw new Error('A stroke needs at least one point');
   if (input.width <= 0) throw new Error('Stroke width must be positive');
+  const tool = input.tool ?? 'pen';
+  // Shapes are defined by two anchor points; require them.
+  if ((tool === 'line' || tool === 'rect' || tool === 'ellipse') && input.points.length < 2) {
+    throw new Error('Shapes need a start and end point');
+  }
 
   const stroke: Stroke = {
     id: generateId('stroke'),
@@ -20,6 +26,7 @@ export function addStroke(board: DoodleBoard, input: AddStrokeInput): DoodleBoar
     color: input.color,
     width: input.width,
     points: input.points,
+    tool,
     createdAt: (input.now ?? (() => new Date()))().toISOString(),
   };
   return { ...board, strokes: [...board.strokes, stroke] };
@@ -43,7 +50,44 @@ export function removeStroke(board: DoodleBoard, strokeId: string): DoodleBoard 
 }
 
 export function clearBoard(board: DoodleBoard): DoodleBoard {
-  return { ...board, strokes: [] };
+  return { ...board, strokes: [], notes: [] };
+}
+
+// --- Sticky notes ----------------------------------------------------------
+
+export interface AddNoteInput {
+  memberId: string;
+  text: string;
+  color: string;
+  x: number;
+  y: number;
+  now?: () => Date;
+}
+
+export function addNote(board: DoodleBoard, input: AddNoteInput): DoodleBoard {
+  const text = input.text.trim();
+  if (!text) throw new Error('A note needs text');
+  const note: StickyNote = {
+    id: generateId('note'),
+    memberId: input.memberId,
+    text,
+    color: input.color,
+    x: input.x,
+    y: input.y,
+    createdAt: (input.now ?? (() => new Date()))().toISOString(),
+  };
+  return { ...board, notes: [...(board.notes ?? []), note] };
+}
+
+export function moveNote(board: DoodleBoard, noteId: string, x: number, y: number): DoodleBoard {
+  return {
+    ...board,
+    notes: (board.notes ?? []).map((n) => (n.id === noteId ? { ...n, x, y } : n)),
+  };
+}
+
+export function removeNote(board: DoodleBoard, noteId: string): DoodleBoard {
+  return { ...board, notes: (board.notes ?? []).filter((n) => n.id !== noteId) };
 }
 
 /** Bounding box of all strokes in normalised coordinates, or null if empty. */

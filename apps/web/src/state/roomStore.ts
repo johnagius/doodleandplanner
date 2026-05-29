@@ -1,5 +1,6 @@
 import {
   addMember,
+  addNote,
   addOption,
   addStroke,
   appendMessage,
@@ -14,7 +15,9 @@ import {
   createPoll,
   eventFromOption,
   linkGoogleProfile,
+  moveNote,
   releaseItem,
+  removeNote,
   removeOption,
   rotateInviteToken,
   scheduleActivity,
@@ -34,6 +37,7 @@ import {
   type RoomState,
   type RsvpStatus,
   type SchedulePoll,
+  type StrokeTool,
   type TimeOption,
   type VoteValue,
 } from '@dap/shared';
@@ -110,9 +114,17 @@ interface RoomStore {
   removeActivity: (activityId: string) => Promise<void>;
 
   // doodle
-  draw: (input: { color: string; width: number; points: Point[] }) => Promise<void>;
+  draw: (input: {
+    color: string;
+    width: number;
+    points: Point[];
+    tool?: StrokeTool;
+  }) => Promise<void>;
   undoDoodle: () => Promise<void>;
   clearDoodle: () => Promise<void>;
+  addNote: (input: { text: string; color: string; x: number; y: number }) => Promise<void>;
+  moveNote: (noteId: string, x: number, y: number) => Promise<void>;
+  removeNote: (noteId: string) => Promise<void>;
 
   // chat
   postMessage: (text: string) => Promise<void>;
@@ -365,6 +377,19 @@ export const useRoomStore = create<RoomStore>((set, get) => {
 
     async clearDoodle() {
       await apply((s) => ({ ...s, doodle: clearBoard(s.doodle) }));
+    },
+
+    async addNote(input) {
+      const me = requireMe();
+      await apply((s) => ({ ...s, doodle: addNote(s.doodle, { memberId: me, ...input }) }));
+    },
+
+    async moveNote(noteId, x, y) {
+      await apply((s) => ({ ...s, doodle: moveNote(s.doodle, noteId, x, y) }));
+    },
+
+    async removeNote(noteId) {
+      await apply((s) => ({ ...s, doodle: removeNote(s.doodle, noteId) }));
     },
 
     async postMessage(text) {

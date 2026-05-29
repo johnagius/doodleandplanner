@@ -174,13 +174,31 @@ export interface Point {
   y: number;
 }
 
-/** A freehand stroke. Coordinates are normalised 0..1 for resolution-independence. */
+/** Drawing tools. 'pen'/'eraser' use the full point path; shapes use the
+ * first and last point as opposite corners (or endpoints for 'line'). */
+export type StrokeTool = 'pen' | 'eraser' | 'line' | 'rect' | 'ellipse';
+
+/** A stroke or shape. Coordinates are normalised 0..1 for resolution-independence. */
 export interface Stroke {
   id: string;
   memberId: string;
   color: string;
   width: number;
   points: Point[];
+  /** Defaults to 'pen' when absent (back-compat with older boards). */
+  tool?: StrokeTool;
+  createdAt: ISODateTime;
+}
+
+/** A draggable text sticky on the board. */
+export interface StickyNote {
+  id: string;
+  memberId: string;
+  text: string;
+  color: string;
+  /** Normalised top-left position 0..1. */
+  x: number;
+  y: number;
   createdAt: ISODateTime;
 }
 
@@ -188,6 +206,8 @@ export interface DoodleBoard {
   id: string;
   roomId: string;
   strokes: Stroke[];
+  /** Optional sticky notes (older boards omit this). */
+  notes?: StickyNote[];
 }
 
 /** A chat message in the room discussion. */

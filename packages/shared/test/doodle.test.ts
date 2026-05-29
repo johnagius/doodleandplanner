@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
+  addNote,
   addStroke,
   clearBoard,
+  moveNote,
+  removeNote,
   removeStroke,
   strokeBounds,
   undoLastStroke,
@@ -74,5 +77,52 @@ describe('strokeBounds', () => {
     let b = addStroke(board(), stroke('m1'));
     b = addStroke(b, { ...stroke('m2'), points: [{ x: 0.9, y: 0.05 }] });
     expect(strokeBounds(b)).toEqual({ minX: 0.1, minY: 0.05, maxX: 0.9, maxY: 0.4 });
+  });
+});
+
+describe('tools', () => {
+  it('defaults to pen and records the tool', () => {
+    const b = addStroke(board(), { ...stroke('m1'), tool: 'rect' });
+    expect(b.strokes[0]!.tool).toBe('rect');
+    const pen = addStroke(board(), stroke('m1'));
+    expect(pen.strokes[0]!.tool).toBe('pen');
+  });
+
+  it('requires two points for shapes', () => {
+    expect(() =>
+      addStroke(board(), { ...stroke('m1'), tool: 'line', points: [{ x: 0.1, y: 0.1 }] }),
+    ).toThrow(/start and end/);
+  });
+});
+
+describe('sticky notes', () => {
+  it('adds, moves and removes notes', () => {
+    let b = addNote(board(), {
+      memberId: 'm1',
+      text: '  Bring snacks  ',
+      color: '#eab308',
+      x: 0.2,
+      y: 0.3,
+    });
+    expect(b.notes).toHaveLength(1);
+    expect(b.notes![0]!.text).toBe('Bring snacks');
+    const id = b.notes![0]!.id;
+
+    b = moveNote(b, id, 0.5, 0.6);
+    expect(b.notes![0]).toMatchObject({ x: 0.5, y: 0.6 });
+
+    b = removeNote(b, id);
+    expect(b.notes).toHaveLength(0);
+  });
+
+  it('rejects empty notes and clears notes with the board', () => {
+    expect(() =>
+      addNote(board(), { memberId: 'm', text: '  ', color: '#000', x: 0, y: 0 }),
+    ).toThrow(/text/);
+    let b = addNote(board(), { memberId: 'm', text: 'Hi', color: '#000', x: 0, y: 0 });
+    b = addStroke(b, stroke('m'));
+    b = clearBoard(b);
+    expect(b.strokes).toHaveLength(0);
+    expect(b.notes).toHaveLength(0);
   });
 });

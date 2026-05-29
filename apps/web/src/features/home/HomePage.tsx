@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { HeroCanvas } from '../../components/HeroCanvas.js';
+import { GoogleSignInButton } from '../../components/GoogleSignInButton.js';
 import {
   getPreferredName,
   getRepository,
@@ -115,6 +116,14 @@ function CreateRoomCard({ onCreated }: { onCreated: (slug: string) => void }) {
   return (
     <form className="card stack" onSubmit={handleSubmit} aria-label="Create a room">
       <h2 className="card-title">Start a new room</h2>
+      <GoogleSignInButton
+        onSignedIn={(profile) => {
+          if (profile.name) {
+            setOwnerName(profile.name);
+            setPreferredName(profile.name);
+          }
+        }}
+      />
       <label className="field">
         Room name
         <input

@@ -13,7 +13,7 @@ import {
   createMessage,
   createPoll,
   eventFromOption,
-  linkGoogleAccount,
+  linkGoogleProfile,
   releaseItem,
   removeOption,
   rotateInviteToken,
@@ -48,7 +48,7 @@ interface RoomStore {
   loadRoom: (slug: string) => Promise<void>;
   leave: () => void;
   joinRoom: (name: string) => Promise<Member | null>;
-  linkGoogle: (email: string) => Promise<void>;
+  linkGoogle: (profile: { email: string; name?: string; avatarUrl?: string }) => Promise<void>;
 
   // polls
   addPoll: (input: {
@@ -187,9 +187,9 @@ export const useRoomStore = create<RoomStore>((set, get) => {
       return member;
     },
 
-    async linkGoogle(email) {
+    async linkGoogle(profile) {
       const me = requireMe();
-      await apply((s) => ({ ...s, room: linkGoogleAccount(s.room, me, email) }));
+      await apply((s) => ({ ...s, room: linkGoogleProfile(s.room, me, profile) }));
     },
 
     async addPoll(input) {

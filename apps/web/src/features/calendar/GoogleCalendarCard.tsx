@@ -37,10 +37,10 @@ export function GoogleCalendarCard() {
   }
 
   async function handleConnect() {
-    const linked = await connect();
-    if (linked) {
-      await linkGoogle(linked);
-      show(`Connected ${linked}`);
+    const profile = await connect();
+    if (profile) {
+      await linkGoogle({ email: profile.email, name: profile.name, avatarUrl: profile.picture });
+      show(`Connected ${profile.name ?? profile.email}`);
     }
   }
 

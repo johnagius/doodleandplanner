@@ -120,6 +120,29 @@ export function linkGoogleAccount(room: Room, memberId: string, googleEmail: str
   };
 }
 
+export interface GoogleProfileLink {
+  email: string;
+  name?: string;
+  avatarUrl?: string;
+}
+
+/** Link a member's full Google profile: email, optional avatar, and name. */
+export function linkGoogleProfile(room: Room, memberId: string, profile: GoogleProfileLink): Room {
+  return {
+    ...room,
+    members: room.members.map((m) =>
+      m.id === memberId
+        ? {
+            ...m,
+            googleEmail: profile.email,
+            avatarUrl: profile.avatarUrl ?? m.avatarUrl,
+            name: profile.name?.trim() || m.name,
+          }
+        : m,
+    ),
+  };
+}
+
 export function removeMember(room: Room, memberId: string): Room {
   const target = findMember(room, memberId);
   if (target?.role === 'owner') throw new Error('Cannot remove the room owner');

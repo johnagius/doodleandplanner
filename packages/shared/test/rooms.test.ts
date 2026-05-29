@@ -7,6 +7,7 @@ import {
   isMember,
   isProtected,
   linkGoogleAccount,
+  linkGoogleProfile,
   removeMember,
   renameMember,
   rotateInviteToken,
@@ -79,6 +80,23 @@ describe('membership', () => {
 
     const linked = linkGoogleAccount(renamed, owner.id, 'alice@example.com');
     expect(linked.members[0]!.googleEmail).toBe('alice@example.com');
+  });
+
+  it('links a full google profile (email, avatar, name)', async () => {
+    const { room, owner } = await createRoom({ name: 'X', ownerName: 'Alice', now: fixedNow });
+    const linked = linkGoogleProfile(room, owner.id, {
+      email: 'alice@example.com',
+      name: 'Alice Wonderland',
+      avatarUrl: 'https://img/a.png',
+    });
+    expect(linked.members[0]).toMatchObject({
+      googleEmail: 'alice@example.com',
+      name: 'Alice Wonderland',
+      avatarUrl: 'https://img/a.png',
+    });
+    // Keeps the existing name when the profile omits one.
+    const noName = linkGoogleProfile(room, owner.id, { email: 'a@b.com' });
+    expect(noName.members[0]!.name).toBe('Alice');
   });
 
   it('removes members but never the owner', async () => {

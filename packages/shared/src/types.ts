@@ -19,6 +19,8 @@ export interface Member {
   joinedAt: ISODateTime;
   /** Present when the member has linked their Google account. */
   googleEmail?: string;
+  /** Avatar image URL (e.g. Google profile photo), shown instead of initials. */
+  avatarUrl?: string;
 }
 
 /** A PBKDF2 password hash, fully self-describing so it can be re-verified. */

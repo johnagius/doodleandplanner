@@ -126,6 +126,23 @@ test('draw on the shared doodle and persist strokes', async ({ page }) => {
   expect(strokeCount).toBeGreaterThan(0);
 });
 
+test('export the doodle as a PNG', async ({ page }) => {
+  await createRoom(page);
+  await page.getByRole('tab', { name: /Doodle/ }).click();
+  const canvas = page.getByTestId('doodle-canvas');
+  const box = (await canvas.boundingBox())!;
+  await page.mouse.move(box.x + 40, box.y + 40);
+  await page.mouse.down();
+  await page.mouse.move(box.x + 160, box.y + 120, { steps: 6 });
+  await page.mouse.up();
+
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByRole('button', { name: /PNG/ }).click(),
+  ]);
+  expect(download.suggestedFilename()).toMatch(/^doodle-.*\.png$/);
+});
+
 test('draw a rectangle shape on the doodle', async ({ page }) => {
   const slug = await createRoom(page);
   await page.getByRole('tab', { name: /Doodle/ }).click();

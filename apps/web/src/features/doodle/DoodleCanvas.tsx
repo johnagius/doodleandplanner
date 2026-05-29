@@ -223,6 +223,30 @@ export function DoodleCanvas() {
     });
   }
 
+  /** Render the board onto a white-backed offscreen canvas and download a PNG. */
+  function exportPng() {
+    const src = canvasRef.current;
+    if (!src) return;
+    const w = src.clientWidth;
+    const h = src.clientHeight;
+    const out = document.createElement('canvas');
+    out.width = w;
+    out.height = h;
+    const ctx = out.getContext('2d');
+    if (!ctx) return;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, w, h);
+    for (const stroke of strokes) paintStroke(ctx, w, h, stroke);
+    ctx.globalCompositeOperation = 'source-over';
+    const url = out.toDataURL('image/png');
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `doodle-${slug}.png`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+
   // Sticky-note dragging.
   function onNotePointerDown(e: React.PointerEvent, noteId: string) {
     e.stopPropagation();
@@ -294,6 +318,9 @@ export function DoodleCanvas() {
         <div className="row">
           <button className="btn btn-sm" onClick={() => undoDoodle()}>
             ↩ Undo
+          </button>
+          <button className="btn btn-sm" onClick={exportPng} title="Download the doodle as a PNG">
+            💾 PNG
           </button>
           <button
             className="btn btn-sm btn-danger"

@@ -38,6 +38,8 @@ export interface RoomSettings {
   defaultSlotMinutes: number;
   /** Working-hours window used by the slot finder, 0-24. */
   workingHours: { startHour: number; endHour: number };
+  /** ISO 4217 currency code used for the inventory budget (e.g. "EUR"). */
+  currency: string;
 }
 
 export interface Room {
@@ -116,6 +118,8 @@ export interface InventoryItem {
   claimedBy?: string;
   status: ItemStatus;
   notes?: string;
+  /** Optional cost of the item; whoever claims it is assumed to have paid. */
+  cost?: number;
   createdAt: ISODateTime;
 }
 

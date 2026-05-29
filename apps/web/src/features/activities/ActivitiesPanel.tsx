@@ -1,6 +1,15 @@
-import { findMember, rankActivities, type Activity } from '@dap/shared';
+import {
+  findMember,
+  formatSlot,
+  itineraryEnd,
+  itineraryMinutes,
+  planItinerary,
+  rankActivities,
+  type Activity,
+} from '@dap/shared';
 import { useState, type FormEvent } from 'react';
 import { Avatar } from '../../components/Avatar.js';
+import { defaultStartLocal, isoToLocalInput, localInputToISO } from '../../lib/datetime.js';
 import { useRoomStore } from '../../state/roomStore.js';
 
 export function ActivitiesPanel() {
@@ -17,23 +26,26 @@ export function ActivitiesPanel() {
       {ranked.length === 0 ? (
         <div className="empty">No ideas yet. What should everyone do together? 🎉</div>
       ) : (
-        <div className="grid grid-2">
-          {ranked.map((activity) => (
-            <ActivityCard
-              key={activity.id}
-              activity={activity}
-              interestedMembers={activity.interested
-                .map((id) => findMember(state.room, id))
-                .filter(Boolean)
-                .map((m) => ({ name: m!.name, color: m!.color }))}
-              proposer={findMember(state.room, activity.proposedBy)?.name}
-              mineInterested={activity.interested.includes(meId)}
-              canDelete={activity.proposedBy === meId || state.room.createdBy === meId}
-              onToggle={() => toggleActivityInterest(activity.id)}
-              onRemove={() => removeActivity(activity.id)}
-            />
-          ))}
-        </div>
+        <>
+          <div className="grid grid-2">
+            {ranked.map((activity) => (
+              <ActivityCard
+                key={activity.id}
+                activity={activity}
+                interestedMembers={activity.interested
+                  .map((id) => findMember(state.room, id))
+                  .filter(Boolean)
+                  .map((m) => ({ name: m!.name, color: m!.color }))}
+                proposer={findMember(state.room, activity.proposedBy)?.name}
+                mineInterested={activity.interested.includes(meId)}
+                canDelete={activity.proposedBy === meId || state.room.createdBy === meId}
+                onToggle={() => toggleActivityInterest(activity.id)}
+                onRemove={() => removeActivity(activity.id)}
+              />
+            ))}
+          </div>
+          <ItineraryCard />
+        </>
       )}
     </div>
   );
@@ -46,13 +58,15 @@ function AddActivityForm({
 }) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [duration, setDuration] = useState(60);
 
   function submit(e: FormEvent) {
     e.preventDefault();
     if (!title.trim()) return;
-    onAdd({ title, description: description || undefined });
+    onAdd({ title, description: description || undefined, durationMinutes: duration });
     setTitle('');
     setDescription('');
+    setDuration(60);
   }
 
   return (
@@ -65,6 +79,21 @@ function AddActivityForm({
           onChange={(e) => setTitle(e.target.value)}
           aria-label="Activity title"
         />
+        <label className="row small" style={{ gap: 6 }}>
+          for
+          <select
+            className="select"
+            value={duration}
+            onChange={(e) => setDuration(Number(e.target.value))}
+            aria-label="Activity duration"
+          >
+            <option value={30}>30 min</option>
+            <option value={60}>1 hour</option>
+            <option value={90}>1.5 hours</option>
+            <option value={120}>2 hours</option>
+            <option value={180}>3 hours</option>
+          </select>
+        </label>
         <button className="btn btn-primary" type="submit">
           Propose
         </button>
@@ -110,7 +139,10 @@ function ActivityCard({
           {activity.description}
         </p>
       )}
-      {proposer && <div className="muted small">proposed by {proposer}</div>}
+      <div className="row small muted" style={{ gap: '0.5rem' }}>
+        {activity.durationMinutes && <span className="badge">{activity.durationMinutes} min</span>}
+        {proposer && <span>proposed by {proposer}</span>}
+      </div>
       <div className="row" style={{ gap: 4 }}>
         {interestedMembers.map((m, i) => (
           <Avatar key={i} member={m} size={24} />
@@ -125,6 +157,73 @@ function ActivityCard({
             Remove
           </button>
         )}
+      </div>
+    </div>
+  );
+}
+
+function ItineraryCard() {
+  const state = useRoomStore((s) => s.state)!;
+  // Default the start to the first planned event, else tomorrow at 10:00.
+  const firstEventStart = [...state.events].sort((a, b) => a.start.localeCompare(b.start))[0]
+    ?.start;
+  const [startLocal, setStartLocal] = useState(
+    firstEventStart ? isoToLocalInput(firstEventStart) : defaultStartLocal(1, 10),
+  );
+  const [gap, setGap] = useState(15);
+
+  const startISO = localInputToISO(startLocal);
+  const plan = planItinerary(state.activities, startISO, {
+    gapMinutes: gap,
+    defaultDurationMinutes: 60,
+  });
+  const end = itineraryEnd(plan);
+
+  return (
+    <div className="card stack" aria-label="Itinerary" style={{ gap: '0.75rem' }}>
+      <div className="row spread row-wrap">
+        <h3 className="card-title" style={{ margin: 0 }}>
+          🗺️ Running order
+        </h3>
+        <div className="row row-wrap" style={{ gap: '0.75rem' }}>
+          <label className="row small" style={{ gap: 6 }}>
+            Start
+            <input
+              className="input"
+              type="datetime-local"
+              value={startLocal}
+              onChange={(e) => setStartLocal(e.target.value)}
+              aria-label="Itinerary start"
+            />
+          </label>
+          <label className="row small" style={{ gap: 6 }}>
+            Gap
+            <select
+              className="select"
+              value={gap}
+              onChange={(e) => setGap(Number(e.target.value))}
+              aria-label="Gap between activities"
+            >
+              <option value={0}>none</option>
+              <option value={15}>15 min</option>
+              <option value={30}>30 min</option>
+            </select>
+          </label>
+        </div>
+      </div>
+
+      <ol className="timeline">
+        {plan.map((seg) => (
+          <li key={seg.activityId} className="timeline-item">
+            <span className="timeline-time">{formatSlot(seg.start, seg.end)}</span>
+            <span className="timeline-title">{seg.title}</span>
+          </li>
+        ))}
+      </ol>
+
+      <div className="muted small">
+        {plan.length} activities · {Math.round(itineraryMinutes(plan) / 6) / 10}h of fun
+        {end && <> · wraps up {formatSlot(plan[plan.length - 1]!.start, end).split(', ')[1]}</>}
       </div>
     </div>
   );

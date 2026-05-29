@@ -74,6 +74,35 @@ test('shows an invite link on the members tab', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Reset link' })).toBeVisible();
 });
 
+test('track item cost and see the budget split', async ({ page }) => {
+  await createRoom(page);
+  await page.getByRole('tab', { name: /Inventory/ }).click();
+  await page.getByLabel('Item name').fill('Tent');
+  await page.getByLabel('Cost').fill('90');
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  await page.getByRole('button', { name: /bring it/ }).click();
+
+  const budget = page.locator('.card', { hasText: 'Budget' });
+  await expect(budget.getByText('Spent so far')).toBeVisible();
+  await expect(budget.getByText('Per person')).toBeVisible();
+  await expect(budget.getByText('€90.00').first()).toBeVisible();
+});
+
+test('build an itinerary running order from activities', async ({ page }) => {
+  await createRoom(page);
+  await page.getByRole('tab', { name: /Activities/ }).click();
+  await page.getByLabel('Activity title').fill('Breakfast');
+  await page.getByRole('button', { name: 'Propose' }).click();
+  await page.getByLabel('Activity title').fill('Hike');
+  await page.getByRole('button', { name: 'Propose' }).click();
+
+  const itinerary = page.locator('.card', { hasText: 'Running order' });
+  await expect(itinerary).toBeVisible();
+  await expect(itinerary.locator('.timeline-item')).toHaveCount(2);
+  await expect(itinerary.getByText('Breakfast')).toBeVisible();
+  await expect(itinerary.getByText('Hike')).toBeVisible();
+});
+
 test('add an event to the plan', async ({ page }) => {
   await createRoom(page);
   await page.getByRole('tab', { name: /Plan/ }).click();

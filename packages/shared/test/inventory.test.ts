@@ -21,6 +21,12 @@ describe('createItem', () => {
     expect(() => createItem({ roomId: 'r', name: ' ' })).toThrow(/name/);
     expect(() => createItem({ roomId: 'r', name: 'x', quantity: 0 })).toThrow(/Quantity/);
   });
+
+  it('accepts an optional cost and rejects negative costs', () => {
+    expect(createItem({ roomId: 'r', name: 'Tent', cost: 90 }).cost).toBe(90);
+    expect(createItem({ roomId: 'r', name: 'Free' }).cost).toBeUndefined();
+    expect(() => createItem({ roomId: 'r', name: 'x', cost: -5 })).toThrow(/Cost/);
+  });
 });
 
 describe('claim lifecycle', () => {
@@ -54,6 +60,8 @@ describe('updateItem', () => {
     expect(updated.category).toBe('Snacks');
     expect(() => updateItem(item, { name: '   ' })).toThrow(/name/);
     expect(() => updateItem(item, { quantity: 0 })).toThrow(/Quantity/);
+    expect(updateItem(item, { cost: 12.5 }).cost).toBe(12.5);
+    expect(() => updateItem(item, { cost: -1 })).toThrow(/Cost/);
   });
 });
 

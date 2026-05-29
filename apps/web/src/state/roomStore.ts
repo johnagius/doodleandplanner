@@ -77,13 +77,14 @@ interface RoomStore {
     quantity?: number;
     category?: string;
     notes?: string;
+    cost?: number;
   }) => Promise<void>;
   claim: (itemId: string) => Promise<void>;
   release: (itemId: string) => Promise<void>;
   setStatus: (itemId: string, status: ItemStatus) => Promise<void>;
   editItem: (
     itemId: string,
-    patch: Partial<Pick<InventoryItem, 'name' | 'quantity' | 'category' | 'notes'>>,
+    patch: Partial<Pick<InventoryItem, 'name' | 'quantity' | 'category' | 'notes' | 'cost'>>,
   ) => Promise<void>;
   removeItem: (itemId: string) => Promise<void>;
 
@@ -108,6 +109,7 @@ interface RoomStore {
 
   // room admin
   rotateInvite: () => Promise<void>;
+  setCurrency: (currency: string) => Promise<void>;
 }
 
 export const useRoomStore = create<RoomStore>((set, get) => {
@@ -346,6 +348,13 @@ export const useRoomStore = create<RoomStore>((set, get) => {
 
     async rotateInvite() {
       await apply((s) => ({ ...s, room: rotateInviteToken(s.room) }));
+    },
+
+    async setCurrency(currency) {
+      await apply((s) => ({
+        ...s,
+        room: { ...s.room, settings: { ...s.room.settings, currency } },
+      }));
     },
   };
 });

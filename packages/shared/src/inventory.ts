@@ -8,6 +8,7 @@ export interface CreateItemInput {
   quantity?: number;
   category?: string;
   notes?: string;
+  cost?: number;
   now?: () => Date;
 }
 
@@ -16,6 +17,7 @@ export function createItem(input: CreateItemInput): InventoryItem {
   if (!name) throw new Error('Item name is required');
   const quantity = input.quantity ?? 1;
   if (quantity < 1) throw new Error('Quantity must be at least 1');
+  if (input.cost !== undefined && input.cost < 0) throw new Error('Cost cannot be negative');
 
   return {
     id: generateId('item'),
@@ -24,6 +26,7 @@ export function createItem(input: CreateItemInput): InventoryItem {
     quantity,
     category: input.category?.trim() || undefined,
     notes: input.notes?.trim() || undefined,
+    cost: input.cost,
     claimedBy: undefined,
     status: 'needed',
     createdAt: (input.now ?? (() => new Date()))().toISOString(),
@@ -45,7 +48,7 @@ export function setItemStatus(item: InventoryItem, status: ItemStatus): Inventor
 
 export function updateItem(
   item: InventoryItem,
-  patch: Partial<Pick<InventoryItem, 'name' | 'quantity' | 'category' | 'notes'>>,
+  patch: Partial<Pick<InventoryItem, 'name' | 'quantity' | 'category' | 'notes' | 'cost'>>,
 ): InventoryItem {
   const next = { ...item, ...patch };
   if (patch.name !== undefined) {
@@ -55,6 +58,9 @@ export function updateItem(
   }
   if (patch.quantity !== undefined && patch.quantity < 1) {
     throw new Error('Quantity must be at least 1');
+  }
+  if (patch.cost !== undefined && patch.cost !== null && patch.cost < 0) {
+    throw new Error('Cost cannot be negative');
   }
   return next;
 }

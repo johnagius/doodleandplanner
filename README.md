@@ -25,8 +25,11 @@ Rooms are shareable via an invite link and can be **password protected**.
   Google Calendar.
 - **Google Calendar** — connect to read your free/busy and auto-suggest times
   you're free, and write the agreed event back to your calendar.
-- **Inventory** — a checklist of what to bring with claim/coverage tracking.
-- **Activities** — propose things to do and vote with interest.
+- **Inventory** — a checklist of what to bring with claim/coverage tracking, plus
+  optional per-item **costs** that split fairly across the group with a minimal
+  "who pays whom" settle-up (pick your currency).
+- **Activities** — propose things to do, vote with interest, and auto-build a
+  timed **itinerary / running order** for the day.
 
 ## Monorepo layout
 

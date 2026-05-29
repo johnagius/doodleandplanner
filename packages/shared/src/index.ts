@@ -15,3 +15,5 @@ export * from './inventory.js';
 export * from './activities.js';
 export * from './events.js';
 export * from './doodle.js';
+export * from './budget.js';
+export * from './itinerary.js';

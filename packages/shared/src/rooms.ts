@@ -8,6 +8,7 @@ export const DEFAULT_ROOM_SETTINGS: RoomSettings = {
   openJoin: true,
   defaultSlotMinutes: 90,
   workingHours: { startHour: 9, endHour: 22 },
+  currency: 'EUR',
 };
 
 export interface CreateRoomInput {

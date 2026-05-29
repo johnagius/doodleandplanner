@@ -33,12 +33,12 @@ export function RoomWorkspace() {
 
   return (
     <div className="container">
-      <section className="stack" style={{ marginBottom: '1rem' }}>
-        <div className="row spread row-wrap">
-          <div>
-            <h1 style={{ marginBottom: 4 }}>{state.room.name}</h1>
+      <section className="room-header">
+        <div className="row spread row-wrap" style={{ gap: '0.75rem' }}>
+          <div style={{ minWidth: 0 }}>
+            <h1 className="room-title">{state.room.name}</h1>
             {state.room.description && (
-              <p className="muted" style={{ margin: 0 }}>
+              <p className="muted" style={{ margin: '0.25rem 0 0' }}>
                 {state.room.description}
               </p>
             )}

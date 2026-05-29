@@ -141,22 +141,24 @@ describe('room settings', () => {
 });
 
 describe('realtime: optimistic update vs subscription echo', () => {
-  it('ignores an inbound state while a local write is in flight', async () => {
-    // A repository we can drive: capture the subscribe listener, and hold
-    // saveRoom until we release it (simulating a slow round-trip).
-    let listener: ((s: RoomState) => void) | null = null;
-    let releaseSave: (() => void) | null = null;
-    const base = await (async () => {
-      const { room } = await createRoom({ name: 'Race', ownerName: 'Ann' });
-      return emptyRoomState(room);
-    })();
+  let listener: ((s: RoomState) => void) | null;
+  let releaseSave: (() => void) | null;
+  let saved: RoomState[];
+  let base: RoomState;
 
+  async function setup() {
+    listener = null;
+    releaseSave = null;
+    saved = [];
+    const { room } = await createRoom({ name: 'Race', ownerName: 'Ann' });
+    base = emptyRoomState(room);
     const repo = {
       async createRoom() {},
       async getRoom() {
         return base;
       },
       async saveRoom(s: RoomState) {
+        saved.push(s);
         await new Promise<void>((res) => (releaseSave = res));
         return s;
       },
@@ -172,21 +174,62 @@ describe('realtime: optimistic update vs subscription echo', () => {
     setRepository(repo as never);
     setIdentity(base.room.id, base.room.members[0]!.id);
     await store().loadRoom(base.room.slug);
+  }
 
-    // Begin a local edit; saveRoom is now pending (awaiting release).
+  it('ignores the echo of our own save (no clobber)', async () => {
+    await setup();
     const writing = store().addItem({ name: 'Local item' });
     expect(store().state!.inventory).toHaveLength(1);
 
-    // A STALE echo (no items) arrives mid-write — must be ignored.
-    listener!({ ...base, inventory: [] });
-    expect(store().state!.inventory).toHaveLength(1);
-
-    // Release the save; the write completes.
+    // The backend echoes back exactly what we saved — must not change anything.
+    listener!(saved[0]!);
     releaseSave!();
     await writing;
+    expect(store().state!.inventory).toHaveLength(1);
+  });
 
-    // After the write settles, fresh inbound updates are accepted again.
-    listener!({ ...base, room: { ...base.room, name: 'FromServer' } });
-    expect(store().state!.room.name).toBe('FromServer');
+  it('applies a genuinely newer remote update that arrived mid-write', async () => {
+    await setup();
+    const writing = store().addItem({ name: 'Local item' });
+
+    // A different client renamed the room while our write was in flight.
+    const remote = { ...base, room: { ...base.room, name: 'FromOtherClient' } };
+    listener!(remote);
+    // Still our optimistic state until the write settles.
+    expect(store().state!.room.name).toBe('Race');
+
+    releaseSave!();
+    await writing;
+    // Deferred remote differs from our echo, so it's applied afterwards.
+    expect(store().state!.room.name).toBe('FromOtherClient');
+  });
+
+  it('rolls back and surfaces an error when the save fails', async () => {
+    const { room } = await createRoom({ name: 'Rollback', ownerName: 'Ann' });
+    const seed = emptyRoomState(room);
+    const repo = {
+      async createRoom() {},
+      async getRoom() {
+        return seed;
+      },
+      async saveRoom() {
+        throw new Error('network down');
+      },
+      async deleteRoom() {},
+      async listRooms() {
+        return [];
+      },
+      subscribe() {
+        return () => {};
+      },
+    };
+    setRepository(repo as never);
+    setIdentity(seed.room.id, seed.room.members[0]!.id);
+    await store().loadRoom(seed.room.slug);
+
+    await store().addItem({ name: 'Doomed' });
+    // Optimistic add was rolled back, and the error surfaced.
+    expect(store().state!.inventory).toHaveLength(0);
+    expect(store().error).toMatch(/network down/);
   });
 });

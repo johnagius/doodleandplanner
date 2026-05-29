@@ -80,6 +80,25 @@ describe('migrateRoomState', () => {
     expect(migrated.room.settings.defaultSlotMinutes).toBe(90); // default filled
   });
 
+  it('does not mutate its input (pure)', () => {
+    const s = legacyState();
+    const snapshot = JSON.stringify(s);
+    migrateRoomState(s);
+    expect(JSON.stringify(s)).toBe(snapshot);
+  });
+
+  it('leaves a future-version state untouched rather than downgrading it', () => {
+    const future = {
+      schemaVersion: CURRENT_SCHEMA_VERSION + 5,
+      room: { id: 'r', slug: 's', members: [] },
+      polls: [],
+      futureField: 'keep me',
+    };
+    const result = migrateRoomState(future) as unknown as Record<string, unknown>;
+    expect(result.schemaVersion).toBe(CURRENT_SCHEMA_VERSION + 5);
+    expect(result.futureField).toBe('keep me');
+  });
+
   it('throws on values that cannot be a room state', () => {
     expect(() => migrateRoomState(null)).toThrow(/room state/);
     expect(() => migrateRoomState({ nope: true })).toThrow(/room state/);

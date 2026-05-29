@@ -113,8 +113,15 @@ export function migrateRoomState(raw: unknown): RoomState {
   if (!isRecord(raw) || !isRecord(raw.room)) {
     throw new Error('Not a room state');
   }
-  let current: AnyRecord = raw;
-  for (let v = schemaVersionOf(raw); v < CURRENT_SCHEMA_VERSION; v++) {
+  const from = schemaVersionOf(raw);
+  // Newer-than-current state (e.g. written by a newer client): leave its data
+  // and version untouched rather than mislabelling it downward.
+  if (from >= CURRENT_SCHEMA_VERSION) {
+    return raw as unknown as RoomState;
+  }
+  // Clone before mutating so the function stays pure for in-memory callers.
+  let current: AnyRecord = { ...raw };
+  for (let v = from; v < CURRENT_SCHEMA_VERSION; v++) {
     const step = MIGRATIONS[v];
     if (!step) break;
     current = step(current);

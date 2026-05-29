@@ -160,10 +160,23 @@ export const useRoomStore = create<RoomStore>((set, get) => {
   // Resolved lazily so tests can swap the backend via setRepository().
   const repo = () => getRepository();
 
-  // Count of in-flight local saves. While > 0 our optimistic state is
-  // authoritative, so we ignore inbound subscription updates (which may be the
-  // echo of an earlier save arriving after a newer local edit — finding #11).
+  // In-flight local saves. While > 0 our optimistic state is authoritative, so
+  // inbound subscription updates are deferred (they may be the echo of an
+  // earlier save arriving after a newer local edit — finding #11). Any remote
+  // update seen during that window is stashed and re-applied once writes settle,
+  // so a genuinely newer remote change is never permanently dropped.
   let pendingWrites = 0;
+  let deferredRemote: RoomState | null = null;
+  // Serialised form of the most recent state we persisted; used to recognise
+  // (and skip) the backend's echo of our own save vs a genuinely newer update.
+  let lastSavedJson: string | null = null;
+
+  /** Reset the realtime bookkeeping (on leave / room switch). */
+  function resetSync(): void {
+    pendingWrites = 0;
+    deferredRemote = null;
+    lastSavedJson = null;
+  }
 
   /** Apply a pure update to the current room and persist it. */
   async function apply(updater: (state: RoomState) => RoomState): Promise<void> {
@@ -177,17 +190,36 @@ export const useRoomStore = create<RoomStore>((set, get) => {
       return;
     }
     set({ state: next, error: null });
+    lastSavedJson = JSON.stringify(next);
     pendingWrites++;
     try {
       await repo().saveRoom(next);
+    } catch (err) {
+      // Roll back the optimistic change so the UI matches reality.
+      set({ state: current, error: err instanceof Error ? err.message : 'Could not save' });
+      return;
     } finally {
       pendingWrites--;
     }
+    // Once writes settle, apply a deferred remote update only if it's genuinely
+    // different from what we just saved (i.e. not merely our own echo).
+    if (pendingWrites === 0 && deferredRemote) {
+      const remote = deferredRemote;
+      deferredRemote = null;
+      if (JSON.stringify(remote) !== lastSavedJson) set({ state: remote });
+    }
   }
 
-  /** Accept an inbound (remote) state only when we have no local write pending. */
+  /**
+   * Accept an inbound (remote) state. While a local write is pending we defer
+   * the latest one (re-applied once writes settle, unless it's our own echo)
+   * instead of clobbering our optimistic state with a possibly-stale update.
+   */
   function onIncoming(incoming: RoomState): void {
-    if (pendingWrites > 0) return;
+    if (pendingWrites > 0) {
+      deferredRemote = incoming;
+      return;
+    }
     set({ state: incoming });
   }
 
@@ -206,6 +238,7 @@ export const useRoomStore = create<RoomStore>((set, get) => {
 
     async loadRoom(slug) {
       get().unsubscribe?.();
+      resetSync();
       set({ loading: true, error: null });
       const state = await repo().getRoom(slug);
       if (!state) {
@@ -223,6 +256,7 @@ export const useRoomStore = create<RoomStore>((set, get) => {
 
     leave() {
       get().unsubscribe?.();
+      resetSync();
       set({ state: null, meId: null, unsubscribe: null, error: null });
     },
 

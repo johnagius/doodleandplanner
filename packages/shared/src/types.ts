@@ -1,0 +1,178 @@
+/**
+ * Core domain types for Doodle & Planner.
+ *
+ * Everything here is plain serialisable data so it can live equally well in
+ * localStorage, an HTTP payload, or a future database row. Dates are stored as
+ * ISO-8601 strings to stay JSON-friendly and timezone-explicit.
+ */
+
+export type ISODateTime = string;
+
+export type MemberRole = 'owner' | 'member';
+
+export interface Member {
+  id: string;
+  name: string;
+  /** Hex colour used to identify the member on the doodle board and avatars. */
+  color: string;
+  role: MemberRole;
+  joinedAt: ISODateTime;
+  /** Present when the member has linked their Google account. */
+  googleEmail?: string;
+}
+
+/** A PBKDF2 password hash, fully self-describing so it can be re-verified. */
+export interface PasswordHash {
+  algorithm: 'PBKDF2-SHA256';
+  iterations: number;
+  /** base64url-encoded salt. */
+  salt: string;
+  /** base64url-encoded derived key. */
+  hash: string;
+}
+
+export interface RoomSettings {
+  /** Allow anyone with the link to join without approval. */
+  openJoin: boolean;
+  /** Default duration (minutes) used when suggesting calendar slots. */
+  defaultSlotMinutes: number;
+  /** Working-hours window used by the slot finder, 0-24. */
+  workingHours: { startHour: number; endHour: number };
+}
+
+export interface Room {
+  id: string;
+  /** Short, human-shareable code used in invite links (e.g. "k7m2qp"). */
+  slug: string;
+  name: string;
+  description?: string;
+  createdAt: ISODateTime;
+  createdBy: string;
+  /** Secret token embedded in invite links; required to join. */
+  inviteToken: string;
+  /** When set, the room is password protected. */
+  passwordHash?: PasswordHash;
+  members: Member[];
+  settings: RoomSettings;
+}
+
+export type VoteValue = 'yes' | 'no' | 'maybe';
+
+export interface TimeOption {
+  id: string;
+  start: ISODateTime;
+  end: ISODateTime;
+}
+
+export interface Vote {
+  memberId: string;
+  optionId: string;
+  value: VoteValue;
+}
+
+export type PollStatus = 'open' | 'closed';
+
+/** A "Doodle"-style scheduling poll: vote on candidate time slots. */
+export interface SchedulePoll {
+  id: string;
+  roomId: string;
+  title: string;
+  description?: string;
+  options: TimeOption[];
+  votes: Vote[];
+  status: PollStatus;
+  /** Winning option once the poll is closed/decided. */
+  finalOptionId?: string;
+  /** Whether voters may pick "maybe" in addition to yes/no. */
+  allowMaybe: boolean;
+  createdAt: ISODateTime;
+}
+
+export interface OptionTally {
+  optionId: string;
+  yes: number;
+  maybe: number;
+  no: number;
+  /** Weighted score: yes counts 1, maybe counts 0.5. */
+  score: number;
+  /** Members who voted yes — useful for "who's coming" UI. */
+  yesMembers: string[];
+}
+
+export interface BusyInterval {
+  start: ISODateTime;
+  end: ISODateTime;
+}
+
+export type ItemStatus = 'needed' | 'claimed' | 'done';
+
+/** An inventory entry: something that needs bringing to the event. */
+export interface InventoryItem {
+  id: string;
+  roomId: string;
+  name: string;
+  quantity: number;
+  category?: string;
+  claimedBy?: string;
+  status: ItemStatus;
+  notes?: string;
+  createdAt: ISODateTime;
+}
+
+/** A proposed activity to do during the event. */
+export interface Activity {
+  id: string;
+  roomId: string;
+  title: string;
+  description?: string;
+  proposedBy: string;
+  /** Member ids that expressed interest. */
+  interested: string[];
+  durationMinutes?: number;
+  scheduledAt?: ISODateTime;
+  createdAt: ISODateTime;
+}
+
+export interface PlannedEvent {
+  id: string;
+  roomId: string;
+  title: string;
+  start: ISODateTime;
+  end: ISODateTime;
+  location?: string;
+  description?: string;
+  /** Set after the event is pushed to Google Calendar. */
+  googleEventId?: string;
+  createdAt: ISODateTime;
+}
+
+export interface Point {
+  x: number;
+  y: number;
+}
+
+/** A freehand stroke. Coordinates are normalised 0..1 for resolution-independence. */
+export interface Stroke {
+  id: string;
+  memberId: string;
+  color: string;
+  width: number;
+  points: Point[];
+  createdAt: ISODateTime;
+}
+
+export interface DoodleBoard {
+  id: string;
+  roomId: string;
+  strokes: Stroke[];
+}
+
+/** The complete persisted state for a single room. */
+export interface RoomState {
+  room: Room;
+  polls: SchedulePoll[];
+  inventory: InventoryItem[];
+  activities: Activity[];
+  events: PlannedEvent[];
+  doodle: DoodleBoard;
+}

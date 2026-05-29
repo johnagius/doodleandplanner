@@ -1,0 +1,35 @@
+{
+  "name": "doodleandplanner",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Doodle & Planner — plan events with friends: schedule polls, a shared drawing doodle, Google Calendar, inventory and activities.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace @dap/web",
+    "build": "npm run build --workspace @dap/shared && npm run build --workspace @dap/web",
+    "preview": "npm run preview --workspace @dap/web",
+    "test": "npm run test --workspaces --if-present",
+    "test:unit": "npm run test --workspace @dap/shared && npm run test --workspace @dap/web",
+    "test:e2e": "npm run test:e2e --workspace @dap/web",
+    "test:smoke": "npm run test:smoke --workspace @dap/web",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "@types/node": "^22.9.0",
+    "eslint": "^9.14.0",
+    "globals": "^15.12.0",
+    "prettier": "^3.3.3",
+    "typescript": "^5.6.3",
+    "typescript-eslint": "^8.13.0"
+  }
+}

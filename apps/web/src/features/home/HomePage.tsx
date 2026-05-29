@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { HeroCanvas } from '../../components/HeroCanvas.js';
 import {
   getPreferredName,
   getRepository,
@@ -30,12 +31,26 @@ export function HomePage() {
 
   return (
     <div className="container">
-      <section className="stack" style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-        <h1 style={{ fontSize: '2rem' }}>Plan it together, doodle along the way ✏️🗓️</h1>
-        <p className="muted" style={{ maxWidth: 620, margin: '0 auto' }}>
-          Create a room, invite your friends, find a time that works with smart calendar
-          suggestions, sketch ideas on a shared doodle, and sort out who brings what.
-        </p>
+      <section className="hero">
+        <HeroCanvas className="hero-canvas" />
+        <div className="hero-inner">
+          <span className="hero-eyebrow">Plans, polls &amp; doodles — together</span>
+          <h1 className="hero-title">
+            Plan it together,
+            <br />
+            doodle along the way
+          </h1>
+          <p className="hero-sub">
+            Spin up a room, invite friends, and let smart Google Calendar suggestions find a time
+            that actually works — then sketch ideas, split the costs, and lock the plan in.
+          </p>
+          <div className="hero-chips">
+            <span className="chip">🗳️ Scheduling polls</span>
+            <span className="chip">📅 Calendar-aware</span>
+            <span className="chip">🎨 Shared doodle</span>
+            <span className="chip">💰 Cost split</span>
+          </div>
+        </div>
       </section>
 
       <div className="grid grid-2">

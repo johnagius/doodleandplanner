@@ -29,7 +29,7 @@ test('overlays shared availability on poll options', async ({ page }) => {
   await page.getByRole('button', { name: 'Create poll' }).click();
   await expect(page.getByRole('heading', { name: 'Movie night?' })).toBeVisible();
 
-  // Simulate "share my availability": mark the member busy during option 1.
+  // Simulate "share my availability": a named event fully blocks option 1.
   await page.evaluate((s) => {
     const key = `dap:room:${s}`;
     const rec = JSON.parse(localStorage.getItem(key)!);
@@ -38,7 +38,7 @@ test('overlays shared availability on poll options', async ({ page }) => {
     rec.state.availability = [
       {
         memberId: me,
-        busy: [{ start: opt.start, end: opt.end }],
+        busy: [{ start: opt.start, end: opt.end, title: 'Dentist', status: 'busy' }],
         updatedAt: new Date().toISOString(),
       },
     ];
@@ -47,8 +47,9 @@ test('overlays shared availability on poll options', async ({ page }) => {
   await page.reload();
 
   const pollCard = page.locator('.card', { hasText: 'Movie night?' });
-  await expect(pollCard.getByText(/1 busy/)).toBeVisible();
-  await expect(pollCard.getByText(/1 free/)).toBeVisible();
+  // Conflict-aware overlay: a hard clash that names the blocking event.
+  await expect(pollCard.getByText(/can’t make it/)).toBeVisible();
+  await expect(pollCard.getByText(/Dentist/)).toBeVisible();
 });
 
 test('manage the inventory checklist', async ({ page }) => {

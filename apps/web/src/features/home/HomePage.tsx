@@ -60,7 +60,7 @@ export function HomePage() {
       </div>
 
       {rooms.length > 0 && (
-        <section className="stack" style={{ marginTop: '1.5rem' }}>
+        <section className="stack" style={{ marginTop: '1.75rem' }}>
           <h2 className="card-title">Your rooms</h2>
           <div className="grid grid-2">
             {rooms.map((r) => (
@@ -82,7 +82,66 @@ export function HomePage() {
           </div>
         </section>
       )}
+
+      <FeatureSection />
     </div>
+  );
+}
+
+const FEATURES: { icon: string; title: string; body: string }[] = [
+  {
+    icon: '🗳️',
+    title: 'Vote on a time',
+    body: 'Propose slots and everyone votes 👍/🤔/👎. A weighted tally surfaces the winner.',
+  },
+  {
+    icon: '📅',
+    title: 'Calendar-aware',
+    body: 'Connect Google Calendar to see who’s free — and exactly which event blocks a slot.',
+  },
+  {
+    icon: '🎨',
+    title: 'Doodle together',
+    body: 'A live shared canvas with shapes, sticky notes and everyone’s cursors.',
+  },
+  {
+    icon: '🎒',
+    title: 'Who brings what',
+    body: 'A checklist with costs that split fairly and a tidy “who pays whom”.',
+  },
+  {
+    icon: '🎉',
+    title: 'Plan the day',
+    body: 'Collect activities, build a running order, and RSVP the final events.',
+  },
+  {
+    icon: '🔗',
+    title: 'Share in a tap',
+    body: 'Every room has an invite link and optional password. Installs as an app, works offline.',
+  },
+];
+
+function FeatureSection() {
+  return (
+    <section className="feature-section">
+      <div className="feature-head">
+        <span className="hero-eyebrow">Everything in one room</span>
+        <h2 className="feature-title">From “we should hang out” to a real plan</h2>
+      </div>
+      <div className="feature-grid">
+        {FEATURES.map((f) => (
+          <div key={f.title} className="feature-card">
+            <span className="feature-icon" aria-hidden>
+              {f.icon}
+            </span>
+            <h3 className="feature-card-title">{f.title}</h3>
+            <p className="muted small" style={{ margin: 0 }}>
+              {f.body}
+            </p>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 

@@ -1,5 +1,6 @@
 import { buildInviteUrl } from '@dap/shared';
 import { Avatar } from '../../components/Avatar.js';
+import { downloadRoom } from '../../lib/roomFile.js';
 import { useClipboard } from '../../lib/useClipboard.js';
 import { useRoomStore } from '../../state/roomStore.js';
 import { appOrigin } from '../room/ShareBar.js';
@@ -64,9 +65,18 @@ export function MembersPanel() {
           )}
         </div>
         <div className="divider" />
-        <div className="muted small">
-          Room created {new Date(state.room.createdAt).toLocaleDateString()} · code{' '}
-          <strong>{state.room.slug}</strong>
+        <div className="row spread row-wrap">
+          <div className="muted small">
+            Room created {new Date(state.room.createdAt).toLocaleDateString()} · code{' '}
+            <strong>{state.room.slug}</strong>
+          </div>
+          <button
+            className="btn btn-sm"
+            onClick={() => downloadRoom(state)}
+            title="Download this room as a file you can back up or open on another device"
+          >
+            ⬇️ Export room
+          </button>
         </div>
       </div>
     </div>

@@ -7,6 +7,7 @@ import {
   type RoomSummary,
 } from '../../lib/storage/index.js';
 import { createAndStoreRoom } from '../../lib/roomLifecycle.js';
+import { parseRoomFile } from '../../lib/roomFile.js';
 
 export function HomePage() {
   const navigate = useNavigate();
@@ -15,6 +16,17 @@ export function HomePage() {
   useEffect(() => {
     getRepository().listRooms().then(setRooms);
   }, []);
+
+  async function importRoom(file: File): Promise<void> {
+    const state = parseRoomFile(await file.text());
+    const repo = getRepository();
+    try {
+      await repo.createRoom(state);
+    } catch {
+      await repo.saveRoom(state); // already present — refresh it
+    }
+    navigate(`/r/${state.room.slug}`);
+  }
 
   return (
     <div className="container">
@@ -28,7 +40,7 @@ export function HomePage() {
 
       <div className="grid grid-2">
         <CreateRoomCard onCreated={(slug) => navigate(`/r/${slug}`)} />
-        <JoinRoomCard onJoin={(code) => navigate(`/r/${code.trim()}`)} />
+        <JoinRoomCard onJoin={(code) => navigate(`/r/${code.trim()}`)} onImport={importRoom} />
       </div>
 
       {rooms.length > 0 && (
@@ -136,8 +148,28 @@ function CreateRoomCard({ onCreated }: { onCreated: (slug: string) => void }) {
   );
 }
 
-function JoinRoomCard({ onJoin }: { onJoin: (code: string) => void }) {
+function JoinRoomCard({
+  onJoin,
+  onImport,
+}: {
+  onJoin: (code: string) => void;
+  onImport: (file: File) => Promise<void>;
+}) {
   const [code, setCode] = useState('');
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // allow re-selecting the same file
+    if (!file) return;
+    setError(null);
+    try {
+      await onImport(file);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not import that file');
+    }
+  }
+
   return (
     <form
       className="card stack"
@@ -163,6 +195,17 @@ function JoinRoomCard({ onJoin }: { onJoin: (code: string) => void }) {
       <button className="btn btn-block" type="submit" disabled={!code.trim()}>
         Go to room
       </button>
+      {error && <div className="banner banner-danger">{error}</div>}
+      <label className="muted small" style={{ cursor: 'pointer' }}>
+        or import a room file
+        <input
+          type="file"
+          accept="application/json,.json"
+          onChange={handleFile}
+          aria-label="Import a room file"
+          style={{ display: 'block', marginTop: 4 }}
+        />
+      </label>
     </form>
   );
 }

@@ -103,6 +103,25 @@ test('build an itinerary running order from activities', async ({ page }) => {
   await expect(itinerary.getByText('Hike')).toBeVisible();
 });
 
+test('export a room and re-import it', async ({ page }, testInfo) => {
+  const slug = await createRoom(page, 'Export Trip');
+  await page.getByRole('tab', { name: /Members/ }).click();
+
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByRole('button', { name: /Export room/ }).click(),
+  ]);
+  expect(download.suggestedFilename()).toContain('doodleandplanner-');
+  const filePath = testInfo.outputPath('room.json');
+  await download.saveAs(filePath);
+
+  await page.goto('/');
+  await page.getByLabel('Import a room file').setInputFiles(filePath);
+
+  await expect(page).toHaveURL(new RegExp(`/r/${slug}`));
+  await expect(page.getByRole('heading', { name: 'Export Trip' })).toBeVisible();
+});
+
 test('add an event to the plan', async ({ page }) => {
   await createRoom(page);
   await page.getByRole('tab', { name: /Plan/ }).click();

@@ -32,9 +32,10 @@ jobs:
           # Project sites are served from https://<user>.github.io/<repo>/
           VITE_BASE_PATH: /doodleandplanner/
           VITE_GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID }}
-          # Optional: point the site at the deployed Cloudflare Worker for
-          # real-time, multi-device rooms. Leave unset for client-only mode.
-          VITE_API_BASE: ${{ vars.API_BASE }}
+          # Real-time, multi-device rooms via the deployed Cloudflare Worker.
+          # Falls back to the committed default in apps/web/.env.production; set
+          # the API_BASE repo variable to override. Empty string ⇒ client-only.
+          VITE_API_BASE: ${{ vars.API_BASE || 'https://doodleandplanner-api.labrint.workers.dev' }}
       - name: Add GitHub Pages SPA 404 fallback
         # 404.html lives outside Vite's public/ so it ships ONLY to GitHub Pages
         # (Cloudflare Pages uses _redirects instead). It restores deep links on

@@ -6,7 +6,7 @@
  *   - navigations  -> network-first, fall back to the cached shell (offline)
  *   - same-origin GET assets -> cache-first, then network (hashed = immutable)
  */
-const CACHE = 'dap-cache-v1';
+const CACHE = 'dap-cache-v2';
 const SHELL = new URL('./', self.registration.scope).pathname;
 
 self.addEventListener('install', (event) => {

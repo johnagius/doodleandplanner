@@ -23,9 +23,21 @@ createRoot(document.getElementById('root')!).render(
 // Register the service worker in production for offline support + installability.
 // Kept out of dev so it never interferes with HMR or Playwright runs.
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  // When a new worker takes control (after a deploy), reload once so the fresh
+  // build is used instead of a stale cached bundle. Guarded to real updates
+  // (a controller already existed), so the first install doesn't double-load.
+  if (navigator.serviceWorker.controller) {
+    let reloading = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (reloading) return;
+      reloading = true;
+      window.location.reload();
+    });
+  }
   window.addEventListener('load', () => {
     void navigator.serviceWorker
       .register(`${import.meta.env.BASE_URL}sw.js`, { scope: import.meta.env.BASE_URL })
+      .then((reg) => reg.update())
       .catch(() => undefined);
   });
 }

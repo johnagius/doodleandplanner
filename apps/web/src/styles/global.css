@@ -1621,3 +1621,38 @@ label.field {
     animation: none;
   }
 }
+
+/* Map place-search */
+.map-search {
+  display: flex;
+  gap: 0.4rem;
+}
+.map-search .input {
+  flex: 1;
+  min-width: 0;
+}
+.map-results {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.map-result {
+  width: 100%;
+  text-align: left;
+  font-size: 0.82rem;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  cursor: pointer;
+  line-height: 1.35;
+}
+.map-result:hover {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}

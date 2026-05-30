@@ -3,6 +3,7 @@ import type * as Leaflet from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useToast } from '../../components/Toast.js';
+import { forwardGeocode, type GeoResult } from '../../lib/geocode.js';
 import {
   applyPresence,
   isLivePresence,
@@ -56,6 +57,9 @@ export function MapPanel() {
   const [time, setTime] = useState('');
   const [sharing, setSharing] = useState(false);
   const [live, setLive] = useState<PresenceMap>({});
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<GeoResult[]>([]);
+  const [searching, setSearching] = useState(false);
 
   addingRef.current = adding;
 
@@ -209,6 +213,28 @@ export function MapPanel() {
     mapRef.current?.setView([p.lat, p.lng], 16);
   }
 
+  async function runSearch(e: React.FormEvent) {
+    e.preventDefault();
+    if (!query.trim()) return;
+    setSearching(true);
+    try {
+      const found = await forwardGeocode(query);
+      setResults(found);
+      if (found.length === 0) show('No places found — try a different search');
+    } finally {
+      setSearching(false);
+    }
+  }
+
+  function pickResult(r: GeoResult) {
+    mapRef.current?.setView([r.lat, r.lng], 15);
+    setPending({ lat: r.lat, lng: r.lng });
+    setLabel(r.label.split(',')[0] ?? r.label);
+    setResults([]);
+    setQuery('');
+    setAdding(false);
+  }
+
   if (!meId) {
     return (
       <div className="card">
@@ -222,6 +248,30 @@ export function MapPanel() {
   return (
     <div className="map-layout">
       <div className="map-side stack" style={{ gap: '0.75rem' }}>
+        <form className="map-search" onSubmit={runSearch}>
+          <input
+            className="input"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search a place or address…"
+            aria-label="Search for a place"
+          />
+          <button className="btn btn-sm" type="submit" disabled={searching || !query.trim()}>
+            {searching ? '…' : '🔍'}
+          </button>
+        </form>
+        {results.length > 0 && (
+          <ul className="map-results" aria-label="Search results">
+            {results.map((r, i) => (
+              <li key={`${r.lat},${r.lng},${i}`}>
+                <button className="map-result" onClick={() => pickResult(r)}>
+                  📍 {r.label}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+
         <div className="row row-wrap" style={{ gap: '0.5rem' }}>
           <button
             className={`btn btn-sm ${adding ? 'btn-primary' : ''}`}

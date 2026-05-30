@@ -14,7 +14,7 @@
 import { generateId } from './ids.js';
 import type { ISODateTime } from './types.js';
 
-export type GameType = 'tictactoe' | 'connect4' | 'reversi' | 'dots';
+export type GameType = 'tictactoe' | 'connect4' | 'reversi' | 'battleship' | 'dots';
 export type GameStatus = 'lobby' | 'playing' | 'finished';
 
 export interface GameSeat {
@@ -60,6 +60,21 @@ export interface ReversiGame extends GameBase {
   cells: (number | null)[];
 }
 
+/** A shot fired at a board cell, with whether it struck a ship. */
+export interface Shot {
+  index: number;
+  hit: boolean;
+}
+
+export interface BattleshipGame extends GameBase {
+  type: 'battleship';
+  size: number; // 10
+  /** Per-seat fleet: a list of ships, each the cell indices it occupies. */
+  fleets: number[][][];
+  /** Per-seat shots received at that seat's board (the enemy UI reads only this). */
+  shots: Shot[][];
+}
+
 export interface DotsGame extends GameBase {
   type: 'dots';
   /** Number of boxes per side (n × n boxes, (n+1) × (n+1) dots). */
@@ -74,7 +89,7 @@ export interface DotsGame extends GameBase {
   scores: number[];
 }
 
-export type GameSession = TicTacToeGame | Connect4Game | ReversiGame | DotsGame;
+export type GameSession = TicTacToeGame | Connect4Game | ReversiGame | BattleshipGame | DotsGame;
 
 export type GameMove =
   | { kind: 'cell'; index: number }
@@ -116,6 +131,14 @@ export const GAME_CATALOG: GameMeta[] = [
     blurb: 'Flank and flip your opponent’s discs. Most discs wins.',
   },
   {
+    type: 'battleship',
+    name: 'Battleship',
+    icon: '🚢',
+    minPlayers: 2,
+    maxPlayers: 2,
+    blurb: 'Fire on hidden fleets — sink all your rival’s ships to win.',
+  },
+  {
     type: 'dots',
     name: 'Dots & Boxes',
     icon: '🔲',
@@ -135,6 +158,44 @@ const DEFAULT_DOTS_SIZE = 3;
 const C4_COLS = 7;
 const C4_ROWS = 6;
 const REVERSI_SIZE = 8;
+const BATTLESHIP_SIZE = 10;
+/** Classic fleet: carrier, battleship, cruiser, submarine, destroyer. */
+const BATTLESHIP_FLEET = [5, 4, 3, 3, 2];
+
+/** Randomly place the fleet on a size×size board; ships never overlap. */
+export function placeFleetRandom(
+  size = BATTLESHIP_SIZE,
+  lengths: number[] = BATTLESHIP_FLEET,
+  rand: () => number = Math.random,
+): number[][] {
+  const occupied = new Set<number>();
+  const fleet: number[][] = [];
+  for (const len of lengths) {
+    for (let attempt = 0; attempt < 2000; attempt++) {
+      const horizontal = rand() < 0.5;
+      const row = Math.floor(rand() * (horizontal ? size : size - len + 1));
+      const col = Math.floor(rand() * (horizontal ? size - len + 1 : size));
+      const cells: number[] = [];
+      let ok = true;
+      for (let k = 0; k < len; k++) {
+        const idx = (horizontal ? row : row + k) * size + (horizontal ? col + k : col);
+        if (occupied.has(idx)) {
+          ok = false;
+          break;
+        }
+        cells.push(idx);
+      }
+      if (ok) {
+        cells.forEach((i) => occupied.add(i));
+        fleet.push(cells);
+        break;
+      }
+    }
+  }
+  return fleet;
+}
+
+const emptyShots = (): Shot[][] => [[], []];
 
 /** Create a brand-new game in the lobby with its creator seated first. */
 export function createGame(input: {
@@ -179,6 +240,16 @@ export function createGame(input: {
     cells[at(c, c)] = 1;
     return { ...base, type: 'reversi', size: REVERSI_SIZE, cells };
   }
+  if (input.type === 'battleship') {
+    // Fleets are placed when the game starts (see startGame).
+    return {
+      ...base,
+      type: 'battleship',
+      size: BATTLESHIP_SIZE,
+      fleets: [[], []],
+      shots: emptyShots(),
+    };
+  }
   const size = input.size ?? DEFAULT_DOTS_SIZE;
   return {
     ...base,
@@ -222,7 +293,13 @@ export function leaveGame(game: GameSession, memberId: string, now?: () => Date)
 export function startGame(game: GameSession, now?: () => Date): GameSession {
   if (game.status !== 'lobby') return game;
   if (game.seats.length < gameMeta(game.type).minPlayers) return game;
-  return touch({ ...game, status: 'playing', turn: 0, winners: [] }, now);
+  const started = { ...game, status: 'playing' as const, turn: 0, winners: [] } as GameSession;
+  // Battleship places both hidden fleets at kick-off.
+  if (started.type === 'battleship') {
+    started.fleets = [placeFleetRandom(started.size), placeFleetRandom(started.size)];
+    started.shots = emptyShots();
+  }
+  return touch(started, now);
 }
 
 /** Seat index for a member, or -1 if not seated. */
@@ -273,9 +350,36 @@ export function makeMove(
       return connect4Move(game, move, now);
     case 'reversi':
       return reversiMove(game, move, now);
+    case 'battleship':
+      return battleshipMove(game, move, now);
     default:
       return dotsMove(game, move, now);
   }
+}
+
+/** Total ship cells in a fleet. */
+function fleetCellCount(fleet: number[][]): number {
+  return fleet.reduce((n, ship) => n + ship.length, 0);
+}
+
+function battleshipMove(game: BattleshipGame, move: GameMove, now?: () => Date): GameSession {
+  if (move.kind !== 'cell') return game;
+  if (move.index < 0 || move.index >= game.size * game.size) return game;
+  const opp = game.turn === 0 ? 1 : 0;
+  const targetShots = game.shots[opp] ?? [];
+  if (targetShots.some((s) => s.index === move.index)) return game; // already fired here
+
+  const hit = (game.fleets[opp] ?? []).some((ship) => ship.includes(move.index));
+  const shots = game.shots.map((arr, i) =>
+    i === opp ? [...arr, { index: move.index, hit }] : arr,
+  );
+
+  // Win when every opponent ship cell has been hit.
+  const hitsOnOpp = shots[opp]!.filter((s) => s.hit).length;
+  if (hitsOnOpp >= fleetCellCount(game.fleets[opp] ?? [])) {
+    return touch({ ...game, shots, status: 'finished', winners: [game.turn] }, now);
+  }
+  return touch({ ...game, shots, turn: opp }, now);
 }
 
 const REVERSI_DIRS: ReadonlyArray<readonly [number, number]> = [
@@ -531,6 +635,11 @@ export function resetGame(game: GameSession, now?: () => Date): GameSession {
   } as GameSession;
   // Resize per-seat scores to match the carried-over players.
   if (next.type === 'dots') next.scores = Array(game.seats.length).fill(0);
+  // Re-place hidden fleets for a battleship rematch.
+  if (next.type === 'battleship') {
+    next.fleets = [placeFleetRandom(next.size), placeFleetRandom(next.size)];
+    next.shots = emptyShots();
+  }
   return touch(next, now);
 }
 

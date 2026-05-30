@@ -9,7 +9,13 @@ import {
 } from '@dap/shared';
 import { Avatar } from '../../components/Avatar.js';
 import { useRoomStore } from '../../state/roomStore.js';
-import { Connect4Board, DotsBoard, ReversiBoard, TicTacToeBoard } from './boards.js';
+import {
+  BattleshipBoard,
+  Connect4Board,
+  DotsBoard,
+  ReversiBoard,
+  TicTacToeBoard,
+} from './boards.js';
 
 export function GameView({ game, onBack }: { game: GameSession; onBack: () => void }) {
   const room = useRoomStore((s) => s.state)!.room;
@@ -64,6 +70,11 @@ export function GameView({ game, onBack }: { game: GameSession; onBack: () => vo
           {gameStatusText(game, nameOf)}
           {game.status === 'playing' && myTurn && ' — your move!'}
         </div>
+        {game.status === 'playing' && !seated && (
+          <span className="badge" title="You're watching this game">
+            👁 Spectating
+          </span>
+        )}
 
         {/* Seats / scoreboard */}
         <div className="row row-wrap" style={{ gap: '0.6rem', justifyContent: 'center' }}>
@@ -75,7 +86,9 @@ export function GameView({ game, onBack }: { game: GameSession; onBack: () => vo
                 ? (game.scores[s.seat] ?? 0)
                 : game.type === 'reversi'
                   ? game.cells.filter((c) => c === s.seat).length
-                  : undefined;
+                  : game.type === 'battleship'
+                    ? (game.shots[s.seat === 0 ? 1 : 0] ?? []).filter((sh) => sh.hit).length
+                    : undefined;
             return (
               <div key={s.seat} className={`game-seat ${isTurn ? 'active' : ''}`}>
                 {m && <Avatar member={m} size={26} />}
@@ -111,6 +124,14 @@ export function GameView({ game, onBack }: { game: GameSession; onBack: () => vo
                 canMove={canMove}
                 memberFor={memberFor}
                 onCell={(index) => void playMove(game.id, { kind: 'cell', index })}
+              />
+            )}
+            {game.type === 'battleship' && (
+              <BattleshipBoard
+                game={game}
+                viewerSeat={mySeat}
+                canMove={canMove}
+                onFire={(index) => void playMove(game.id, { kind: 'cell', index })}
               />
             )}
             {game.type === 'dots' && (

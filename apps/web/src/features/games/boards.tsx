@@ -1,9 +1,11 @@
 import {
   reversiLegalMoves,
+  type BattleshipGame,
   type Connect4Game,
   type DotsGame,
   type Member,
   type ReversiGame,
+  type Shot,
   type TicTacToeGame,
 } from '@dap/shared';
 
@@ -127,6 +129,106 @@ export function ReversiBoard({
           </button>
         );
       })}
+    </div>
+  );
+}
+
+function BattleGrid({
+  size,
+  label,
+  fleet,
+  shots,
+  interactive,
+  onFire,
+}: {
+  size: number;
+  label: string;
+  fleet?: number[][];
+  shots: Shot[];
+  interactive: boolean;
+  onFire?: (index: number) => void;
+}) {
+  const shipSet = new Set((fleet ?? []).flat());
+  const shotMap = new Map(shots.map((s) => [s.index, s.hit]));
+  return (
+    <div className="bs-grid-wrap">
+      <div className="bs-grid-label">{label}</div>
+      <div className="bs-grid" style={{ gridTemplateColumns: `repeat(${size}, 1fr)` }}>
+        {Array.from({ length: size * size }, (_, i) => {
+          const fired = shotMap.has(i);
+          const hit = shotMap.get(i);
+          let cls = 'bs-cell';
+          if (fired && hit) cls += ' hit';
+          else if (fired) cls += ' miss';
+          else if (shipSet.has(i)) cls += ' ship';
+          const clickable = interactive && !fired;
+          return (
+            <button
+              key={i}
+              type="button"
+              className={cls}
+              disabled={!clickable}
+              aria-label={
+                fired ? (hit ? 'Hit' : 'Miss') : interactive ? `Fire ${i + 1}` : `Cell ${i + 1}`
+              }
+              onClick={() => clickable && onFire?.(i)}
+            >
+              {fired && hit ? '💥' : ''}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+export function BattleshipBoard({
+  game,
+  viewerSeat,
+  canMove,
+  onFire,
+}: {
+  game: BattleshipGame;
+  viewerSeat: number;
+  canMove: boolean;
+  onFire: (index: number) => void;
+}) {
+  const opp = viewerSeat === 0 ? 1 : 0;
+  if (viewerSeat < 0) {
+    // Spectator: show both boards as shots only (no ships revealed).
+    return (
+      <div className="bs-boards">
+        <BattleGrid
+          size={game.size}
+          label="Player 1 waters"
+          shots={game.shots[0] ?? []}
+          interactive={false}
+        />
+        <BattleGrid
+          size={game.size}
+          label="Player 2 waters"
+          shots={game.shots[1] ?? []}
+          interactive={false}
+        />
+      </div>
+    );
+  }
+  return (
+    <div className="bs-boards">
+      <BattleGrid
+        size={game.size}
+        label="Your waters"
+        fleet={game.fleets[viewerSeat]}
+        shots={game.shots[viewerSeat] ?? []}
+        interactive={false}
+      />
+      <BattleGrid
+        size={game.size}
+        label="Enemy waters"
+        shots={game.shots[opp] ?? []}
+        interactive={canMove}
+        onFire={onFire}
+      />
     </div>
   );
 }

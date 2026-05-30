@@ -25,8 +25,9 @@ Rooms are shareable via an invite link and can be **password protected**.
 - **Invite friends** — an invite dialog with the native **share sheet** (Web
   Share API), copy link, and prefilled **email invite** — no contacts access.
 - **Party games** — a **Games** lobby with live, turn-based **Tic-Tac-Toe**,
-  **Connect Four**, **Reversi** and **Dots & Boxes (2–4 players)** that sync
-  across devices in real time, with a "your move" badge on the tab.
+  **Connect Four**, **Reversi**, **Battleship** and **Dots & Boxes (2–4
+  players)** that sync across devices in real time, with a "your move" badge,
+  spectating, and rematches.
 - **Live map** — drop shared **meet-up pins** (with a time, note and directions)
   on an OpenStreetMap, and **opt in to share your live location** with the group
   (ephemeral, never stored).

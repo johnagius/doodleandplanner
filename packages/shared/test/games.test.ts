@@ -5,10 +5,12 @@ import {
   joinGame,
   leaveGame,
   makeMove,
+  placeFleetRandom,
   resetGame,
   reversiLegalMoves,
   seatOf,
   startGame,
+  type BattleshipGame,
   type Connect4Game,
   type DotsGame,
   type GameSession,
@@ -18,7 +20,7 @@ import {
 
 const now = () => new Date('2026-05-30T12:00:00Z');
 
-function seatTwo(type: 'tictactoe' | 'connect4' | 'reversi' | 'dots'): GameSession {
+function seatTwo(type: 'tictactoe' | 'connect4' | 'reversi' | 'battleship' | 'dots'): GameSession {
   let g = createGame({ roomId: 'r1', type, createdBy: 'alice', now });
   g = joinGame(g, 'bob', now);
   return startGame(g, now);
@@ -190,6 +192,44 @@ describe('games — reversi', () => {
     const g = seatTwo('reversi');
     // A corner can never be legal on the opening move.
     expect(makeMove(g, 'alice', { kind: 'cell', index: 0 })).toBe(g);
+  });
+});
+
+describe('games — battleship', () => {
+  it('places a valid, non-overlapping fleet of 17 cells', () => {
+    const fleet = placeFleetRandom(10, [5, 4, 3, 3, 2], Math.random);
+    expect(fleet.map((s) => s.length).sort()).toEqual([2, 3, 3, 4, 5]);
+    const all = fleet.flat();
+    expect(new Set(all).size).toBe(17); // no overlaps
+    expect(all.every((i) => i >= 0 && i < 100)).toBe(true);
+  });
+
+  it('starts with both hidden fleets placed', () => {
+    const g = seatTwo('battleship') as BattleshipGame;
+    expect(g.fleets[0]!.flat()).toHaveLength(17);
+    expect(g.fleets[1]!.flat()).toHaveLength(17);
+    expect(g.shots).toEqual([[], []]);
+  });
+
+  it('records hits/misses, rejects repeats, and detects the win', () => {
+    let g = seatTwo('battleship') as BattleshipGame;
+    // Force known fleets so we can aim deterministically.
+    g = { ...g, fleets: [[[0, 1]], [[10, 11]]], shots: [[], []] };
+
+    // Alice (seat 0) fires at Bob's ship cell 10 → hit, turn passes.
+    g = makeMove(g, 'alice', { kind: 'cell', index: 10 }, now) as BattleshipGame;
+    expect(g.shots[1]).toEqual([{ index: 10, hit: true }]);
+    expect(g.turn).toBe(1);
+    // Bob fires at empty water → miss.
+    g = makeMove(g, 'bob', { kind: 'cell', index: 99 }, now) as BattleshipGame;
+    expect(g.shots[0]).toEqual([{ index: 99, hit: false }]);
+    // Alice can't re-fire cell 10.
+    const same = makeMove(g, 'alice', { kind: 'cell', index: 10 });
+    expect(same).toBe(g);
+    // Alice sinks the last cell (11) → wins.
+    g = makeMove(g, 'alice', { kind: 'cell', index: 11 }, now) as BattleshipGame;
+    expect(g.status).toBe('finished');
+    expect(g.winners).toEqual([0]);
   });
 });
 

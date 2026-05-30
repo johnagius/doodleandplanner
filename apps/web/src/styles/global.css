@@ -1780,3 +1780,64 @@ label.field {
 .lightbox-nav.next {
   right: 8px;
 }
+
+/* Battleship */
+.bs-boards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: center;
+}
+.bs-grid-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  align-items: center;
+}
+.bs-grid-label {
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+.bs-grid {
+  display: grid;
+  gap: 2px;
+  padding: 4px;
+  background: #0e3a5e;
+  border-radius: 8px;
+  width: min(46vw, 240px);
+}
+.bs-cell {
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: none;
+  border-radius: 2px;
+  background: #1f6699;
+  font-size: 0.6rem;
+  line-height: 1;
+  cursor: default;
+}
+.bs-cell:not(:disabled) {
+  cursor: pointer;
+}
+.bs-cell:not(:disabled):hover {
+  background: #2a86c9;
+}
+.bs-cell.ship {
+  background: #3a4258;
+}
+.bs-cell.hit {
+  background: #dc2626;
+}
+.bs-cell.miss {
+  background: #1f6699;
+  position: relative;
+}
+.bs-cell.miss::after {
+  content: '';
+  width: 28%;
+  height: 28%;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.7);
+}

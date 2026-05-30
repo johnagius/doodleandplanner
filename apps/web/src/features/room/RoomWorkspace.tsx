@@ -2,6 +2,7 @@ import { computeNudges, findMember } from '@dap/shared';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { useState } from 'react';
 import { Avatar, AvatarStack } from '../../components/Avatar.js';
+import { HeroCanvas } from '../../components/HeroCanvas.js';
 import { isRealtimeBackend } from '../../lib/storage/index.js';
 import { useRoomStore } from '../../state/roomStore.js';
 import { ActivitiesPanel } from '../activities/ActivitiesPanel.js';
@@ -78,44 +79,47 @@ export function RoomWorkspace() {
   return (
     <div className="container">
       <section className="room-header">
-        <div className="row spread row-wrap" style={{ gap: '0.75rem' }}>
-          <div style={{ minWidth: 0 }}>
-            <h1 className="room-title">{state.room.name}</h1>
-            {state.room.description && (
-              <p className="muted" style={{ margin: '0.25rem 0 0' }}>
-                {state.room.description}
-              </p>
-            )}
-          </div>
-          <div className="row">
-            <span
-              className={`badge ${isRealtimeBackend() ? 'badge-success' : ''}`}
-              title={
-                isRealtimeBackend()
-                  ? 'Changes sync live to everyone in the room'
-                  : 'Saved on this device and synced across your tabs'
-              }
-            >
-              {isRealtimeBackend() ? '🟢 Live sync' : '🔵 This device'}
-            </span>
-            <AvatarStack members={state.room.members} />
-            {me && (
-              <span className="row small" style={{ gap: 6 }}>
-                <Avatar member={me} size={26} /> <span className="muted">you</span>
+        <HeroCanvas className="room-aura" interactive={false} calm />
+        <div className="room-header-body">
+          <div className="row spread row-wrap" style={{ gap: '0.75rem' }}>
+            <div style={{ minWidth: 0 }}>
+              <h1 className="room-title">{state.room.name}</h1>
+              {state.room.description && (
+                <p className="muted" style={{ margin: '0.25rem 0 0' }}>
+                  {state.room.description}
+                </p>
+              )}
+            </div>
+            <div className="row">
+              <span
+                className={`badge ${isRealtimeBackend() ? 'badge-success' : ''}`}
+                title={
+                  isRealtimeBackend()
+                    ? 'Changes sync live to everyone in the room'
+                    : 'Saved on this device and synced across your tabs'
+                }
+              >
+                {isRealtimeBackend() ? '🟢 Live sync' : '🔵 This device'}
               </span>
-            )}
+              <AvatarStack members={state.room.members} />
+              {me && (
+                <span className="row small" style={{ gap: 6 }}>
+                  <Avatar member={me} size={26} /> <span className="muted">you</span>
+                </span>
+              )}
+            </div>
           </div>
+          {nudgeChips.length > 0 && (
+            <div className="row row-wrap" aria-label="Things to do" style={{ gap: '0.4rem' }}>
+              {nudgeChips.map((c) => (
+                <button key={c.label} className="nudge-chip" onClick={() => setTab(c.tab)}>
+                  {c.label}
+                </button>
+              ))}
+            </div>
+          )}
+          <ShareBar />
         </div>
-        {nudgeChips.length > 0 && (
-          <div className="row row-wrap" aria-label="Things to do" style={{ gap: '0.4rem' }}>
-            {nudgeChips.map((c) => (
-              <button key={c.label} className="nudge-chip" onClick={() => setTab(c.tab)}>
-                {c.label}
-              </button>
-            ))}
-          </div>
-        )}
-        <ShareBar />
       </section>
 
       <nav className="tabs" role="tablist" aria-label="Room sections">

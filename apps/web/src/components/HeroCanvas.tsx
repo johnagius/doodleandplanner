@@ -14,6 +14,7 @@ uniform float u_time;
 uniform float u_dark;
 uniform vec2 u_mouse;     // 0..1, eased pointer
 uniform float u_active;   // 0..1 pointer presence
+uniform float u_calm;     // 0..1 ambient/calm backdrop mode
 
 // hash / value noise --------------------------------------------------------
 vec2 hash2(vec2 p){
@@ -83,7 +84,7 @@ void main(){
 
   // theme base + intensity (calmer & lighter in light mode for legibility)
   vec3 base = mix(vec3(0.95, 0.96, 1.0), vec3(0.03, 0.04, 0.08), u_dark);
-  float strength = mix(0.34, 0.82, u_dark);
+  float strength = mix(0.34, 0.82, u_dark) * mix(1.0, 0.7, u_calm);
   col = base + col * strength;
 
   // soft glow around the pointer
@@ -95,7 +96,7 @@ void main(){
 
   // film grain (subtler in light mode)
   float g = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233)) + u_time) * 43758.5453);
-  col += (g - 0.5) * mix(0.012, 0.028, u_dark);
+  col += (g - 0.5) * mix(0.012, 0.028, u_dark) * (1.0 - 0.6 * u_calm);
 
   gl_FragColor = vec4(col, 1.0);
 }
@@ -118,7 +119,17 @@ function compile(gl: WebGLRenderingContext, type: number, src: string): WebGLSha
   return sh;
 }
 
-export function HeroCanvas({ className }: { className?: string }) {
+export function HeroCanvas({
+  className,
+  interactive = true,
+  calm = false,
+}: {
+  className?: string;
+  /** Attach pointer interaction (default true). Off for ambient backdrops. */
+  interactive?: boolean;
+  /** Calmer, lower-contrast palette for use behind content (default false). */
+  calm?: boolean;
+}) {
   const ref = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -152,6 +163,7 @@ export function HeroCanvas({ className }: { className?: string }) {
     const uDark = gl.getUniformLocation(prog, 'u_dark');
     const uMouse = gl.getUniformLocation(prog, 'u_mouse');
     const uActive = gl.getUniformLocation(prog, 'u_active');
+    const uCalm = gl.getUniformLocation(prog, 'u_calm');
 
     const isDark = () => document.documentElement.getAttribute('data-theme') === 'dark';
     const prefersReduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
@@ -170,8 +182,10 @@ export function HeroCanvas({ className }: { className?: string }) {
       target.active = 0;
     };
     const host = cv.parentElement ?? cv;
-    host.addEventListener('pointermove', onMove);
-    host.addEventListener('pointerleave', onLeave);
+    if (interactive) {
+      host.addEventListener('pointermove', onMove);
+      host.addEventListener('pointerleave', onLeave);
+    }
 
     const resize = () => {
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -197,6 +211,7 @@ export function HeroCanvas({ className }: { className?: string }) {
       gl.uniform1f(uDark, isDark() ? 1 : 0);
       gl.uniform2f(uMouse, eased.x, eased.y);
       gl.uniform1f(uActive, eased.active);
+      gl.uniform1f(uCalm, calm ? 1 : 0);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
     };
 
@@ -241,7 +256,7 @@ export function HeroCanvas({ className }: { className?: string }) {
       gl.deleteBuffer(buf);
       gl.getExtension('WEBGL_lose_context')?.loseContext();
     };
-  }, []);
+  }, [interactive, calm]);
 
   return <canvas ref={ref} className={className} aria-hidden data-testid="hero-canvas" />;
 }

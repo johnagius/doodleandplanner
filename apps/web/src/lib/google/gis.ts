@@ -2,8 +2,12 @@
  * Thin wrapper around Google Identity Services (GIS) for browser OAuth.
  * Loads the GIS script on demand and brokers short-lived access tokens used to
  * call the Calendar API directly from the client (no backend secret needed).
+ *
+ * Tokens are cached *per scope set* so the identity (sign-in) grant and the
+ * calendar grant are tracked independently — that's what lets calendar
+ * permission be requested incrementally, only when a calendar feature runs.
  */
-import { GOOGLE_CLIENT_ID, GOOGLE_SCOPES } from './config.js';
+import { GOOGLE_CLIENT_ID } from './config.js';
 
 interface TokenResponse {
   access_token?: string;
@@ -33,7 +37,7 @@ declare global {
 
 const GIS_SRC = 'https://accounts.google.com/gsi/client';
 let scriptPromise: Promise<void> | null = null;
-let cached: { token: string; expiresAt: number } | null = null;
+const cache = new Map<string, { token: string; expiresAt: number }>();
 
 function loadGis(): Promise<void> {
   if (scriptPromise) return scriptPromise;
@@ -50,15 +54,19 @@ function loadGis(): Promise<void> {
   return scriptPromise;
 }
 
-/** Returns a cached access token if it's still valid for >1 minute. */
-export function getCachedToken(): string | null {
-  if (cached && cached.expiresAt - Date.now() > 60_000) return cached.token;
+/** Returns a cached access token for `scope` if it's still valid for >1 minute. */
+export function getCachedToken(scope: string): string | null {
+  const entry = cache.get(scope);
+  if (entry && entry.expiresAt - Date.now() > 60_000) return entry.token;
   return null;
 }
 
-/** Interactively request a Google access token (opens the consent popup). */
-export async function requestAccessToken(): Promise<string> {
-  const fresh = getCachedToken();
+/**
+ * Interactively request a Google access token for the given scope set (opens
+ * the consent popup the first time). Cached per scope set.
+ */
+export async function requestAccessToken(scope: string): Promise<string> {
+  const fresh = getCachedToken(scope);
   if (fresh) return fresh;
   await loadGis();
   const oauth2 = window.google?.accounts?.oauth2;
@@ -67,24 +75,25 @@ export async function requestAccessToken(): Promise<string> {
   return new Promise<string>((resolve, reject) => {
     const client = oauth2.initTokenClient({
       client_id: GOOGLE_CLIENT_ID,
-      scope: GOOGLE_SCOPES,
+      scope,
       callback: (resp) => {
         if (resp.error || !resp.access_token) {
           reject(new Error(resp.error ?? 'Authorisation was cancelled'));
           return;
         }
-        cached = {
+        cache.set(scope, {
           token: resp.access_token,
           expiresAt: Date.now() + (resp.expires_in ?? 3600) * 1000,
-        };
+        });
         resolve(resp.access_token);
       },
     });
-    client.requestAccessToken({ prompt: getCachedToken() ? '' : 'consent' });
+    client.requestAccessToken({ prompt: 'consent' });
   });
 }
 
 export function signOutGoogle(): void {
-  if (cached) window.google?.accounts?.oauth2?.revoke(cached.token);
-  cached = null;
+  const oauth2 = window.google?.accounts?.oauth2;
+  for (const { token } of cache.values()) oauth2?.revoke(token);
+  cache.clear();
 }

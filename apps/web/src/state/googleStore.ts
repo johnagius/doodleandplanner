@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { fetchUserProfile, type GoogleProfile } from '../lib/google/calendar.js';
+import { GOOGLE_CALENDAR_SCOPES, GOOGLE_SIGNIN_SCOPES } from '../lib/google/config.js';
 import { getCachedToken, requestAccessToken, signOutGoogle } from '../lib/google/gis.js';
 
 interface GoogleStore {
@@ -23,7 +24,7 @@ export const useGoogleStore = create<GoogleStore>((set) => ({
   async connect() {
     set({ connecting: true, error: null });
     try {
-      const token = await requestAccessToken();
+      const token = await requestAccessToken(GOOGLE_SIGNIN_SCOPES);
       const profile = await fetchUserProfile(token);
       set({ email: profile.email, profile, connecting: false });
       return profile;
@@ -39,6 +40,8 @@ export const useGoogleStore = create<GoogleStore>((set) => ({
   },
 
   async token() {
-    return getCachedToken() ?? requestAccessToken();
+    // Calendar features need the sensitive calendar scopes, requested lazily
+    // (incremental auth) so plain sign-in stays non-sensitive.
+    return getCachedToken(GOOGLE_CALENDAR_SCOPES) ?? requestAccessToken(GOOGLE_CALENDAR_SCOPES);
   },
 }));

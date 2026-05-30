@@ -1,5 +1,5 @@
 import { createRoom, emptyRoomState } from '@dap/shared';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -83,8 +83,9 @@ describe('RoomWorkspace', () => {
     // Poll renders with vote controls; cast a yes on the first option.
     const yesButtons = await screen.findAllByRole('button', { name: 'Vote yes' });
     await user.click(yesButtons[0]!);
-    expect(
-      within(screen.getByText('Which evening?').closest('.card')!).getByText(/👍 1/),
-    ).toBeInTheDocument();
+    // The tally is rendered by <CountUp>, which animates "👍 " and the number in
+    // separate nodes; assert on the card's combined text once it settles.
+    const card = screen.getByText('Which evening?').closest('.card')!;
+    await waitFor(() => expect(card).toHaveTextContent(/👍\s*1/));
   });
 });

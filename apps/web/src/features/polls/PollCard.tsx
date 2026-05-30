@@ -12,6 +12,7 @@ import {
   type VoteValue,
 } from '@dap/shared';
 import { Avatar } from '../../components/Avatar.js';
+import { CountUp } from '../../components/CountUp.js';
 import { useToast } from '../../components/Toast.js';
 import { useRoomStore } from '../../state/roomStore.js';
 
@@ -62,7 +63,7 @@ export function PollCard({ pollId }: { pollId: string }) {
           )}
           <div className="row small muted" style={{ gap: '0.5rem' }}>
             <span>
-              {participantCount(poll)} of {state.room.members.length} voted
+              <CountUp value={participantCount(poll)} /> of {state.room.members.length} voted
             </span>
             {poll.deadline && !closed && (
               <span className={isPollDue(poll) ? 'badge badge-warn' : 'badge'}>
@@ -186,9 +187,17 @@ function OptionRow({
           {formatSlot(option.start, option.end)} {highlight && <span aria-hidden>⭐</span>}
         </strong>
         <div className="row small muted" style={{ gap: '0.5rem' }}>
-          <span>👍 {tally?.yes ?? 0}</span>
-          {allowMaybe && <span>🤔 {tally?.maybe ?? 0}</span>}
-          <span>👎 {tally?.no ?? 0}</span>
+          <span>
+            👍 <CountUp value={tally?.yes ?? 0} />
+          </span>
+          {allowMaybe && (
+            <span>
+              🤔 <CountUp value={tally?.maybe ?? 0} />
+            </span>
+          )}
+          <span>
+            👎 <CountUp value={tally?.no ?? 0} />
+          </span>
         </div>
       </div>
 

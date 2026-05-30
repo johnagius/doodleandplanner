@@ -1,5 +1,5 @@
 import { combineLedger, findMember, summarizeInventory, type InventoryItem } from '@dap/shared';
-import { useState, type FormEvent } from 'react';
+import { useState, type FormEvent, type ReactNode } from 'react';
 import { Avatar } from '../../components/Avatar.js';
 import { CountUp } from '../../components/CountUp.js';
 import { EmptyState } from '../../components/EmptyState.js';
@@ -298,9 +298,15 @@ function BudgetCard() {
       ) : (
         <>
           <div className="row row-wrap" style={{ gap: '1.5rem' }}>
-            <Stat label="Total" value={formatMoney(ledger.total, currency)} />
-            <Stat label="Per person" value={formatMoney(ledger.perPerson, currency)} />
-            <Stat label="Entries" value={String(ledger.entries.length)} />
+            <Stat
+              label="Total"
+              value={<CountUp value={ledger.total} format={(n) => formatMoney(n, currency)} />}
+            />
+            <Stat
+              label="Per person"
+              value={<CountUp value={ledger.perPerson} format={(n) => formatMoney(n, currency)} />}
+            />
+            <Stat label="Entries" value={<CountUp value={ledger.entries.length} />} />
           </div>
 
           {expenses.length > 0 && (
@@ -446,7 +452,7 @@ function AddExpenseForm({
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div>
       <div className="muted small">{label}</div>

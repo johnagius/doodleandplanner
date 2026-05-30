@@ -89,6 +89,13 @@
     radial-gradient(50% 70% at 75% 60%, rgba(168, 85, 247, 0.35), transparent 60%),
     radial-gradient(40% 60% at 60% 25%, rgba(236, 72, 153, 0.3), transparent 60%), var(--surface);
 }
+.hero-bg-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  transform-origin: center;
+  will-change: transform, opacity;
+}
 .hero-canvas {
   position: absolute;
   inset: 0;

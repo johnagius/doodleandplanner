@@ -1,12 +1,8 @@
 import { ROOM_TEMPLATES } from '@dap/shared';
-import { lazy, Suspense, useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { HeroCanvas } from '../../components/HeroCanvas.js';
 import { GoogleSignInButton } from '../../components/GoogleSignInButton.js';
 import { Reveal, RevealItem, RevealStagger } from '../../components/Reveal.js';
-
-// The heavy three.js scene is code-split so it never blocks first paint.
-const Hero3D = lazy(() => import('../../components/Hero3D.js'));
 import {
   getPreferredName,
   getRepository,
@@ -15,6 +11,7 @@ import {
 } from '../../lib/storage/index.js';
 import { createAndStoreRoom } from '../../lib/roomLifecycle.js';
 import { parseRoomFile } from '../../lib/roomFile.js';
+import { ScrollHero } from './ScrollHero.js';
 
 export function HomePage() {
   const navigate = useNavigate();
@@ -37,30 +34,7 @@ export function HomePage() {
 
   return (
     <div className="container">
-      <section className="hero">
-        <HeroCanvas className="hero-canvas" />
-        <Suspense fallback={null}>
-          <Hero3D className="hero-3d-layer" />
-        </Suspense>
-        <div className="hero-inner">
-          <span className="hero-eyebrow">Plans, polls &amp; doodles — together</span>
-          <h1 className="hero-title">
-            Plan it together,
-            <br />
-            doodle along the way
-          </h1>
-          <p className="hero-sub">
-            Spin up a room, invite friends, and let smart Google Calendar suggestions find a time
-            that actually works — then sketch ideas, split the costs, and lock the plan in.
-          </p>
-          <div className="hero-chips">
-            <span className="chip">🗳️ Scheduling polls</span>
-            <span className="chip">📅 Calendar-aware</span>
-            <span className="chip">🎨 Shared doodle</span>
-            <span className="chip">💰 Cost split</span>
-          </div>
-        </div>
-      </section>
+      <ScrollHero />
 
       <Reveal className="grid grid-2">
         <CreateRoomCard onCreated={(slug) => navigate(`/r/${slug}`)} />

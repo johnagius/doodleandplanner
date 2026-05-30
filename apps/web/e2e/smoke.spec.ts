@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 
 test.describe('@smoke', () => {
   test('home page loads with the create and join cards', async ({ page }) => {

@@ -1,4 +1,5 @@
-import { expect, test, type Page } from '@playwright/test';
+import { type Page } from '@playwright/test';
+import { expect, test } from './fixtures';
 
 async function createRoom(page: Page, name = 'E2E Adventure'): Promise<string> {
   await page.goto('/');

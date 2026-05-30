@@ -109,6 +109,11 @@ export default function Hero3D({ className }: { className?: string }) {
         camera={{ position: [0, 0, 6], fov: 50 }}
         dpr={[1, 2]}
         frameloop={reduced ? 'demand' : 'always'}
+        // Measure via offsetWidth/Height: this canvas lives inside the parallax
+        // layer whose CSS `scale` transform would otherwise inflate the measured
+        // size (drawing buffer > backing store → "viewport larger than
+        // destination rect" WebGL warning).
+        resize={{ offsetSize: true }}
         gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
       >
         <ambientLight intensity={0.6} />

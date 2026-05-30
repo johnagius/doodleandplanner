@@ -88,7 +88,12 @@ export async function requestAccessToken(scope: string): Promise<string> {
         resolve(resp.access_token);
       },
     });
-    client.requestAccessToken({ prompt: 'consent' });
+    // No forced prompt: Google asks for consent only when a scope isn't already
+    // granted. Forcing prompt='consent' would, with include_granted_scopes,
+    // re-display previously-granted *sensitive* scopes (e.g. Calendar) on every
+    // sign-in — re-triggering the "unverified app" warning even for a plain
+    // identity request.
+    client.requestAccessToken({ prompt: '' });
   });
 }
 

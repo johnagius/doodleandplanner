@@ -4,14 +4,18 @@ import { getCachedToken, requestAccessToken, signOutGoogle } from './gis.js';
 type Cb = (r: { access_token?: string; expires_in?: number; error?: string }) => void;
 
 function mockGis(token: string) {
+  let lastPrompt: string | undefined;
   const initTokenClient = vi.fn((cfg: { callback: Cb }) => ({
-    requestAccessToken: () => cfg.callback({ access_token: token, expires_in: 3600 }),
+    requestAccessToken: (override?: { prompt?: string }) => {
+      lastPrompt = override?.prompt;
+      cfg.callback({ access_token: token, expires_in: 3600 });
+    },
   }));
   const revoke = vi.fn();
   (window as unknown as { google?: unknown }).google = {
     accounts: { oauth2: { initTokenClient, revoke } },
   };
-  return { initTokenClient, revoke };
+  return { initTokenClient, revoke, getPrompt: () => lastPrompt };
 }
 
 afterEach(() => {
@@ -27,6 +31,14 @@ describe('gis per-scope token cache', () => {
     // A second request for the same scope reuses the cache (no new client).
     expect(await requestAccessToken('openid email profile')).toBe('basic-tok');
     expect(initTokenClient).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not force re-consent (so granted sensitive scopes are not re-shown)', async () => {
+    const m = mockGis('basic-tok');
+    await requestAccessToken('openid email profile');
+    // prompt='' lets Google skip consent when scopes are already granted;
+    // 'consent' would re-display previously granted Calendar → warning.
+    expect(m.getPrompt()).toBe('');
   });
 
   it('tracks different scope sets independently (incremental auth)', async () => {

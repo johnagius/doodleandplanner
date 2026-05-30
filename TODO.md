@@ -27,16 +27,14 @@ Let members capture/share photos and browse them as geotagged albums.
 - Optional full-res photos via R2 (needs an R2 bucket + token scope).
 - Battleship: drag-to-place (currently tap-to-place with rotate/shuffle).
 
-## In progress
-
-- [ ] **Account identity** — carry identity across devices via Google sign-in
-      (one person = one member everywhere), beyond per-device localStorage.
-
 ## Recently done
 
+- Account identity — signed-in members are recognised across devices by Google
+  email (one person = one member everywhere), beyond per-device localStorage.
 - Map place search (type an address → drop a pin) via Nominatim.
 - "Your move" games badge + unread-chat badge + tab-title alerts + toasts.
-- Games hub: Connect Four, Reversi, Battleship; spectator mode.
+- Games hub: Connect Four, Reversi, Battleship (with manual placement);
+  spectator mode.
 - Gallery: multi-select, bulk delete/download, swipe lightbox.
 
 ## Done

@@ -1,6 +1,7 @@
 import { Link, Route, Routes } from 'react-router-dom';
 import { ThemeToggle } from './components/ThemeToggle.js';
 import { ToastProvider } from './components/Toast.js';
+import { WelcomeModal } from './components/WelcomeModal.js';
 import { HomePage } from './features/home/HomePage.js';
 import { RoomPage } from './features/room/RoomPage.js';
 import { NotFoundPage } from './features/home/NotFoundPage.js';
@@ -8,6 +9,7 @@ import { NotFoundPage } from './features/home/NotFoundPage.js';
 export function App() {
   return (
     <ToastProvider>
+      <WelcomeModal />
       <div className="app-shell">
         <header className="topbar">
           <Link to="/" className="brand">

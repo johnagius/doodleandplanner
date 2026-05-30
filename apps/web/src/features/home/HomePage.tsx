@@ -3,6 +3,7 @@ import { lazy, Suspense, useEffect, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { HeroCanvas } from '../../components/HeroCanvas.js';
 import { GoogleSignInButton } from '../../components/GoogleSignInButton.js';
+import { Reveal, RevealItem, RevealStagger } from '../../components/Reveal.js';
 
 // The heavy three.js scene is code-split so it never blocks first paint.
 const Hero3D = lazy(() => import('../../components/Hero3D.js'));
@@ -61,10 +62,10 @@ export function HomePage() {
         </div>
       </section>
 
-      <div className="grid grid-2">
+      <Reveal className="grid grid-2">
         <CreateRoomCard onCreated={(slug) => navigate(`/r/${slug}`)} />
         <JoinRoomCard onJoin={(code) => navigate(`/r/${code.trim()}`)} onImport={importRoom} />
-      </div>
+      </Reveal>
 
       {rooms.length > 0 && (
         <section className="stack" style={{ marginTop: '1.75rem' }}>
@@ -131,13 +132,13 @@ const FEATURES: { icon: string; title: string; body: string }[] = [
 function FeatureSection() {
   return (
     <section className="feature-section">
-      <div className="feature-head">
+      <Reveal className="feature-head">
         <span className="hero-eyebrow">Everything in one room</span>
         <h2 className="feature-title">From “we should hang out” to a real plan</h2>
-      </div>
-      <div className="feature-grid">
+      </Reveal>
+      <RevealStagger className="feature-grid">
         {FEATURES.map((f) => (
-          <div key={f.title} className="feature-card">
+          <RevealItem key={f.title} className="feature-card">
             <span className="feature-icon" aria-hidden>
               {f.icon}
             </span>
@@ -145,9 +146,9 @@ function FeatureSection() {
             <p className="muted small" style={{ margin: 0 }}>
               {f.body}
             </p>
-          </div>
+          </RevealItem>
         ))}
-      </div>
+      </RevealStagger>
     </section>
   );
 }

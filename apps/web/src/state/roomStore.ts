@@ -149,7 +149,7 @@ interface RoomStore {
   removeNote: (noteId: string) => Promise<void>;
 
   // chat
-  postMessage: (text: string) => Promise<void>;
+  postMessage: (text: string, photoId?: string) => Promise<void>;
 
   // availability
   shareMyAvailability: (busy: BusyInterval[]) => Promise<void>;
@@ -212,7 +212,7 @@ interface RoomStore {
     country?: string;
     place?: string;
     event?: string;
-  }) => Promise<void>;
+  }) => Promise<string>;
   editPhoto: (
     photoId: string,
     patch: Partial<Pick<Photo, 'caption' | 'event' | 'country' | 'place'>>,
@@ -531,13 +531,13 @@ export const useRoomStore = create<RoomStore>((set, get) => {
       await apply((s) => ({ ...s, doodle: removeNote(s.doodle, noteId) }));
     },
 
-    async postMessage(text) {
+    async postMessage(text, photoId) {
       const me = requireMe();
       await apply((s) => ({
         ...s,
         messages: appendMessage(
           s.messages ?? [],
-          createMessage({ roomId: s.room.id, authorId: me, text }),
+          createMessage({ roomId: s.room.id, authorId: me, text, photoId }),
         ),
       }));
     },
@@ -686,7 +686,7 @@ export const useRoomStore = create<RoomStore>((set, get) => {
     async addPhoto(input) {
       const me = requireMe();
       const current = get().state;
-      if (!current) return;
+      if (!current) return '';
       // Upload bytes first under a fresh id, then record syncing metadata.
       const id = generateId('photo');
       await repo().uploadPhoto(current.room.slug, id, input.blob);
@@ -705,6 +705,7 @@ export const useRoomStore = create<RoomStore>((set, get) => {
         event: input.event,
       });
       await apply((s) => ({ ...s, photos: [...(s.photos ?? []), photo] }));
+      return id;
     },
 
     async editPhoto(photoId, patch) {

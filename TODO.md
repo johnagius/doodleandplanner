@@ -3,7 +3,7 @@
 Tracked work for Doodle & Planner. Shipped items live on `main` + the deployed
 site; this file is the running backlog.
 
-## 📸 Photos & gallery
+## 📸 Photos & gallery — ✅ done
 
 Let members capture/share photos and browse them as geotagged albums.
 
@@ -18,8 +18,9 @@ Let members capture/share photos and browse them as geotagged albums.
 - [x] **Geotag & albums** — geolocation captured at photo time, reverse-geocoded
       to **country** (OSM Nominatim), grouped into albums by country then by
       **event** (user-editable tag). No-location photos land in their own album.
-- [ ] **Chat integration** — attach a photo to a chat message; render
-      thumbnails inline, click to open in the gallery lightbox.
+- [x] **Chat integration** — attach a photo to a chat message; thumbnails
+      render inline and open in the lightbox, and chat photos also land in the
+      gallery (and its country/event albums).
 
 ## Ideas / later
 

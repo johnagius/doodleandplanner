@@ -1587,3 +1587,37 @@ label.field {
     animation: none;
   }
 }
+
+/* Chat photo attachments */
+.chat-photo {
+  display: block;
+  margin-top: 0.35rem;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  cursor: pointer;
+  background: var(--surface-2);
+  max-width: 220px;
+}
+.chat-photo img {
+  display: block;
+  width: 100%;
+  max-height: 240px;
+  object-fit: cover;
+}
+.chat-photo-loading {
+  display: block;
+  margin-top: 0.35rem;
+  width: 160px;
+  height: 120px;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(100deg, var(--surface-2), var(--surface-3), var(--surface-2));
+  background-size: 200% 100%;
+  animation: shimmer 1.2s infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .chat-photo-loading {
+    animation: none;
+  }
+}

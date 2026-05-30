@@ -273,6 +273,8 @@ export interface Message {
   roomId: string;
   authorId: string;
   text: string;
+  /** Optional attached photo (id into the room's photos / photo store). */
+  photoId?: string;
   createdAt: ISODateTime;
 }
 

@@ -15,6 +15,12 @@ describe('createMessage', () => {
       createMessage({ roomId: 'r', authorId: 'm', text: 'x'.repeat(MAX_MESSAGE_LENGTH + 1) }),
     ).toThrow(/too long/);
   });
+
+  it('allows an empty caption when a photo is attached', () => {
+    const msg = createMessage({ roomId: 'r', authorId: 'm', text: '', photoId: 'photo_1' });
+    expect(msg.photoId).toBe('photo_1');
+    expect(msg.text).toBe('');
+  });
 });
 
 describe('appendMessage', () => {

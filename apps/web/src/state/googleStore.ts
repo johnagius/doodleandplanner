@@ -7,6 +7,11 @@ import {
   requestAccessToken,
   signOutGoogle,
 } from '../lib/google/gis.js';
+import {
+  clearPersistedCredential,
+  loadPersistedProfile,
+  persistCredential,
+} from '../lib/google/session.js';
 
 interface GoogleStore {
   connecting: boolean;
@@ -22,10 +27,13 @@ interface GoogleStore {
   token: () => Promise<string>;
 }
 
+// Restore a signed-in profile from a cached, unexpired credential on load.
+const restored = loadPersistedProfile();
+
 export const useGoogleStore = create<GoogleStore>((set) => ({
   connecting: false,
-  email: null,
-  profile: null,
+  email: restored?.email ?? null,
+  profile: restored?.profile ?? null,
   error: null,
 
   async connect() {
@@ -43,12 +51,14 @@ export const useGoogleStore = create<GoogleStore>((set) => ({
 
   signInWithCredential(credential) {
     const profile = decodeIdToken(credential);
+    persistCredential(credential);
     set({ email: profile.email, profile, error: null });
     return profile;
   },
 
   disconnect() {
     signOutGoogle();
+    clearPersistedCredential();
     set({ email: null, profile: null });
   },
 

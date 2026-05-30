@@ -1,40 +1,39 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { GoogleSignInButton } from './GoogleSignInButton.js';
 import { Modal } from './Modal.js';
 import { isGoogleConfigured } from '../lib/google/config.js';
 import { getPreferredName, setPreferredName } from '../lib/storage/index.js';
 import { useGoogleStore } from '../state/googleStore.js';
 
-const SEEN_KEY = 'dap:welcomeSeen';
-
 /**
  * First-run welcome: an app-controlled modal offering Google sign-in or
- * "continue as guest". Replaces Google's flaky One Tap so a signed-out visitor
- * reliably gets a prompt on first load. Shown once per device (dismissal is
- * remembered); never shown if the visitor is already signed in.
+ * "continue as guest". Shown on the home page whenever the visitor is NOT
+ * signed in (so it reliably reappears on reload until they sign in), and never
+ * once signed in. Dismissal is per page-load only — we don't permanently
+ * suppress the sign-in invitation. Replaces Google's flaky One Tap.
  */
 export function WelcomeModal() {
   const profile = useGoogleStore((s) => s.profile);
-  const [open, setOpen] = useState(false);
+  const { pathname } = useLocation();
+  const [dismissed, setDismissed] = useState(false);
   const [name, setName] = useState(getPreferredName());
 
-  useEffect(() => {
-    const seen = localStorage.getItem(SEEN_KEY);
-    if (!seen && !profile) setOpen(true);
-  }, [profile]);
-
-  function dismiss() {
-    localStorage.setItem(SEEN_KEY, '1');
-    setOpen(false);
-  }
+  // Only nudge sign-in from the landing page, so invite links / rooms aren't
+  // blocked by the modal.
+  const open = !profile && !dismissed && pathname === '/';
 
   function continueAsGuest() {
     if (name.trim()) setPreferredName(name);
-    dismiss();
+    setDismissed(true);
   }
 
   return (
-    <Modal open={open} onClose={dismiss} title="Welcome to Doodle &amp; Planner 👋">
+    <Modal
+      open={open}
+      onClose={() => setDismissed(true)}
+      title="Welcome to Doodle &amp; Planner 👋"
+    >
       <p className="muted" style={{ marginTop: 0 }}>
         Plan get-togethers with friends — vote on times, doodle together, split costs and more. Sign
         in to carry your name and avatar across rooms, or just hop in as a guest.
@@ -42,7 +41,7 @@ export function WelcomeModal() {
 
       {isGoogleConfigured() && (
         <div className="stack" style={{ alignItems: 'center', gap: '0.75rem' }}>
-          <GoogleSignInButton onSignedIn={dismiss} />
+          <GoogleSignInButton onSignedIn={() => setDismissed(true)} />
           <span className="muted small">— or —</span>
         </div>
       )}

@@ -96,7 +96,7 @@ export function ChatPanel() {
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="Message the group…"
-          aria-label="Message"
+          aria-label="Message the group"
           maxLength={2000}
         />
         <button className="btn btn-primary" type="submit" disabled={!text.trim()}>

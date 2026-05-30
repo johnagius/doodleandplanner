@@ -57,7 +57,8 @@ describe('RoomWorkspace', () => {
     renderWorkspace();
 
     await user.click(screen.getByRole('tab', { name: /Inventory/ }));
-    await user.type(screen.getByLabelText('Item name'), 'Sunscreen');
+    // The panel animates in (AnimatePresence), so await its content.
+    await user.type(await screen.findByLabelText('Item name'), 'Sunscreen');
     await user.click(screen.getByRole('button', { name: 'Add' }));
 
     expect(screen.getByText('Sunscreen')).toBeInTheDocument();

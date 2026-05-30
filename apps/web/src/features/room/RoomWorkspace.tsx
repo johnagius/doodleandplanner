@@ -1,4 +1,5 @@
 import { computeNudges, findMember } from '@dap/shared';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { useState } from 'react';
 import { Avatar, AvatarStack } from '../../components/Avatar.js';
 import { isRealtimeBackend } from '../../lib/storage/index.js';
@@ -40,6 +41,7 @@ const TABS: { id: TabId; label: string; icon: string }[] = [
 export function RoomWorkspace() {
   const state = useRoomStore((s) => s.state)!;
   const meId = useRoomStore((s) => s.meId);
+  const reduceMotion = useReducedMotion();
   const [tab, setTab] = useState<TabId>('schedule');
 
   const me = meId ? findMember(state.room, meId) : undefined;
@@ -131,15 +133,25 @@ export function RoomWorkspace() {
       </nav>
 
       <div role="tabpanel">
-        {tab === 'schedule' && <PollsPanel />}
-        {tab === 'grid' && <AvailabilityGridView />}
-        {tab === 'doodle' && <DoodleCanvas />}
-        {tab === 'plan' && <EventsPanel />}
-        {tab === 'inventory' && <InventoryPanel />}
-        {tab === 'activities' && <ActivitiesPanel />}
-        {tab === 'chat' && <ChatPanel />}
-        {tab === 'summary' && <SummaryView />}
-        {tab === 'members' && <MembersPanel />}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={tab}
+            initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={reduceMotion ? undefined : { opacity: 0, y: -6 }}
+            transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+          >
+            {tab === 'schedule' && <PollsPanel />}
+            {tab === 'grid' && <AvailabilityGridView />}
+            {tab === 'doodle' && <DoodleCanvas />}
+            {tab === 'plan' && <EventsPanel />}
+            {tab === 'inventory' && <InventoryPanel />}
+            {tab === 'activities' && <ActivitiesPanel />}
+            {tab === 'chat' && <ChatPanel />}
+            {tab === 'summary' && <SummaryView />}
+            {tab === 'members' && <MembersPanel />}
+          </motion.div>
+        </AnimatePresence>
       </div>
     </div>
   );

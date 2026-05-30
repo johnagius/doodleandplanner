@@ -1,4 +1,5 @@
 import { useEffect, useRef, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 
 /**
  * Accessible modal dialog: focus-traps, closes on Escape / backdrop click, and
@@ -60,7 +61,9 @@ export function Modal({
 
   if (!open) return null;
 
-  return (
+  // Portal to <body> so the overlay escapes any ancestor stacking context
+  // (e.g. the room header), rather than being trapped behind sibling content.
+  return createPortal(
     <div className="modal-backdrop" onClick={onClose}>
       <div
         ref={panelRef}
@@ -88,6 +91,7 @@ export function Modal({
         )}
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

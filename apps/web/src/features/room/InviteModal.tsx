@@ -42,8 +42,9 @@ export function InviteModal({ open, onClose }: { open: boolean; onClose: () => v
   return (
     <Modal open={open} onClose={onClose} title="Invite friends 🎉">
       <p className="muted" style={{ marginTop: 0 }}>
-        Anyone with this link can join {room.settings.openJoin ? '' : 'this invite-only room'}.
-        Share it however you like.
+        {room.settings.openJoin
+          ? 'Anyone with this link can join. Share it however you like.'
+          : 'This room is invite-only — anyone with this link can join. Share it however you like.'}
       </p>
 
       <div className="invite-link-row">

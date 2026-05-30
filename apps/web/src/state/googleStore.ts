@@ -1,7 +1,12 @@
 import { create } from 'zustand';
 import { fetchUserProfile, type GoogleProfile } from '../lib/google/calendar.js';
 import { GOOGLE_CALENDAR_SCOPES, GOOGLE_SIGNIN_SCOPES } from '../lib/google/config.js';
-import { getCachedToken, requestAccessToken, signOutGoogle } from '../lib/google/gis.js';
+import {
+  decodeIdToken,
+  getCachedToken,
+  requestAccessToken,
+  signOutGoogle,
+} from '../lib/google/gis.js';
 
 interface GoogleStore {
   connecting: boolean;
@@ -10,6 +15,8 @@ interface GoogleStore {
   error: string | null;
   /** Connect (opens the Google consent popup) and resolve the full profile. */
   connect: () => Promise<GoogleProfile | null>;
+  /** Sign in via Google's identity (ID-token) flow — pure auth, no OAuth scopes. */
+  signInWithCredential: (credential: string) => GoogleProfile;
   disconnect: () => void;
   /** Get a valid access token, prompting only if needed. */
   token: () => Promise<string>;
@@ -32,6 +39,12 @@ export const useGoogleStore = create<GoogleStore>((set) => ({
       set({ connecting: false, error: err instanceof Error ? err.message : 'Connection failed' });
       return null;
     }
+  },
+
+  signInWithCredential(credential) {
+    const profile = decodeIdToken(credential);
+    set({ email: profile.email, profile, error: null });
+    return profile;
   },
 
   disconnect() {

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { getCachedToken, requestAccessToken, signOutGoogle } from './gis.js';
+import { decodeIdToken, getCachedToken, requestAccessToken, signOutGoogle } from './gis.js';
 
 type Cb = (r: { access_token?: string; expires_in?: number; error?: string }) => void;
 
@@ -55,5 +55,16 @@ describe('gis per-scope token cache', () => {
     signOutGoogle();
     expect(revoke).toHaveBeenCalledWith('tok');
     expect(getCachedToken('some-scope')).toBeNull();
+  });
+});
+
+describe('decodeIdToken', () => {
+  it('extracts the profile from a Google ID token payload', () => {
+    const payload = { email: 'ada@example.com', name: 'Ada Lovelace', picture: 'https://x/a.png' };
+    const b64url = btoa(JSON.stringify(payload))
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/, '');
+    expect(decodeIdToken(`header.${b64url}.sig`)).toEqual(payload);
   });
 });

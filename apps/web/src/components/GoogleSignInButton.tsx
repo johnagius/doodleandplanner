@@ -1,18 +1,41 @@
+import { useEffect, useRef } from 'react';
 import { isGoogleConfigured } from '../lib/google/config.js';
+import { renderGoogleSignInButton } from '../lib/google/gis.js';
 import { useGoogleStore } from '../state/googleStore.js';
 import type { GoogleProfile } from '../lib/google/calendar.js';
 
 /**
- * "Sign in with Google" button. When no OAuth client is configured
- * (VITE_GOOGLE_CLIENT_ID unset) it renders disabled with an explanatory tooltip,
- * so the capability is always visible.
+ * "Sign in with Google". Uses Google's identity (ID-token) flow, which requests
+ * NO OAuth scopes — so it never shows the sensitive-scope / unverified-app
+ * warning. Calendar access is requested separately, on demand, by the calendar
+ * features. When no client ID is configured it renders disabled with a hint.
  */
 export function GoogleSignInButton({
   onSignedIn,
 }: {
   onSignedIn?: (profile: GoogleProfile) => void;
 }) {
-  const { profile, connecting, connect, disconnect } = useGoogleStore();
+  const profile = useGoogleStore((s) => s.profile);
+  const disconnect = useGoogleStore((s) => s.disconnect);
+  const signInWithCredential = useGoogleStore((s) => s.signInWithCredential);
+  const ref = useRef<HTMLDivElement>(null);
+  const onSignedInRef = useRef(onSignedIn);
+  onSignedInRef.current = onSignedIn;
+
+  useEffect(() => {
+    if (!isGoogleConfigured() || profile) return;
+    const el = ref.current;
+    if (!el) return;
+    let active = true;
+    void renderGoogleSignInButton(el, (credential) => {
+      if (!active) return;
+      const p = signInWithCredential(credential);
+      onSignedInRef.current?.(p);
+    });
+    return () => {
+      active = false;
+    };
+  }, [profile, signInWithCredential]);
 
   if (!isGoogleConfigured()) {
     return (
@@ -57,20 +80,7 @@ export function GoogleSignInButton({
     );
   }
 
-  return (
-    <button
-      type="button"
-      className="btn google-btn"
-      disabled={connecting}
-      onClick={async () => {
-        const p = await connect();
-        if (p) onSignedIn?.(p);
-      }}
-    >
-      <GoogleGlyph />
-      {connecting ? 'Connecting…' : 'Sign in with Google'}
-    </button>
-  );
+  return <div ref={ref} className="google-id-btn" aria-label="Sign in with Google" />;
 }
 
 function GoogleGlyph() {

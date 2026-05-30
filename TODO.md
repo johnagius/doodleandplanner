@@ -25,7 +25,7 @@ Let members capture/share photos and browse them as geotagged albums.
 ## Ideas / later
 
 - Optional full-res photos via R2 (needs an R2 bucket + token scope).
-- Battleship: manual ship placement (currently auto-placed at start).
+- Battleship: drag-to-place (currently tap-to-place with rotate/shuffle).
 
 ## In progress
 

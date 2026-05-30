@@ -9,6 +9,7 @@ import {
 } from '@dap/shared';
 import { Avatar } from '../../components/Avatar.js';
 import { useRoomStore } from '../../state/roomStore.js';
+import { BattleshipPlacement } from './BattleshipPlacement.js';
 import {
   BattleshipBoard,
   Connect4Board,
@@ -38,6 +39,7 @@ export function GameView({ game, onBack }: { game: GameSession; onBack: () => vo
   const seated = mySeat >= 0;
   const myTurn = !!meId && isMyTurn(game, meId);
   const canMove = myTurn;
+  const bsPlacing = game.type === 'battleship' && game.phase === 'placing';
 
   return (
     <div className="stack" style={{ gap: '1rem' }}>
@@ -67,8 +69,8 @@ export function GameView({ game, onBack }: { game: GameSession; onBack: () => vo
         </div>
 
         <div className={`game-status ${game.status === 'playing' && myTurn ? 'your-turn' : ''}`}>
-          {gameStatusText(game, nameOf)}
-          {game.status === 'playing' && myTurn && ' — your move!'}
+          {bsPlacing ? 'Arranging fleets ⚓' : gameStatusText(game, nameOf)}
+          {!bsPlacing && game.status === 'playing' && myTurn && ' — your move!'}
         </div>
         {game.status === 'playing' && !seated && (
           <span className="badge" title="You're watching this game">
@@ -126,7 +128,17 @@ export function GameView({ game, onBack }: { game: GameSession; onBack: () => vo
                 onCell={(index) => void playMove(game.id, { kind: 'cell', index })}
               />
             )}
-            {game.type === 'battleship' && (
+            {game.type === 'battleship' && bsPlacing && seated && (
+              <BattleshipPlacement
+                game={game}
+                mySeat={mySeat}
+                color={memberFor(mySeat)?.color ?? '#3a4258'}
+              />
+            )}
+            {game.type === 'battleship' && bsPlacing && !seated && (
+              <p className="muted">Players are arranging their fleets…</p>
+            )}
+            {game.type === 'battleship' && !bsPlacing && (
               <BattleshipBoard
                 game={game}
                 viewerSeat={mySeat}

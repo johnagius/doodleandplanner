@@ -1,14 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import {
+  battleshipClearFleet,
+  battleshipPlaceShip,
+  battleshipReady,
+  battleshipShuffle,
   createGame,
   isMyTurn,
   joinGame,
   leaveGame,
   makeMove,
   placeFleetRandom,
+  remainingShipLengths,
   resetGame,
   reversiLegalMoves,
   seatOf,
+  shipCellsFrom,
   startGame,
   type BattleshipGame,
   type Connect4Game,
@@ -204,17 +210,51 @@ describe('games — battleship', () => {
     expect(all.every((i) => i >= 0 && i < 100)).toBe(true);
   });
 
-  it('starts with both hidden fleets placed', () => {
+  it('starts in the placing phase with an initial arrangement', () => {
     const g = seatTwo('battleship') as BattleshipGame;
+    expect(g.phase).toBe('placing');
     expect(g.fleets[0]!.flat()).toHaveLength(17);
-    expect(g.fleets[1]!.flat()).toHaveLength(17);
-    expect(g.shots).toEqual([[], []]);
+    expect(g.ready).toEqual([false, false]);
+  });
+
+  it('places ships, rejects overlaps/wrong lengths, and starts firing when ready', () => {
+    let g = battleshipClearFleet(seatTwo('battleship') as BattleshipGame, 0, now) as BattleshipGame;
+    g = battleshipClearFleet(g, 1, now) as BattleshipGame;
+    expect(remainingShipLengths(g, 0)).toEqual([5, 4, 3, 3, 2]);
+
+    // shipCellsFrom builds a straight line, or null off-board.
+    expect(shipCellsFrom(0, 5, 'h', 10)).toEqual([0, 1, 2, 3, 4]);
+    expect(shipCellsFrom(8, 5, 'h', 10)).toBeNull();
+
+    g = battleshipPlaceShip(g, 0, [0, 1, 2, 3, 4], now) as BattleshipGame; // carrier
+    expect(g.fleets[0]).toHaveLength(1);
+    // Overlap rejected; wrong length rejected.
+    expect(battleshipPlaceShip(g, 0, [4, 5, 6, 7], now)).toBe(g); // overlaps cell 4
+    expect(battleshipPlaceShip(g, 0, [20, 21], now)).not.toBe(g); // destroyer ok (len 2)
+
+    // Can't ready an incomplete fleet.
+    expect(battleshipReady(g, 0, now)).toBe(g);
+
+    // Shuffle to a full fleet, then both ready → firing.
+    g = battleshipShuffle(g, 0, now) as BattleshipGame;
+    g = battleshipShuffle(g, 1, now) as BattleshipGame;
+    g = battleshipReady(g, 0, now) as BattleshipGame;
+    expect(g.phase).toBe('placing');
+    g = battleshipReady(g, 1, now) as BattleshipGame;
+    expect(g.phase).toBe('firing');
   });
 
   it('records hits/misses, rejects repeats, and detects the win', () => {
     let g = seatTwo('battleship') as BattleshipGame;
-    // Force known fleets so we can aim deterministically.
-    g = { ...g, fleets: [[[0, 1]], [[10, 11]]], shots: [[], []] };
+    // Jump to firing with known fleets so we can aim deterministically.
+    g = {
+      ...g,
+      phase: 'firing',
+      turn: 0,
+      ready: [true, true],
+      fleets: [[[0, 1]], [[10, 11]]],
+      shots: [[], []],
+    };
 
     // Alice (seat 0) fires at Bob's ship cell 10 → hit, turn passes.
     g = makeMove(g, 'alice', { kind: 'cell', index: 10 }, now) as BattleshipGame;

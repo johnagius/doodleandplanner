@@ -14,6 +14,12 @@ import {
   startGame as startGameLogic,
   makeMove as makeMoveLogic,
   resetGame as resetGameLogic,
+  seatOf,
+  battleshipPlaceShip,
+  battleshipRemoveShipAt,
+  battleshipShuffle as battleshipShuffleLogic,
+  battleshipClearFleet as battleshipClearFleetLogic,
+  battleshipReady as battleshipReadyLogic,
   createMeetPoint,
   updateMeetPoint,
   createPhoto,
@@ -209,6 +215,12 @@ interface RoomStore {
   playMove: (gameId: string, move: GameMove) => Promise<void>;
   rematchGame: (gameId: string) => Promise<void>;
   deleteGame: (gameId: string) => Promise<void>;
+  // Battleship placement (operate on my own seat)
+  bsPlaceShip: (gameId: string, cells: number[]) => Promise<void>;
+  bsRemoveShip: (gameId: string, cell: number) => Promise<void>;
+  bsShuffle: (gameId: string) => Promise<void>;
+  bsClear: (gameId: string) => Promise<void>;
+  bsReady: (gameId: string) => Promise<void>;
 
   // Map meet-up points
   addMeetPoint: (input: {
@@ -692,6 +704,51 @@ export const useRoomStore = create<RoomStore>((set, get) => {
     async deleteGame(gameId) {
       requireMe();
       await apply((s) => ({ ...s, games: (s.games ?? []).filter((g) => g.id !== gameId) }));
+    },
+
+    async bsPlaceShip(gameId, cells) {
+      const me = requireMe();
+      await apply((s) =>
+        replaceGame(s, gameId, (g) =>
+          g.type === 'battleship' ? battleshipPlaceShip(g, seatOf(g, me), cells) : g,
+        ),
+      );
+    },
+
+    async bsRemoveShip(gameId, cell) {
+      const me = requireMe();
+      await apply((s) =>
+        replaceGame(s, gameId, (g) =>
+          g.type === 'battleship' ? battleshipRemoveShipAt(g, seatOf(g, me), cell) : g,
+        ),
+      );
+    },
+
+    async bsShuffle(gameId) {
+      const me = requireMe();
+      await apply((s) =>
+        replaceGame(s, gameId, (g) =>
+          g.type === 'battleship' ? battleshipShuffleLogic(g, seatOf(g, me)) : g,
+        ),
+      );
+    },
+
+    async bsClear(gameId) {
+      const me = requireMe();
+      await apply((s) =>
+        replaceGame(s, gameId, (g) =>
+          g.type === 'battleship' ? battleshipClearFleetLogic(g, seatOf(g, me)) : g,
+        ),
+      );
+    },
+
+    async bsReady(gameId) {
+      const me = requireMe();
+      await apply((s) =>
+        replaceGame(s, gameId, (g) =>
+          g.type === 'battleship' ? battleshipReadyLogic(g, seatOf(g, me)) : g,
+        ),
+      );
     },
 
     async addMeetPoint(input) {

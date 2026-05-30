@@ -6,10 +6,11 @@
  * illegal), never mutating in place.
  *
  * Supported games:
- *  - tictactoe — 2 players, classic 3×3.
- *  - connect4  — 2 players, 7×6 four-in-a-row.
- *  - reversi   — 2 players, 8×8 Othello (flank & flip).
- *  - dots      — Dots & Boxes, 2–4 players on an n×n grid of boxes.
+ *  - tictactoe  — 2 players, classic 3×3.
+ *  - connect4   — 2 players, 7×6 four-in-a-row.
+ *  - reversi    — 2 players, 8×8 Othello (flank & flip).
+ *  - battleship — 2 players, place fleets then fire on hidden ships.
+ *  - dots       — Dots & Boxes, 2–4 players on an n×n grid of boxes.
  */
 import { generateId } from './ids.js';
 import type { ISODateTime } from './types.js';
@@ -69,8 +70,12 @@ export interface Shot {
 export interface BattleshipGame extends GameBase {
   type: 'battleship';
   size: number; // 10
+  /** 'placing' = arranging ships; 'firing' = the shooting duel. */
+  phase: 'placing' | 'firing';
   /** Per-seat fleet: a list of ships, each the cell indices it occupies. */
   fleets: number[][][];
+  /** Per-seat readiness in the placing phase. */
+  ready: boolean[];
   /** Per-seat shots received at that seat's board (the enemy UI reads only this). */
   shots: Shot[][];
 }
@@ -294,9 +299,12 @@ export function startGame(game: GameSession, now?: () => Date): GameSession {
   if (game.status !== 'lobby') return game;
   if (game.seats.length < gameMeta(game.type).minPlayers) return game;
   const started = { ...game, status: 'playing' as const, turn: 0, winners: [] } as GameSession;
-  // Battleship places both hidden fleets at kick-off.
+  // Battleship opens in the placing phase with an initial random arrangement
+  // (players can rearrange/shuffle, then ready up).
   if (started.type === 'battleship') {
+    started.phase = 'placing';
     started.fleets = [placeFleetRandom(started.size), placeFleetRandom(started.size)];
+    started.ready = [false, false];
     started.shots = emptyShots();
   }
   return touch(started, now);
@@ -362,8 +370,115 @@ function fleetCellCount(fleet: number[][]): number {
   return fleet.reduce((n, ship) => n + ship.length, 0);
 }
 
+/** All cells occupied by a seat's fleet, flattened. */
+function fleetCells(fleet: number[][]): number[] {
+  return fleet.flat();
+}
+
+/**
+ * The straight line of `len` cells starting at `index` in the given
+ * orientation, or null if it would run off the board.
+ */
+export function shipCellsFrom(
+  index: number,
+  len: number,
+  orient: 'h' | 'v',
+  size: number,
+): number[] | null {
+  const row = Math.floor(index / size);
+  const col = index % size;
+  const cells: number[] = [];
+  for (let k = 0; k < len; k++) {
+    const r = orient === 'h' ? row : row + k;
+    const c = orient === 'h' ? col + k : col;
+    if (r >= size || c >= size) return null;
+    cells.push(r * size + c);
+  }
+  return cells;
+}
+
+/** Ship lengths still to place for a seat (full fleet minus placed lengths). */
+export function remainingShipLengths(game: BattleshipGame, seat: number): number[] {
+  const placed = (game.fleets[seat] ?? []).map((s) => s.length);
+  const remaining = [...BATTLESHIP_FLEET];
+  for (const len of placed) {
+    const i = remaining.indexOf(len);
+    if (i >= 0) remaining.splice(i, 1);
+  }
+  return remaining;
+}
+
+/** True once a seat has placed its entire fleet. */
+export function fleetComplete(game: BattleshipGame, seat: number): boolean {
+  return remainingShipLengths(game, seat).length === 0;
+}
+
+/** Place a ship for a seat during the placing phase. No-op if invalid. */
+export function battleshipPlaceShip(
+  game: BattleshipGame,
+  seat: number,
+  cells: number[],
+  now?: () => Date,
+): GameSession {
+  if (game.phase !== 'placing' || game.ready[seat]) return game;
+  if (!remainingShipLengths(game, seat).includes(cells.length)) return game;
+  const taken = new Set(fleetCells(game.fleets[seat] ?? []));
+  if (cells.some((c) => c < 0 || c >= game.size * game.size || taken.has(c))) return game;
+  const fleets = game.fleets.map((f, i) => (i === seat ? [...f, cells] : f));
+  return touch({ ...game, fleets }, now);
+}
+
+/** Remove the ship containing a given cell for a seat. */
+export function battleshipRemoveShipAt(
+  game: BattleshipGame,
+  seat: number,
+  cell: number,
+  now?: () => Date,
+): GameSession {
+  if (game.phase !== 'placing' || game.ready[seat]) return game;
+  const fleet = game.fleets[seat] ?? [];
+  const next = fleet.filter((ship) => !ship.includes(cell));
+  if (next.length === fleet.length) return game;
+  const fleets = game.fleets.map((f, i) => (i === seat ? next : f));
+  return touch({ ...game, fleets }, now);
+}
+
+/** Auto-arrange a seat's whole fleet at random. */
+export function battleshipShuffle(
+  game: BattleshipGame,
+  seat: number,
+  now?: () => Date,
+): GameSession {
+  if (game.phase !== 'placing' || game.ready[seat]) return game;
+  const fleets = game.fleets.map((f, i) => (i === seat ? placeFleetRandom(game.size) : f));
+  return touch({ ...game, fleets }, now);
+}
+
+/** Clear a seat's fleet so they can place from scratch. */
+export function battleshipClearFleet(
+  game: BattleshipGame,
+  seat: number,
+  now?: () => Date,
+): GameSession {
+  if (game.phase !== 'placing' || game.ready[seat]) return game;
+  const fleets = game.fleets.map((f, i) => (i === seat ? [] : f));
+  return touch({ ...game, fleets }, now);
+}
+
+/** Mark a seat ready; once both are ready the firing phase begins. */
+export function battleshipReady(game: BattleshipGame, seat: number, now?: () => Date): GameSession {
+  if (game.phase !== 'placing' || !fleetComplete(game, seat)) return game;
+  const ready = game.ready.map((r, i) => (i === seat ? true : r));
+  const next: BattleshipGame = { ...game, ready };
+  if (ready.every(Boolean)) {
+    next.phase = 'firing';
+    next.turn = 0;
+  }
+  return touch(next, now);
+}
+
 function battleshipMove(game: BattleshipGame, move: GameMove, now?: () => Date): GameSession {
-  if (move.kind !== 'cell') return game;
+  if (move.kind !== 'cell' || game.phase !== 'firing') return game;
   if (move.index < 0 || move.index >= game.size * game.size) return game;
   const opp = game.turn === 0 ? 1 : 0;
   const targetShots = game.shots[opp] ?? [];
@@ -635,9 +750,11 @@ export function resetGame(game: GameSession, now?: () => Date): GameSession {
   } as GameSession;
   // Resize per-seat scores to match the carried-over players.
   if (next.type === 'dots') next.scores = Array(game.seats.length).fill(0);
-  // Re-place hidden fleets for a battleship rematch.
+  // Battleship rematch returns to the placing phase with fresh arrangements.
   if (next.type === 'battleship') {
+    next.phase = 'placing';
     next.fleets = [placeFleetRandom(next.size), placeFleetRandom(next.size)];
+    next.ready = [false, false];
     next.shots = emptyShots();
   }
   return touch(next, now);

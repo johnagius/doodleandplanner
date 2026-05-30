@@ -11,5 +11,17 @@ export default defineConfig({
   plugins: [react()],
   server: { port: 5173 },
   preview: { port: 4173 },
-  build: { outDir: 'dist', sourcemap: true },
+  build: {
+    outDir: 'dist',
+    sourcemap: true,
+    rollupOptions: {
+      output: {
+        // Keep the heavy 3D stack in its own chunk so the entry stays light;
+        // it's only pulled in by the lazy Hero3D import on the home page.
+        manualChunks: {
+          three: ['three', '@react-three/fiber', '@react-three/drei'],
+        },
+      },
+    },
+  },
 });

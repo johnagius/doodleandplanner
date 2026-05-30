@@ -1,8 +1,11 @@
 import { ROOM_TEMPLATES } from '@dap/shared';
-import { useEffect, useState, type FormEvent } from 'react';
+import { lazy, Suspense, useEffect, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { HeroCanvas } from '../../components/HeroCanvas.js';
 import { GoogleSignInButton } from '../../components/GoogleSignInButton.js';
+
+// The heavy three.js scene is code-split so it never blocks first paint.
+const Hero3D = lazy(() => import('../../components/Hero3D.js'));
 import {
   getPreferredName,
   getRepository,
@@ -35,6 +38,9 @@ export function HomePage() {
     <div className="container">
       <section className="hero">
         <HeroCanvas className="hero-canvas" />
+        <Suspense fallback={null}>
+          <Hero3D className="hero-3d-layer" />
+        </Suspense>
         <div className="hero-inner">
           <span className="hero-eyebrow">Plans, polls &amp; doodles — together</span>
           <h1 className="hero-title">

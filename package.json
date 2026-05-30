@@ -11,6 +11,10 @@
     "packages/*",
     "apps/*"
   ],
+  "overrides": {
+    "three": "0.169.0",
+    "@types/three": "0.169.0"
+  },
   "scripts": {
     "dev": "npm run dev --workspace @dap/web",
     "build": "npm run build --workspace @dap/shared && npm run build --workspace @dap/web",

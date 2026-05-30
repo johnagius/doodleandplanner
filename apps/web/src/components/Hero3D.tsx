@@ -1,7 +1,14 @@
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Float, MeshDistortMaterial, Icosahedron } from '@react-three/drei';
-import { useRef } from 'react';
-import * as THREE from 'three';
+import { useMemo, useRef } from 'react';
+import {
+  BufferAttribute,
+  BufferGeometry,
+  Color,
+  PointsMaterial,
+  Points as ThreePoints,
+  type Group,
+} from 'three';
 
 /**
  * 3D hero scene (lazy-loaded). A floating, distorted "gem" with an iridescent
@@ -11,71 +18,73 @@ import * as THREE from 'three';
  */
 
 function Gem({ dark }: { dark: boolean }) {
-  const mesh = useRef<THREE.Mesh>(null);
+  // Rotate a wrapping group so we never depend on drei's mesh ref typing.
+  const group = useRef<Group | null>(null);
   const { pointer } = useThree();
 
   useFrame((_, dt) => {
-    const m = mesh.current;
-    if (!m) return;
+    const g = group.current;
+    if (!g) return;
     // Gentle auto-rotation, nudged toward the pointer.
-    m.rotation.y += dt * 0.25 + pointer.x * dt * 0.6;
-    m.rotation.x += dt * 0.12 + -pointer.y * dt * 0.4;
+    g.rotation.y += dt * 0.25 + pointer.x * dt * 0.6;
+    g.rotation.x += dt * 0.12 + -pointer.y * dt * 0.4;
   });
 
   return (
     <Float speed={1.4} rotationIntensity={0.6} floatIntensity={1.1}>
-      <Icosahedron ref={mesh} args={[1.6, 6]}>
-        <MeshDistortMaterial
-          color={dark ? '#6366f1' : '#8b8ef8'}
-          emissive={dark ? '#3b1d6e' : '#c7b6ff'}
-          emissiveIntensity={dark ? 0.55 : 0.35}
-          roughness={0.18}
-          metalness={0.85}
-          distort={0.42}
-          speed={1.6}
-        />
-      </Icosahedron>
+      <group ref={(node) => void (group.current = node)}>
+        <Icosahedron args={[1.6, 6]}>
+          <MeshDistortMaterial
+            color={dark ? '#6366f1' : '#8b8ef8'}
+            emissive={dark ? '#3b1d6e' : '#c7b6ff'}
+            emissiveIntensity={dark ? 0.55 : 0.35}
+            roughness={0.18}
+            metalness={0.85}
+            distort={0.42}
+            speed={1.6}
+          />
+        </Icosahedron>
+      </group>
     </Float>
   );
 }
 
 function Particles({ count = 240, dark }: { count?: number; dark: boolean }) {
-  const points = useRef<THREE.Points>(null);
-  const positions = useRef<Float32Array>();
-  if (!positions.current) {
+  const group = useRef<Group | null>(null);
+
+  // Build the THREE.Points object imperatively (avoids fragile <bufferAttribute>
+  // JSX typing) and render it via <primitive>.
+  const object = useMemo(() => {
     const arr = new Float32Array(count * 3);
     for (let i = 0; i < count; i++) {
       arr[i * 3] = (Math.random() - 0.5) * 14;
       arr[i * 3 + 1] = (Math.random() - 0.5) * 8;
       arr[i * 3 + 2] = (Math.random() - 0.5) * 6 - 2;
     }
-    positions.current = arr;
-  }
+    const geom = new BufferGeometry();
+    geom.setAttribute('position', new BufferAttribute(arr, 3));
+    const mat = new PointsMaterial({
+      size: 0.05,
+      sizeAttenuation: true,
+      color: new Color(dark ? '#c4b5fd' : '#a5b4fc'),
+      transparent: true,
+      opacity: dark ? 0.8 : 0.6,
+      depthWrite: false,
+    });
+    return new ThreePoints(geom, mat);
+  }, [count, dark]);
+
   useFrame((state) => {
-    const p = points.current;
-    if (!p) return;
-    p.rotation.y = state.clock.elapsedTime * 0.03;
-    p.rotation.x = Math.sin(state.clock.elapsedTime * 0.05) * 0.1;
+    const g = group.current;
+    if (!g) return;
+    g.rotation.y = state.clock.elapsedTime * 0.03;
+    g.rotation.x = Math.sin(state.clock.elapsedTime * 0.05) * 0.1;
   });
+
   return (
-    <points ref={points}>
-      <bufferGeometry>
-        <bufferAttribute
-          attach="attributes-position"
-          count={count}
-          array={positions.current}
-          itemSize={3}
-        />
-      </bufferGeometry>
-      <pointsMaterial
-        size={0.05}
-        sizeAttenuation
-        color={dark ? '#c4b5fd' : '#a5b4fc'}
-        transparent
-        opacity={dark ? 0.8 : 0.6}
-        depthWrite={false}
-      />
-    </points>
+    <group ref={(node) => void (group.current = node)}>
+      <primitive object={object} />
+    </group>
   );
 }
 

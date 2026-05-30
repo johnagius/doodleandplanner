@@ -5,6 +5,7 @@ import { isRealtimeBackend } from '../../lib/storage/index.js';
 import { useRoomStore } from '../../state/roomStore.js';
 import { ActivitiesPanel } from '../activities/ActivitiesPanel.js';
 import { ChatPanel } from '../chat/ChatPanel.js';
+import { AvailabilityGridView } from '../grid/AvailabilityGridView.js';
 import { DoodleCanvas } from '../doodle/DoodleCanvas.js';
 import { EventsPanel } from '../events/EventsPanel.js';
 import { InventoryPanel } from '../inventory/InventoryPanel.js';
@@ -15,6 +16,7 @@ import { ShareBar } from './ShareBar.js';
 
 type TabId =
   | 'schedule'
+  | 'grid'
   | 'doodle'
   | 'plan'
   | 'inventory'
@@ -25,6 +27,7 @@ type TabId =
 
 const TABS: { id: TabId; label: string; icon: string }[] = [
   { id: 'schedule', label: 'Schedule', icon: '🗳️' },
+  { id: 'grid', label: 'Grid', icon: '🟩' },
   { id: 'doodle', label: 'Doodle', icon: '🎨' },
   { id: 'plan', label: 'Plan', icon: '🗓️' },
   { id: 'inventory', label: 'Inventory', icon: '🎒' },
@@ -129,6 +132,7 @@ export function RoomWorkspace() {
 
       <div role="tabpanel">
         {tab === 'schedule' && <PollsPanel />}
+        {tab === 'grid' && <AvailabilityGridView />}
         {tab === 'doodle' && <DoodleCanvas />}
         {tab === 'plan' && <EventsPanel />}
         {tab === 'inventory' && <InventoryPanel />}

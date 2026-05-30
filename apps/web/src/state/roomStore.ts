@@ -23,6 +23,7 @@ import {
   renameMember,
   rotateInviteToken,
   scheduleActivity,
+  setCells,
   setItemStatus,
   setRsvp,
   toggleInterest,
@@ -38,6 +39,7 @@ import {
   type Point,
   type RoomSettings,
   type RoomState,
+  type GridSpec,
   type RsvpStatus,
   type SchedulePoll,
   type StrokeTool,
@@ -135,6 +137,10 @@ interface RoomStore {
 
   // availability
   shareMyAvailability: (busy: BusyInterval[]) => Promise<void>;
+
+  // availability grid (Doodle-style week × time matrix)
+  setupGrid: (spec: GridSpec) => Promise<void>;
+  setMyGridCells: (cellIds: string[], available: boolean) => Promise<void>;
 
   // expenses
   addExpense: (input: {
@@ -483,6 +489,18 @@ export const useRoomStore = create<RoomStore>((set, get) => {
           busy,
           updatedAt: new Date().toISOString(),
         }),
+      }));
+    },
+
+    async setupGrid(spec) {
+      await apply((s) => ({ ...s, gridSpec: spec }));
+    },
+
+    async setMyGridCells(cellIds, available) {
+      const me = requireMe();
+      await apply((s) => ({
+        ...s,
+        availabilityGrid: setCells(s.availabilityGrid ?? {}, me, cellIds, available),
       }));
     },
 

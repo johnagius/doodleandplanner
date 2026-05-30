@@ -87,7 +87,7 @@ test('manage the inventory checklist', async ({ page }) => {
   await page.getByRole('button', { name: 'Add', exact: true }).click();
 
   await expect(page.getByText('Tent')).toBeVisible();
-  await expect(page.getByText('unclaimed')).toBeVisible();
+  await expect(page.locator('.badge', { hasText: 'unclaimed' })).toBeVisible();
   // Category becomes a section header.
   await expect(page.locator('.section-label')).toContainText('Gear');
   await page.getByRole('button', { name: /bring it/ }).click();
@@ -310,4 +310,27 @@ test('add an event to the plan and RSVP', async ({ page }) => {
   await expect(card.getByText(/0 going/)).toBeVisible();
   await card.getByRole('button', { name: /Going/ }).click();
   await expect(card.getByText(/1 going/)).toBeVisible();
+});
+
+test('set up the availability grid and paint cells', async ({ page }) => {
+  await createRoom(page);
+  await page.getByRole('tab', { name: /Grid/ }).click();
+  await page.getByRole('button', { name: 'Create grid' }).click();
+
+  // Grid renders cells; paint the first few by dragging.
+  const cells = page.locator('.avail-cell');
+  await expect(cells.first()).toBeVisible();
+  const a = (await cells.nth(0).boundingBox())!;
+  const b = (await cells.nth(2).boundingBox())!;
+  await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2, { steps: 5 });
+  await page.mouse.up();
+
+  // "Best so far" should now reflect availability.
+  await expect(page.getByText(/Best so far/)).toBeVisible();
+
+  // Switch to the group heatmap.
+  await page.getByRole('button', { name: /Group heatmap/ }).click();
+  await expect(page.getByText(/people free of/)).toBeVisible();
 });

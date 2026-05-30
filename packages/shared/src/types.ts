@@ -235,6 +235,18 @@ export interface Message {
   createdAt: ISODateTime;
 }
 
+/** Spec for a Doodle-style availability grid (week × time matrix). */
+export interface GridSpec {
+  startDay: ISODateTime;
+  days: number;
+  startHour: number;
+  endHour: number;
+  slotMinutes: number;
+}
+
+/** Per-member available cell ids, keyed by member id. */
+export type AvailabilityGrid = Record<string, string[]>;
+
 /** The complete persisted state for a single room. */
 export interface RoomState {
   /** Schema version this state was last normalised to. Absent ⇒ legacy (0). */
@@ -251,4 +263,8 @@ export interface RoomState {
   availability?: MemberAvailability[];
   /** Shared expenses for cost-splitting (older states omit this). */
   expenses?: Expense[];
+  /** The current availability-grid spec (week × time matrix), if set up. */
+  gridSpec?: GridSpec;
+  /** Per-member available cell ids for the availability grid. */
+  availabilityGrid?: AvailabilityGrid;
 }

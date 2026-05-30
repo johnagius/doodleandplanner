@@ -1656,3 +1656,20 @@ label.field {
   border-color: var(--primary);
   background: var(--primary-soft);
 }
+
+/* Tab notification badge */
+.tab-badge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  margin-left: 2px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  line-height: 1;
+  color: #fff;
+  background: var(--accent);
+  border-radius: 999px;
+  box-shadow: 0 0 0 2px var(--surface-2);
+}

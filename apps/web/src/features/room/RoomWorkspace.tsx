@@ -1,6 +1,6 @@
-import { computeNudges, findMember } from '@dap/shared';
+import { computeNudges, findMember, isMyTurn } from '@dap/shared';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Avatar, AvatarStack } from '../../components/Avatar.js';
 import { HeroCanvas } from '../../components/HeroCanvas.js';
 import { isRealtimeBackend } from '../../lib/storage/index.js';
@@ -85,6 +85,27 @@ export function RoomWorkspace() {
       });
   }
 
+  // Tab badges: games where it's your move, and unread chat messages.
+  const messages = state.messages ?? [];
+  const readKey = `dap:chatRead:${state.room.id}`;
+  const [chatReadAt, setChatReadAt] = useState(() => localStorage.getItem(readKey) ?? '');
+  const latestMsgAt = messages.length ? messages[messages.length - 1]!.createdAt : '';
+
+  // Mark chat read whenever it's the active tab (or new messages arrive there).
+  useEffect(() => {
+    if (tab === 'chat' && latestMsgAt && latestMsgAt !== chatReadAt) {
+      setChatReadAt(latestMsgAt);
+      localStorage.setItem(readKey, latestMsgAt);
+    }
+  }, [tab, latestMsgAt, chatReadAt, readKey]);
+
+  const myTurnGames = meId ? (state.games ?? []).filter((g) => isMyTurn(g, meId)).length : 0;
+  const unreadChat =
+    tab === 'chat'
+      ? 0
+      : messages.filter((m) => m.authorId !== meId && m.createdAt > chatReadAt).length;
+  const badges: Partial<Record<TabId, number>> = { games: myTurnGames, chat: unreadChat };
+
   return (
     <div className="container">
       <section className="room-header">
@@ -149,6 +170,11 @@ export function RoomWorkspace() {
             )}
             <span className="tab-label">
               <span aria-hidden>{t.icon}</span> {t.label}
+              {(badges[t.id] ?? 0) > 0 && (
+                <span className="tab-badge" aria-label={`${badges[t.id]} new`}>
+                  {badges[t.id]}
+                </span>
+              )}
             </span>
           </button>
         ))}

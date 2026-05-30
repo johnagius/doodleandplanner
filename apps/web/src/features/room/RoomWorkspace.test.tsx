@@ -1,4 +1,11 @@
-import { createRoom, emptyRoomState } from '@dap/shared';
+import {
+  addMember,
+  createGame,
+  createRoom,
+  emptyRoomState,
+  joinGame,
+  startGame,
+} from '@dap/shared';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
@@ -50,6 +57,21 @@ describe('RoomWorkspace', () => {
     expect(screen.getByRole('tab', { name: /Schedule/ })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: /Doodle/ })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: /Inventory/ })).toBeInTheDocument();
+  });
+
+  it('badges the Games tab when it is your move', () => {
+    const s = useRoomStore.getState().state!;
+    const meId = useRoomStore.getState().meId!;
+    const withBob = addMember(s.room, { name: 'Bob' });
+    let g = createGame({ roomId: s.room.id, type: 'tictactoe', createdBy: meId });
+    g = joinGame(g, withBob.member.id);
+    g = startGame(g); // turn 0 = me (the owner)
+    useRoomStore.setState({ state: { ...s, room: withBob.room, games: [g] } });
+
+    renderWorkspace();
+    const gamesTab = screen.getByRole('tab', { name: /Games/ });
+    expect(gamesTab).toHaveTextContent('1');
+    expect(gamesTab.querySelector('.tab-badge')).not.toBeNull();
   });
 
   it('adds and claims an inventory item through the UI', async () => {

@@ -1,6 +1,6 @@
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Float, MeshDistortMaterial, Icosahedron } from '@react-three/drei';
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import {
   BufferAttribute,
   BufferGeometry,
@@ -9,6 +9,7 @@ import {
   Points as ThreePoints,
   type Group,
 } from 'three';
+import { useThemeIsDark } from '../lib/useTheme.js';
 
 /**
  * 3D hero scene (lazy-loaded). A floating, distorted "gem" with an iridescent
@@ -74,6 +75,16 @@ function Particles({ count = 240, dark }: { count?: number; dark: boolean }) {
     return new ThreePoints(geom, mat);
   }, [count, dark]);
 
+  // <primitive> does not auto-dispose objects it didn't create, so free the
+  // geometry/material when the object is replaced (theme/count) or unmounts.
+  useEffect(
+    () => () => {
+      object.geometry.dispose();
+      object.material.dispose();
+    },
+    [object],
+  );
+
   useFrame((state) => {
     const g = group.current;
     if (!g) return;
@@ -89,7 +100,7 @@ function Particles({ count = 240, dark }: { count?: number; dark: boolean }) {
 }
 
 export default function Hero3D({ className }: { className?: string }) {
-  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const dark = useThemeIsDark();
   const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
 
   return (

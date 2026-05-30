@@ -205,8 +205,17 @@ export function HeroCanvas({ className }: { className?: string }) {
       raf = requestAnimationFrame(frame);
     };
 
+    let ro: ResizeObserver | null = null;
+    let mo: MutationObserver | null = null;
     if (prefersReduced) {
-      render(0); // one static frame
+      render(0); // one static frame — but keep it correct as things change:
+      // redraw on container resize (and first layout) and on theme toggle.
+      if (typeof ResizeObserver !== 'undefined') {
+        ro = new ResizeObserver(() => render(0));
+        ro.observe(cv);
+      }
+      mo = new MutationObserver(() => render(0));
+      mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
     } else {
       frame(start);
     }
@@ -219,9 +228,18 @@ export function HeroCanvas({ className }: { className?: string }) {
 
     return () => {
       cancelAnimationFrame(raf);
+      ro?.disconnect();
+      mo?.disconnect();
       cv.removeEventListener('webglcontextlost', onLost);
       host.removeEventListener('pointermove', onMove);
       host.removeEventListener('pointerleave', onLeave);
+      // Release GPU resources — browsers cap live WebGL contexts, and this hero
+      // mounts/unmounts on every Home↔Room navigation.
+      gl.deleteProgram(prog);
+      gl.deleteShader(vs);
+      gl.deleteShader(fs);
+      gl.deleteBuffer(buf);
+      gl.getExtension('WEBGL_lose_context')?.loseContext();
     };
   }, []);
 

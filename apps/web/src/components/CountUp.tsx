@@ -16,15 +16,18 @@ export function CountUp({
 }) {
   const reduced = useReducedMotion();
   const [display, setDisplay] = useState(value);
-  const fromRef = useRef(value);
+  // The value currently on screen — so an animation interrupted mid-flight
+  // resumes from where it is rather than snapping back to its old start.
+  const displayRef = useRef(value);
   const rafRef = useRef(0);
 
   useEffect(() => {
     if (reduced) {
+      displayRef.current = value;
       setDisplay(value);
       return;
     }
-    const from = fromRef.current;
+    const from = displayRef.current;
     const to = value;
     if (from === to) return;
     const start = performance.now();
@@ -33,9 +36,10 @@ export function CountUp({
       const t = Math.min(1, (now - start) / durationMs);
       // easeOutCubic
       const eased = 1 - Math.pow(1 - t, 3);
-      setDisplay(from + (to - from) * eased);
+      const next = from + (to - from) * eased;
+      displayRef.current = next;
+      setDisplay(next);
       if (t < 1) rafRef.current = requestAnimationFrame(tick);
-      else fromRef.current = to;
     };
     rafRef.current = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafRef.current);

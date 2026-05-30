@@ -148,6 +148,30 @@ export class HttpRepository implements Repository {
     };
   }
 
+  photoEndpoint(slug: string, photoId: string): string {
+    return this.url(`/api/rooms/${encodeURIComponent(slug)}/photos/${encodeURIComponent(photoId)}`);
+  }
+
+  async uploadPhoto(slug: string, photoId: string, blob: Blob): Promise<void> {
+    const res = await this.fetchFn(this.photoEndpoint(slug, photoId), {
+      method: 'PUT',
+      headers: { 'Content-Type': blob.type || 'image/jpeg' },
+      body: blob,
+    });
+    if (!res.ok) throw new Error(`Could not upload photo (${res.status})`);
+  }
+
+  async getPhotoBlob(slug: string, photoId: string): Promise<Blob | null> {
+    const res = await this.fetchFn(this.photoEndpoint(slug, photoId));
+    if (res.status === 404) return null;
+    if (!res.ok) throw new Error(`Could not load photo (${res.status})`);
+    return res.blob();
+  }
+
+  async deletePhotoBytes(slug: string, photoId: string): Promise<void> {
+    await this.fetchFn(this.photoEndpoint(slug, photoId), { method: 'DELETE' }).catch(() => {});
+  }
+
   private emit(state: RoomState): void {
     this.listeners.get(state.room.slug)?.forEach((l) => l(state));
   }

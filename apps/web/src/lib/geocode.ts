@@ -1,0 +1,42 @@
+/**
+ * Lightweight reverse geocoding via OpenStreetMap's free Nominatim service.
+ * We only need a coarse **country** (plus an optional locality label) to group
+ * photos into albums, so we request a low zoom and fail soft on any error.
+ */
+export interface GeoPlace {
+  country?: string;
+  place?: string;
+}
+
+export async function reverseGeocode(lat: number, lng: number): Promise<GeoPlace> {
+  try {
+    const url =
+      `https://nominatim.openstreetmap.org/reverse?format=jsonv2` +
+      `&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lng)}&zoom=8&accept-language=en`;
+    const res = await fetch(url, { headers: { Accept: 'application/json' } });
+    if (!res.ok) return {};
+    const data = (await res.json()) as { address?: Record<string, string> };
+    const a = data.address ?? {};
+    return {
+      country: a.country,
+      place: a.city ?? a.town ?? a.village ?? a.state ?? a.county,
+    };
+  } catch {
+    return {};
+  }
+}
+
+/** Promisified one-shot geolocation read. Rejects if denied/unavailable. */
+export function getCurrentPosition(): Promise<GeolocationPosition> {
+  return new Promise((resolve, reject) => {
+    if (!('geolocation' in navigator)) {
+      reject(new Error('Geolocation unavailable'));
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(resolve, reject, {
+      enableHighAccuracy: false,
+      timeout: 10000,
+      maximumAge: 60000,
+    });
+  });
+}

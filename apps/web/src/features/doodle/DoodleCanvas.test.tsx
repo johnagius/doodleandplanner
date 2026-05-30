@@ -29,6 +29,11 @@ const fakeRepo: Repository = {
       presenceCb = null;
     };
   },
+  async uploadPhoto() {},
+  async getPhotoBlob() {
+    return null;
+  },
+  async deletePhotoBytes() {},
 };
 
 beforeEach(() => {

@@ -1,4 +1,5 @@
 import { migrateRoomState, type RoomState } from '@dap/shared';
+import { idbDelete, idbGet, idbPut } from './idbPhotos.js';
 import { type Repository, RoomExistsError, type RoomSummary } from './repository.js';
 
 const STORE_VERSION = 1;
@@ -149,6 +150,18 @@ export class LocalStorageRepository implements Repository {
         this.presence.delete(slug);
       }
     };
+  }
+
+  async uploadPhoto(slug: string, photoId: string, blob: Blob): Promise<void> {
+    await idbPut(slug, photoId, blob);
+  }
+
+  async getPhotoBlob(slug: string, photoId: string): Promise<Blob | null> {
+    return idbGet(slug, photoId);
+  }
+
+  async deletePhotoBytes(slug: string, photoId: string): Promise<void> {
+    await idbDelete(slug, photoId);
   }
 
   private attachCrossTab(): void {

@@ -3,23 +3,21 @@
 Tracked work for Doodle & Planner. Shipped items live on `main` + the deployed
 site; this file is the running backlog.
 
-## 📸 Photos & gallery (in progress)
+## 📸 Photos & gallery
 
 Let members capture/share photos and browse them as geotagged albums.
 
-- [ ] **Storage backend** — store photo bytes in the per-room Durable Object
+- [x] **Storage backend** — photo bytes stored in the per-room Durable Object
       (SQLite BLOBs; no new bindings/permissions), referenced by lightweight
       metadata that syncs in `RoomState`. Client downscales before upload.
-  - `PUT/GET/DELETE /api/rooms/:slug/photos/:photoId` on the Worker.
-  - `LocalStorageRepository` mirrors this with IndexedDB so offline mode works.
-- [ ] **Capture & gallery** — take a photo (device camera via
-      `<input capture>`) or pick a file; a **Gallery** tab shows the room's
-      photos in a grid with captions, author and lightbox view.
-- [ ] **Geotag & albums** — capture geolocation at photo time, reverse-geocode
-      to **country** (free OSM Nominatim), and group the gallery into albums by
-      country. Within a country, group by **event** (user-editable tag) — e.g.
-      "Malta" → "Beach day". City-level precision not required. Photos without a
-      location land in an "Unsorted" album.
+      `PUT/GET/DELETE /api/rooms/:slug/photos/:photoId`; `LocalStorageRepository`
+      mirrors it with IndexedDB for offline mode.
+- [x] **Capture & gallery** — take a photo (device camera via `<input capture>`)
+      or pick files; a **Gallery** tab shows photos in a grid with captions,
+      author and a lightbox (edit caption/event, delete).
+- [x] **Geotag & albums** — geolocation captured at photo time, reverse-geocoded
+      to **country** (OSM Nominatim), grouped into albums by country then by
+      **event** (user-editable tag). No-location photos land in their own album.
 - [ ] **Chat integration** — attach a photo to a chat message; render
       thumbnails inline, click to open in the gallery lightbox.
 

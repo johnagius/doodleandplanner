@@ -42,6 +42,19 @@ export interface Repository {
 
   /** Subscribe to ephemeral presence payloads. Returns an unsubscribe function. */
   subscribePresence?(slug: string, listener: (payload: unknown) => void): () => void;
+
+  /** Store the bytes for a photo under the given id. */
+  uploadPhoto(slug: string, photoId: string, blob: Blob): Promise<void>;
+  /** Fetch a photo's bytes, or null if unknown. */
+  getPhotoBlob(slug: string, photoId: string): Promise<Blob | null>;
+  /** Remove a photo's bytes. */
+  deletePhotoBytes(slug: string, photoId: string): Promise<void>;
+  /**
+   * A directly-loadable URL for a photo (e.g. the Worker endpoint), letting the
+   * browser fetch/cache it in an <img>. Omitted by backends that only have local
+   * bytes — callers then fall back to {@link getPhotoBlob} + object URLs.
+   */
+  photoEndpoint?(slug: string, photoId: string): string;
 }
 
 export class RoomExistsError extends Error {

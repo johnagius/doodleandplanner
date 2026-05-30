@@ -27,3 +27,4 @@ export * from './nudges.js';
 export * from './grid.js';
 export * from './games.js';
 export * from './meet.js';
+export * from './photos.js';

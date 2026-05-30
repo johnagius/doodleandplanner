@@ -16,6 +16,9 @@ import {
   resetGame as resetGameLogic,
   createMeetPoint,
   updateMeetPoint,
+  createPhoto,
+  updatePhoto,
+  generateId,
   createActivity,
   createEvent,
   createExpense,
@@ -51,6 +54,7 @@ import {
   type GameSession,
   type GameType,
   type MeetPoint,
+  type Photo,
   type GridSpec,
   type RsvpStatus,
   type SchedulePoll,
@@ -196,6 +200,24 @@ interface RoomStore {
     patch: Partial<Pick<MeetPoint, 'label' | 'note' | 'time' | 'lat' | 'lng'>>,
   ) => Promise<void>;
   removeMeetPoint: (pointId: string) => Promise<void>;
+
+  // Photos (bytes uploaded via the repository; metadata syncs in RoomState)
+  addPhoto: (input: {
+    blob: Blob;
+    width: number;
+    height: number;
+    caption?: string;
+    lat?: number;
+    lng?: number;
+    country?: string;
+    place?: string;
+    event?: string;
+  }) => Promise<void>;
+  editPhoto: (
+    photoId: string,
+    patch: Partial<Pick<Photo, 'caption' | 'event' | 'country' | 'place'>>,
+  ) => Promise<void>;
+  removePhoto: (photoId: string) => Promise<void>;
 }
 
 /** Replace one game in the room's games array via a pure updater. */
@@ -659,6 +681,48 @@ export const useRoomStore = create<RoomStore>((set, get) => {
         ...s,
         meetPoints: (s.meetPoints ?? []).filter((p) => p.id !== pointId),
       }));
+    },
+
+    async addPhoto(input) {
+      const me = requireMe();
+      const current = get().state;
+      if (!current) return;
+      // Upload bytes first under a fresh id, then record syncing metadata.
+      const id = generateId('photo');
+      await repo().uploadPhoto(current.room.slug, id, input.blob);
+      const photo = createPhoto({
+        id,
+        roomId: current.room.id,
+        authorId: me,
+        mime: input.blob.type || 'image/jpeg',
+        width: input.width,
+        height: input.height,
+        caption: input.caption,
+        lat: input.lat,
+        lng: input.lng,
+        country: input.country,
+        place: input.place,
+        event: input.event,
+      });
+      await apply((s) => ({ ...s, photos: [...(s.photos ?? []), photo] }));
+    },
+
+    async editPhoto(photoId, patch) {
+      requireMe();
+      await apply((s) => ({
+        ...s,
+        photos: (s.photos ?? []).map((p) => (p.id === photoId ? updatePhoto(p, patch) : p)),
+      }));
+    },
+
+    async removePhoto(photoId) {
+      requireMe();
+      const current = get().state;
+      await apply((s) => ({ ...s, photos: (s.photos ?? []).filter((p) => p.id !== photoId) }));
+      if (current)
+        void repo()
+          .deletePhotoBytes(current.room.slug, photoId)
+          .catch(() => {});
     },
   };
 });

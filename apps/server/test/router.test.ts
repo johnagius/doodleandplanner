@@ -9,6 +9,25 @@ describe('route', () => {
     expect(route('GET', '/api/rooms/abc123/ws')).toEqual({ kind: 'ws', slug: 'abc123' });
   });
 
+  it('routes photo paths', () => {
+    expect(route('PUT', '/api/rooms/abc/photos/p1')).toEqual({
+      kind: 'photo-put',
+      slug: 'abc',
+      photoId: 'p1',
+    });
+    expect(route('GET', '/api/rooms/abc/photos/p1')).toEqual({
+      kind: 'photo-get',
+      slug: 'abc',
+      photoId: 'p1',
+    });
+    expect(route('DELETE', '/api/rooms/abc/photos/p1')).toEqual({
+      kind: 'photo-del',
+      slug: 'abc',
+      photoId: 'p1',
+    });
+    expect(route('POST', '/api/rooms/abc/photos/p1')).toEqual({ kind: 'not-found' });
+  });
+
   it('handles preflight, health and trailing slashes', () => {
     expect(route('OPTIONS', '/api/rooms/abc')).toEqual({ kind: 'preflight' });
     expect(route('GET', '/api/health')).toEqual({ kind: 'health' });

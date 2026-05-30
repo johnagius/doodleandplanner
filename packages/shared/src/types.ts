@@ -186,6 +186,32 @@ export interface PlannedEvent {
   createdAt: ISODateTime;
 }
 
+/**
+ * A shared photo. Only lightweight metadata lives in {@link RoomState} and
+ * syncs; the image bytes are stored separately (via the Repository) and fetched
+ * on demand by id.
+ */
+export interface Photo {
+  id: string;
+  roomId: string;
+  authorId: string;
+  caption?: string;
+  /** MIME type of the stored bytes, e.g. "image/jpeg". */
+  mime: string;
+  width: number;
+  height: number;
+  /** Optional geotag captured when the photo was taken. */
+  lat?: number;
+  lng?: number;
+  /** Reverse-geocoded country, used to group photos into albums (e.g. "Malta"). */
+  country?: string;
+  /** Optional finer place label (e.g. city/locality), informational. */
+  place?: string;
+  /** User-editable event tag within a country album (e.g. "Beach day"). */
+  event?: string;
+  createdAt: ISODateTime;
+}
+
 /** A pinned meet-up location on the room map, with an optional time + note. */
 export interface MeetPoint {
   id: string;
@@ -286,4 +312,6 @@ export interface RoomState {
   games?: GameSession[];
   /** Pinned map meet-up points. Older states omit this. */
   meetPoints?: MeetPoint[];
+  /** Shared photo metadata (bytes stored separately). Older states omit this. */
+  photos?: Photo[];
 }

@@ -1,12 +1,22 @@
-import { createRoom, emptyRoomState, tallyPoll, type RoomState } from '@dap/shared';
-import { beforeEach, describe, expect, it } from 'vitest';
+import {
+  createRoom,
+  emptyRoomState,
+  linkGoogleProfile,
+  tallyPoll,
+  type RoomState,
+} from '@dap/shared';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   LocalStorageRepository,
+  clearIdentity,
   getRepository,
   setIdentity,
   setRepository,
 } from '../lib/storage/index.js';
+import { useGoogleStore } from './googleStore.js';
 import { useRoomStore } from './roomStore.js';
+
+afterEach(() => useGoogleStore.setState({ profile: null, email: null }));
 
 let seed: RoomState;
 let ownerId: string;
@@ -41,6 +51,35 @@ describe('roomStore loading & identity', () => {
   it('returns null state for unknown rooms', async () => {
     await store().loadRoom('missing');
     expect(store().state).toBeNull();
+  });
+
+  it('recognises a signed-in member across devices by Google email', async () => {
+    // Owner links a Google email; persist it.
+    const linked = {
+      ...seed,
+      room: linkGoogleProfile(seed.room, ownerId, { email: 'alice@example.com', name: 'Alice' }),
+    };
+    await getRepository().saveRoom(linked);
+
+    // Simulate a fresh device: no local identity, but signed in as that email.
+    clearIdentity(seed.room.id);
+    useGoogleStore.setState({
+      profile: { email: 'alice@example.com' },
+      email: 'alice@example.com',
+    });
+
+    await store().loadRoom(seed.room.slug);
+    expect(store().meId).toBe(ownerId);
+  });
+
+  it('does not adopt an identity when no member email matches', async () => {
+    clearIdentity(seed.room.id);
+    useGoogleStore.setState({
+      profile: { email: 'stranger@example.com' },
+      email: 'stranger@example.com',
+    });
+    await store().loadRoom(seed.room.slug);
+    expect(store().meId).toBeNull();
   });
 
   it('joins a room as a new member and persists', async () => {

@@ -2,6 +2,7 @@ import { verifyInvite, verifyPassword } from '@dap/shared';
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { getPreferredName, setPreferredName } from '../../lib/storage/index.js';
+import { useGoogleStore } from '../../state/googleStore.js';
 import { useRoomStore } from '../../state/roomStore.js';
 import { RoomWorkspace } from './RoomWorkspace.js';
 
@@ -12,13 +13,19 @@ export function RoomPage() {
   const [params] = useSearchParams();
   const inviteToken = params.get('invite') ?? undefined;
 
-  const { state, meId, loading, loadRoom, leave } = useRoomStore();
+  const { state, meId, loading, loadRoom, leave, refreshIdentity } = useRoomStore();
+  const googleProfile = useGoogleStore((s) => s.profile);
   const [unlocked, setUnlocked] = useState(false);
 
   useEffect(() => {
     void loadRoom(slug);
     return () => leave();
   }, [slug, loadRoom, leave]);
+
+  // Signing in (e.g. on a new device) may reveal that I'm already a member.
+  useEffect(() => {
+    if (googleProfile) refreshIdentity();
+  }, [googleProfile, refreshIdentity]);
 
   useEffect(() => {
     if (state?.room) {

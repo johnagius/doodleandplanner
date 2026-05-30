@@ -64,6 +64,27 @@ import {
 } from '@dap/shared';
 import { create } from 'zustand';
 import { getIdentity, getRepository, setIdentity } from '../lib/storage/index.js';
+import { useGoogleStore } from './googleStore.js';
+
+/**
+ * Resolve which member "I" am in a room: the device-local identity if it still
+ * matches a member, otherwise — when signed in — the member carrying my Google
+ * email, so the same person is recognised across devices. Persists the match
+ * locally so subsequent loads are instant.
+ */
+function resolveIdentity(state: RoomState): string | null {
+  const local = getIdentity(state.room.id);
+  if (local && state.room.members.some((m) => m.id === local)) return local;
+  const email = useGoogleStore.getState().profile?.email;
+  if (email) {
+    const mine = state.room.members.find((m) => m.googleEmail === email);
+    if (mine) {
+      setIdentity(state.room.id, mine.id);
+      return mine.id;
+    }
+  }
+  return null;
+}
 
 interface RoomStore {
   state: RoomState | null;
@@ -76,6 +97,8 @@ interface RoomStore {
   leave: () => void;
   joinRoom: (name: string) => Promise<Member | null>;
   linkGoogle: (profile: { email: string; name?: string; avatarUrl?: string }) => Promise<void>;
+  /** Re-resolve which member I am (e.g. after signing in on a new device). */
+  refreshIdentity: () => void;
 
   // polls
   addPoll: (input: {
@@ -317,7 +340,7 @@ export const useRoomStore = create<RoomStore>((set, get) => {
       const unsub = repo().subscribe(slug, onIncoming);
       set({
         state,
-        meId: getIdentity(state.room.id),
+        meId: resolveIdentity(state),
         loading: false,
         unsubscribe: unsub,
       });
@@ -332,17 +355,34 @@ export const useRoomStore = create<RoomStore>((set, get) => {
     async joinRoom(name) {
       const current = get().state;
       if (!current) return null;
-      const { room, member } = addMember(current.room, { name });
+      const added = addMember(current.room, { name });
+      let room = added.room;
+      // Stamp my Google identity on the new member so other devices recognise me.
+      const profile = useGoogleStore.getState().profile;
+      if (profile?.email) {
+        room = linkGoogleProfile(room, added.member.id, {
+          email: profile.email,
+          name: profile.name,
+          avatarUrl: profile.picture,
+        });
+      }
       const next = { ...current, room };
-      set({ state: next, meId: member.id });
-      setIdentity(room.id, member.id);
+      set({ state: next, meId: added.member.id });
+      setIdentity(room.id, added.member.id);
       await repo().saveRoom(next);
-      return member;
+      return added.member;
     },
 
     async linkGoogle(profile) {
       const me = requireMe();
       await apply((s) => ({ ...s, room: linkGoogleProfile(s.room, me, profile) }));
+    },
+
+    refreshIdentity() {
+      const s = get().state;
+      if (!s || get().meId) return; // keep an existing identity
+      const meId = resolveIdentity(s);
+      if (meId) set({ meId });
     },
 
     async addPoll(input) {

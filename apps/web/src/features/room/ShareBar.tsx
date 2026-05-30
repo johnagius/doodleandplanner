@@ -1,21 +1,20 @@
 import { buildInviteUrl } from '@dap/shared';
-import { useClipboard } from '../../lib/useClipboard.js';
+import { useState } from 'react';
+import { appOrigin } from '../../lib/appOrigin.js';
+import { useShare } from '../../lib/useShare.js';
 import { useRoomStore } from '../../state/roomStore.js';
-
-/** The origin + base path the app is served from, without a trailing slash. */
-export function appOrigin(): string {
-  const base = import.meta.env.BASE_URL.replace(/\/$/, '');
-  return `${window.location.origin}${base}`;
-}
+import { InviteModal } from './InviteModal.js';
 
 export function ShareBar() {
   const state = useRoomStore((s) => s.state)!;
-  const copy = useClipboard();
+  const share = useShare();
+  const [inviteOpen, setInviteOpen] = useState(false);
 
   const inviteUrl = buildInviteUrl(appOrigin(), {
     slug: state.room.slug,
     token: state.room.inviteToken,
   });
+  const shareText = `Join "${state.room.name}" on Doodle & Planner.`;
 
   return (
     <div className="card row spread row-wrap" style={{ padding: '0.75rem 1rem', gap: '0.75rem' }}>
@@ -35,16 +34,17 @@ export function ShareBar() {
         </code>
       </div>
       <div className="row">
-        <button className="btn btn-sm" onClick={() => copy(state.room.slug, 'Room code copied')}>
-          Copy code
-        </button>
         <button
-          className="btn btn-sm btn-primary"
-          onClick={() => copy(inviteUrl, 'Invite link copied')}
+          className="btn btn-sm"
+          onClick={() => share({ title: state.room.name, text: shareText, url: inviteUrl })}
         >
-          Copy invite link
+          📤 Share
+        </button>
+        <button className="btn btn-sm btn-primary" onClick={() => setInviteOpen(true)}>
+          Invite friends
         </button>
       </div>
+      <InviteModal open={inviteOpen} onClose={() => setInviteOpen(false)} />
     </div>
   );
 }

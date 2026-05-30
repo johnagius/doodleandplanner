@@ -1,10 +1,10 @@
 import { buildInviteUrl, findMember, summarizeResponsibilities } from '@dap/shared';
 import { Avatar } from '../../components/Avatar.js';
+import { appOrigin } from '../../lib/appOrigin.js';
 import { formatMoney } from '../../lib/format.js';
 import { downloadRoom } from '../../lib/roomFile.js';
 import { useClipboard } from '../../lib/useClipboard.js';
 import { useRoomStore } from '../../state/roomStore.js';
-import { appOrigin } from '../room/ShareBar.js';
 import { RoomSettingsCard } from './RoomSettingsCard.js';
 
 export function MembersPanel() {

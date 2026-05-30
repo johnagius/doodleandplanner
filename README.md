@@ -1,24 +1,34 @@
 # Doodle &amp; Planner ✏️🗓️
 
-Plan events with friends — find a time, sketch ideas together, and sort out the
-details. It combines a **scheduling poll** (vote on times, Doodle-style), a
-**shared drawing doodle**, **Google Calendar** availability + event creation, an
-**inventory checklist** ("who brings what"), and an **activities** board ("what
-shall we do").
+Plan events with friends — find a time, sketch ideas together, play a game while
+you wait, and sort out the details. It combines a **scheduling poll** (vote on
+times, Doodle-style), a **shared drawing doodle**, **Google Calendar**
+availability + event creation, an **inventory checklist** ("who brings what"), an
+**activities** board, **multiplayer party games**, and a **live map** of where
+you're meeting.
 
 Rooms are shareable via an invite link and can be **password protected**.
 
 **▶︎ Live: https://doodleandplanner.pages.dev**
 
-> Status: actively being built. The app runs **fully client-side** today (works
-> on Cloudflare Pages with `localStorage`), and is architected so the same domain
-> logic can run in a **Cloudflare Worker + Durable Objects** backend for true
-> real-time, multi-device collaboration.
+> Status: actively being built — and now **live multi-device**. Rooms sync in
+> real time through a **Cloudflare Worker + SQLite Durable Object** (one per
+> room) over REST + WebSocket; the app still falls back to a fully client-side
+> `localStorage` mode when no backend is configured.
 
 ## Features
 
 - **Rooms** with a short shareable code, secret invite link (rotatable), and
   optional password protection (PBKDF2 via Web Crypto).
+- **Welcome & sign-in** — a reliable first-run modal greets new visitors with
+  one-click **Sign in with Google** (no scary scopes) or "continue as guest".
+- **Invite friends** — an invite dialog with the native **share sheet** (Web
+  Share API), copy link, and prefilled **email invite** — no contacts access.
+- **Party games** — a **Games** lobby with live, turn-based **Tic-Tac-Toe** and
+  **Dots & Boxes (2–4 players)** that sync across devices in real time.
+- **Live map** — drop shared **meet-up pins** (with a time, note and directions)
+  on an OpenStreetMap, and **opt in to share your live location** with the group
+  (ephemeral, never stored).
 - **Scheduling polls** — propose time options, everyone votes 👍/🤔/👎, a
   weighted tally surfaces the best slot, and the organiser can lock it in. Connect
   Google Calendar and a **smart, conflict-aware overlay** shows who's free vs who

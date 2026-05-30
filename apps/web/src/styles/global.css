@@ -96,6 +96,16 @@
   height: 100%;
   display: block;
 }
+.hero-3d-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+.hero-3d-layer canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
 /* Readability scrim so text pops over the lively shader. */
 .hero::before {
   content: '';

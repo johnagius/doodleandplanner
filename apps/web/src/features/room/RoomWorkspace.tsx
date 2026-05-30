@@ -1,9 +1,11 @@
 import { computeNudges, findMember, isMyTurn } from '@dap/shared';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Avatar, AvatarStack } from '../../components/Avatar.js';
 import { HeroCanvas } from '../../components/HeroCanvas.js';
+import { useToast } from '../../components/Toast.js';
 import { isRealtimeBackend } from '../../lib/storage/index.js';
+import { useTitleAlert } from '../../lib/useTitleAlert.js';
 import { useRoomStore } from '../../state/roomStore.js';
 import { ActivitiesPanel } from '../activities/ActivitiesPanel.js';
 import { ChatPanel } from '../chat/ChatPanel.js';
@@ -105,6 +107,21 @@ export function RoomWorkspace() {
       ? 0
       : messages.filter((m) => m.authorId !== meId && m.createdAt > chatReadAt).length;
   const badges: Partial<Record<TabId, number>> = { games: myTurnGames, chat: unreadChat };
+
+  // Reflect pending items in the browser tab title, and toast when something
+  // new needs you (your move, or a fresh message while you're elsewhere).
+  useTitleAlert(myTurnGames + unreadChat, `${state.room.name} · Doodle & Planner`);
+  const { show } = useToast();
+  const prevTurn = useRef(myTurnGames);
+  const prevUnread = useRef(unreadChat);
+  useEffect(() => {
+    if (myTurnGames > prevTurn.current) show("🎮 It's your move!");
+    prevTurn.current = myTurnGames;
+  }, [myTurnGames, show]);
+  useEffect(() => {
+    if (unreadChat > prevUnread.current) show('💬 New message');
+    prevUnread.current = unreadChat;
+  }, [unreadChat, show]);
 
   return (
     <div className="container">

@@ -24,10 +24,15 @@ Let members capture/share photos and browse them as geotagged albums.
 
 ## Ideas / later
 
-- More games (e.g. Battleship, Reversi); spectator mode.
-- Map: place search (Nominatim geocoding) to drop a pin by address.
-- "Your turn" / activity notifications (games + polls) via a tab badge.
+- Even more games (e.g. Battleship); spectator mode.
+- Photos: multi-select actions, download, optional full-res via R2.
 - Persistent, multi-device member identity beyond per-device localStorage.
+
+## Recently done
+
+- Map place search (type an address → drop a pin) via Nominatim.
+- "Your move" games badge + unread-chat badge on the room tabs.
+- Connect Four and Reversi added to the games hub.
 
 ## Done
 

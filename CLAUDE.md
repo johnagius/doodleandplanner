@@ -19,8 +19,9 @@ Guidance for Claude when working in this repository.
 **Doodle & Planner** — plan get-togethers with friends: scheduling polls
 (Doodle-style voting), a shared drawing doodle, Google Calendar availability +
 event creation, an inventory checklist with cost-splitting, an activities board
-with an itinerary, multiplayer party games (Tic-Tac-Toe, Dots & Boxes), and a
-live map of meet-up points with opt-in live locations. Rooms are shareable via
+with an itinerary, multiplayer party games (Tic-Tac-Toe, Connect Four, Reversi, Dots & Boxes), a
+shared photo gallery with geotagged albums, and a live map of meet-up points
+with opt-in live locations. Rooms are shareable via
 invite link and can be password protected, and sync live across devices through
 the Worker when configured.
 

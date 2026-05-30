@@ -1,4 +1,11 @@
-import type { Connect4Game, DotsGame, Member, TicTacToeGame } from '@dap/shared';
+import {
+  reversiLegalMoves,
+  type Connect4Game,
+  type DotsGame,
+  type Member,
+  type ReversiGame,
+  type TicTacToeGame,
+} from '@dap/shared';
 
 const SEAT_MARKS = ['✕', '◯', '△', '◇'];
 
@@ -74,6 +81,49 @@ export function Connect4Board({
                 </span>
               );
             })}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+export function ReversiBoard({
+  game,
+  canMove,
+  memberFor,
+  onCell,
+}: {
+  game: ReversiGame;
+  canMove: boolean;
+  memberFor: (seat: number) => Member | undefined;
+  onCell: (index: number) => void;
+}) {
+  const legal = canMove ? new Set(reversiLegalMoves(game)) : new Set<number>();
+  return (
+    <div
+      className="reversi-board"
+      role="group"
+      aria-label="Reversi board"
+      style={{ gridTemplateColumns: `repeat(${game.size}, 1fr)` }}
+    >
+      {game.cells.map((cell, i) => {
+        const isLegal = legal.has(i);
+        return (
+          <button
+            key={i}
+            type="button"
+            className="reversi-cell"
+            disabled={!isLegal}
+            aria-label={
+              cell !== null ? `Disc at ${i + 1}` : isLegal ? `Play ${i + 1}` : `Cell ${i + 1}`
+            }
+            onClick={() => onCell(i)}
+          >
+            {cell !== null && (
+              <span className="reversi-disc" style={{ background: seatColor(cell, memberFor) }} />
+            )}
+            {cell === null && isLegal && <span className="reversi-hint" />}
           </button>
         );
       })}

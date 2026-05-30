@@ -6,17 +6,19 @@ import {
   leaveGame,
   makeMove,
   resetGame,
+  reversiLegalMoves,
   seatOf,
   startGame,
   type Connect4Game,
   type DotsGame,
   type GameSession,
+  type ReversiGame,
   type TicTacToeGame,
 } from '../src/games.js';
 
 const now = () => new Date('2026-05-30T12:00:00Z');
 
-function seatTwo(type: 'tictactoe' | 'connect4' | 'dots'): GameSession {
+function seatTwo(type: 'tictactoe' | 'connect4' | 'reversi' | 'dots'): GameSession {
   let g = createGame({ roomId: 'r1', type, createdBy: 'alice', now });
   g = joinGame(g, 'bob', now);
   return startGame(g, now);
@@ -161,6 +163,33 @@ describe('games — connect four', () => {
     const whoseTurn = g.turn === 0 ? 'alice' : 'bob';
     expect(makeMove(g, whoseTurn, { kind: 'drop', col: 0 })).toBe(g); // full
     expect(makeMove(g, whoseTurn, { kind: 'cell', index: 0 })).toBe(g); // wrong kind
+  });
+});
+
+describe('games — reversi', () => {
+  it('starts with four centre discs and four legal opening moves', () => {
+    const g = seatTwo('reversi') as ReversiGame;
+    expect(g.size).toBe(8);
+    const discs = g.cells.filter((c) => c !== null).length;
+    expect(discs).toBe(4);
+    expect(reversiLegalMoves(g)).toHaveLength(4);
+  });
+
+  it('flips a flanked disc and passes the turn', () => {
+    const g = seatTwo('reversi') as ReversiGame;
+    const move = reversiLegalMoves(g)[0]!;
+    const g1 = makeMove(g, 'alice', { kind: 'cell', index: move }, now) as ReversiGame;
+    expect(g1).not.toBe(g);
+    // One placed + one flipped, all black (seat 0); white loses one.
+    expect(g1.cells.filter((c) => c === 0)).toHaveLength(4);
+    expect(g1.cells.filter((c) => c === 1)).toHaveLength(1);
+    expect(g1.turn).toBe(1);
+  });
+
+  it('rejects a move that flips nothing', () => {
+    const g = seatTwo('reversi');
+    // A corner can never be legal on the opening move.
+    expect(makeMove(g, 'alice', { kind: 'cell', index: 0 })).toBe(g);
   });
 });
 

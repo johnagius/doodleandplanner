@@ -9,7 +9,7 @@ import {
 } from '@dap/shared';
 import { Avatar } from '../../components/Avatar.js';
 import { useRoomStore } from '../../state/roomStore.js';
-import { Connect4Board, DotsBoard, TicTacToeBoard } from './boards.js';
+import { Connect4Board, DotsBoard, ReversiBoard, TicTacToeBoard } from './boards.js';
 
 export function GameView({ game, onBack }: { game: GameSession; onBack: () => void }) {
   const room = useRoomStore((s) => s.state)!.room;
@@ -70,7 +70,12 @@ export function GameView({ game, onBack }: { game: GameSession; onBack: () => vo
           {game.seats.map((s) => {
             const m = findMember(room, s.memberId);
             const isTurn = game.status === 'playing' && game.turn === s.seat;
-            const score = game.type === 'dots' ? (game.scores[s.seat] ?? 0) : undefined;
+            const score =
+              game.type === 'dots'
+                ? (game.scores[s.seat] ?? 0)
+                : game.type === 'reversi'
+                  ? game.cells.filter((c) => c === s.seat).length
+                  : undefined;
             return (
               <div key={s.seat} className={`game-seat ${isTurn ? 'active' : ''}`}>
                 {m && <Avatar member={m} size={26} />}
@@ -98,6 +103,14 @@ export function GameView({ game, onBack }: { game: GameSession; onBack: () => vo
                 canMove={canMove}
                 memberFor={memberFor}
                 onDrop={(col) => void playMove(game.id, { kind: 'drop', col })}
+              />
+            )}
+            {game.type === 'reversi' && (
+              <ReversiBoard
+                game={game}
+                canMove={canMove}
+                memberFor={memberFor}
+                onCell={(index) => void playMove(game.id, { kind: 'cell', index })}
               />
             )}
             {game.type === 'dots' && (

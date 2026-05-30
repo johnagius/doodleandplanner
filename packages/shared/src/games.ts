@@ -7,12 +7,14 @@
  *
  * Supported games:
  *  - tictactoe — 2 players, classic 3×3.
+ *  - connect4  — 2 players, 7×6 four-in-a-row.
+ *  - reversi   — 2 players, 8×8 Othello (flank & flip).
  *  - dots      — Dots & Boxes, 2–4 players on an n×n grid of boxes.
  */
 import { generateId } from './ids.js';
 import type { ISODateTime } from './types.js';
 
-export type GameType = 'tictactoe' | 'connect4' | 'dots';
+export type GameType = 'tictactoe' | 'connect4' | 'reversi' | 'dots';
 export type GameStatus = 'lobby' | 'playing' | 'finished';
 
 export interface GameSeat {
@@ -51,6 +53,13 @@ export interface Connect4Game extends GameBase {
   cells: (number | null)[];
 }
 
+export interface ReversiGame extends GameBase {
+  type: 'reversi';
+  size: number; // 8
+  /** size×size cells, row-major; seat index (0/1) or null. */
+  cells: (number | null)[];
+}
+
 export interface DotsGame extends GameBase {
   type: 'dots';
   /** Number of boxes per side (n × n boxes, (n+1) × (n+1) dots). */
@@ -65,7 +74,7 @@ export interface DotsGame extends GameBase {
   scores: number[];
 }
 
-export type GameSession = TicTacToeGame | Connect4Game | DotsGame;
+export type GameSession = TicTacToeGame | Connect4Game | ReversiGame | DotsGame;
 
 export type GameMove =
   | { kind: 'cell'; index: number }
@@ -99,6 +108,14 @@ export const GAME_CATALOG: GameMeta[] = [
     blurb: 'Drop discs to get four in a row — any direction.',
   },
   {
+    type: 'reversi',
+    name: 'Reversi',
+    icon: '⚫',
+    minPlayers: 2,
+    maxPlayers: 2,
+    blurb: 'Flank and flip your opponent’s discs. Most discs wins.',
+  },
+  {
     type: 'dots',
     name: 'Dots & Boxes',
     icon: '🔲',
@@ -117,6 +134,7 @@ export function gameMeta(type: GameType): GameMeta {
 const DEFAULT_DOTS_SIZE = 3;
 const C4_COLS = 7;
 const C4_ROWS = 6;
+const REVERSI_SIZE = 8;
 
 /** Create a brand-new game in the lobby with its creator seated first. */
 export function createGame(input: {
@@ -150,6 +168,16 @@ export function createGame(input: {
       rows: C4_ROWS,
       cells: Array(C4_COLS * C4_ROWS).fill(null),
     };
+  }
+  if (input.type === 'reversi') {
+    const cells: (number | null)[] = Array(REVERSI_SIZE * REVERSI_SIZE).fill(null);
+    const c = REVERSI_SIZE / 2;
+    const at = (r: number, col: number) => r * REVERSI_SIZE + col;
+    cells[at(c - 1, c - 1)] = 1;
+    cells[at(c - 1, c)] = 0;
+    cells[at(c, c - 1)] = 0;
+    cells[at(c, c)] = 1;
+    return { ...base, type: 'reversi', size: REVERSI_SIZE, cells };
   }
   const size = input.size ?? DEFAULT_DOTS_SIZE;
   return {
@@ -243,9 +271,94 @@ export function makeMove(
       return ticTacToeMove(game, move, now);
     case 'connect4':
       return connect4Move(game, move, now);
+    case 'reversi':
+      return reversiMove(game, move, now);
     default:
       return dotsMove(game, move, now);
   }
+}
+
+const REVERSI_DIRS: ReadonlyArray<readonly [number, number]> = [
+  [-1, -1],
+  [-1, 0],
+  [-1, 1],
+  [0, -1],
+  [0, 1],
+  [1, -1],
+  [1, 0],
+  [1, 1],
+];
+
+/** Indices that placing `seat` at `idx` would flip (empty ⇒ illegal move). */
+function reversiFlips(cells: (number | null)[], size: number, idx: number, seat: number): number[] {
+  if (cells[idx] !== null) return [];
+  const opp = seat === 0 ? 1 : 0;
+  const r0 = Math.floor(idx / size);
+  const c0 = idx % size;
+  const flips: number[] = [];
+  for (const [dr, dc] of REVERSI_DIRS) {
+    const line: number[] = [];
+    let r = r0 + dr;
+    let c = c0 + dc;
+    while (r >= 0 && r < size && c >= 0 && c < size && cells[r * size + c] === opp) {
+      line.push(r * size + c);
+      r += dr;
+      c += dc;
+    }
+    if (
+      line.length > 0 &&
+      r >= 0 &&
+      r < size &&
+      c >= 0 &&
+      c < size &&
+      cells[r * size + c] === seat
+    ) {
+      flips.push(...line);
+    }
+  }
+  return flips;
+}
+
+/** Legal cell indices for the player to move in a Reversi game. */
+export function reversiLegalMoves(game: ReversiGame): number[] {
+  const moves: number[] = [];
+  for (let i = 0; i < game.cells.length; i++) {
+    if (reversiFlips(game.cells, game.size, i, game.turn).length > 0) moves.push(i);
+  }
+  return moves;
+}
+
+function reversiHasMove(cells: (number | null)[], size: number, seat: number): boolean {
+  for (let i = 0; i < cells.length; i++) {
+    if (reversiFlips(cells, size, i, seat).length > 0) return true;
+  }
+  return false;
+}
+
+function reversiMove(game: ReversiGame, move: GameMove, now?: () => Date): GameSession {
+  if (move.kind !== 'cell') return game;
+  if (move.index < 0 || move.index >= game.cells.length) return game;
+  const flips = reversiFlips(game.cells, game.size, move.index, game.turn);
+  if (flips.length === 0) return game; // illegal: must flip something
+
+  const cells = game.cells.slice();
+  cells[move.index] = game.turn;
+  for (const i of flips) cells[i] = game.turn;
+
+  const opp = game.turn === 0 ? 1 : 0;
+  if (reversiHasMove(cells, game.size, opp)) {
+    return touch({ ...game, cells, turn: opp }, now);
+  }
+  if (reversiHasMove(cells, game.size, game.turn)) {
+    // Opponent must pass; same player moves again.
+    return touch({ ...game, cells, turn: game.turn }, now);
+  }
+  // Neither can move — game over; winner has the most discs.
+  const counts = [0, 0];
+  for (const c of cells) if (c !== null) counts[c] = (counts[c] ?? 0) + 1;
+  const max = Math.max(counts[0]!, counts[1]!);
+  const winners = counts.map((c, i) => (c === max ? i : -1)).filter((i) => i >= 0);
+  return touch({ ...game, cells, status: 'finished', winners }, now);
 }
 
 const C4_DIRS: ReadonlyArray<readonly [number, number]> = [

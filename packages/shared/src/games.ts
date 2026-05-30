@@ -478,7 +478,8 @@ export function battleshipReady(game: BattleshipGame, seat: number, now?: () => 
 }
 
 function battleshipMove(game: BattleshipGame, move: GameMove, now?: () => Date): GameSession {
-  if (move.kind !== 'cell' || game.phase !== 'firing') return game;
+  // Block firing only during placement (legacy games without a phase fire fine).
+  if (move.kind !== 'cell' || game.phase === 'placing') return game;
   if (move.index < 0 || move.index >= game.size * game.size) return game;
   const opp = game.turn === 0 ? 1 : 0;
   const targetShots = game.shots[opp] ?? [];

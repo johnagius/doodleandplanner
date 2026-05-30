@@ -10,10 +10,11 @@ compatibility_date = "2024-11-06"
 name = "ROOMS"
 class_name = "RoomDurableObject"
 
+# SQLite-backed Durable Objects are available on the free Workers plan.
 [[migrations]]
 tag = "v1"
-new_classes = ["RoomDurableObject"]
+new_sqlite_classes = ["RoomDurableObject"]
 
-# Lock CORS to your deployed front-ends (comma-separated). "*" allows any origin.
+# Lock CORS to the deployed front-end (comma-separated). "*" allows any origin.
 [vars]
-ALLOWED_ORIGINS = "*"
+ALLOWED_ORIGINS = "https://doodleandplanner.pages.dev"

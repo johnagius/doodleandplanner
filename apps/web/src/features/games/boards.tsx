@@ -1,0 +1,153 @@
+import type { DotsGame, Member, TicTacToeGame } from '@dap/shared';
+
+const SEAT_MARKS = ['✕', '◯', '△', '◇'];
+
+/** Colour for a seat, taken from the seated member when known. */
+function seatColor(seat: number, memberFor: (seat: number) => Member | undefined): string {
+  return memberFor(seat)?.color ?? ['#6366f1', '#ec4899', '#16a34a', '#d97706'][seat] ?? '#6366f1';
+}
+
+export function TicTacToeBoard({
+  game,
+  canMove,
+  memberFor,
+  onCell,
+}: {
+  game: TicTacToeGame;
+  canMove: boolean;
+  memberFor: (seat: number) => Member | undefined;
+  onCell: (index: number) => void;
+}) {
+  return (
+    <div className="ttt-board" role="group" aria-label="Tic-tac-toe board">
+      {game.cells.map((cell, i) => {
+        const taken = cell !== null;
+        return (
+          <button
+            key={i}
+            className="ttt-cell"
+            aria-label={taken ? `Cell ${i + 1}, taken` : `Cell ${i + 1}, empty`}
+            disabled={!canMove || taken}
+            style={cell !== null ? { color: seatColor(cell, memberFor) } : undefined}
+            onClick={() => onCell(i)}
+          >
+            {cell !== null ? SEAT_MARKS[cell] : ''}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+const GAP = 64; // px between dots
+const PAD = 22; // px around the grid
+
+export function DotsBoard({
+  game,
+  canMove,
+  memberFor,
+  onEdge,
+}: {
+  game: DotsGame;
+  canMove: boolean;
+  memberFor: (seat: number) => Member | undefined;
+  onEdge: (orient: 'h' | 'v', index: number) => void;
+}) {
+  const n = game.size;
+  const dim = n * GAP + PAD * 2;
+  const dotXY = (r: number, c: number) => ({ x: PAD + c * GAP, y: PAD + r * GAP });
+
+  const hEdges = [];
+  for (let row = 0; row <= n; row++) {
+    for (let col = 0; col < n; col++) {
+      const idx = row * n + col;
+      const a = dotXY(row, col);
+      const b = dotXY(row, col + 1);
+      hEdges.push({ idx, drawn: game.hEdges[idx], a, b, orient: 'h' as const });
+    }
+  }
+  const vEdges = [];
+  for (let row = 0; row < n; row++) {
+    for (let col = 0; col <= n; col++) {
+      const idx = row * (n + 1) + col;
+      const a = dotXY(row, col);
+      const b = dotXY(row + 1, col);
+      vEdges.push({ idx, drawn: game.vEdges[idx], a, b, orient: 'v' as const });
+    }
+  }
+
+  return (
+    <svg
+      className="dots-board"
+      viewBox={`0 0 ${dim} ${dim}`}
+      role="group"
+      aria-label="Dots and boxes board"
+    >
+      {/* Claimed boxes (under the lines). */}
+      {game.boxes.map((owner, i) => {
+        if (owner === null) return null;
+        const r = Math.floor(i / n);
+        const c = i % n;
+        const { x, y } = dotXY(r, c);
+        const color = seatColor(owner, memberFor);
+        return (
+          <g key={`box-${i}`}>
+            <rect
+              x={x + 3}
+              y={y + 3}
+              width={GAP - 6}
+              height={GAP - 6}
+              rx={6}
+              fill={color}
+              opacity={0.22}
+            />
+            <text
+              x={x + GAP / 2}
+              y={y + GAP / 2}
+              textAnchor="middle"
+              dominantBaseline="central"
+              fontSize={GAP * 0.34}
+              fontWeight={800}
+              fill={color}
+            >
+              {memberFor(owner) ? SEAT_MARKS[owner] : ''}
+            </text>
+          </g>
+        );
+      })}
+
+      {/* Edges: drawn ones solid, open ones faint with a fat invisible hit area. */}
+      {[...hEdges, ...vEdges].map((e) => (
+        <g key={`${e.orient}-${e.idx}`}>
+          <line
+            x1={e.a.x}
+            y1={e.a.y}
+            x2={e.b.x}
+            y2={e.b.y}
+            className={e.drawn ? 'dots-edge drawn' : 'dots-edge open'}
+          />
+          {!e.drawn && canMove && (
+            <line
+              x1={e.a.x}
+              y1={e.a.y}
+              x2={e.b.x}
+              y2={e.b.y}
+              className="dots-edge-hit"
+              onClick={() => onEdge(e.orient, e.idx)}
+            >
+              <title>Draw line</title>
+            </line>
+          )}
+        </g>
+      ))}
+
+      {/* Dots on top. */}
+      {Array.from({ length: (n + 1) * (n + 1) }, (_, i) => {
+        const r = Math.floor(i / (n + 1));
+        const c = i % (n + 1);
+        const { x, y } = dotXY(r, c);
+        return <circle key={`dot-${i}`} cx={x} cy={y} r={4} className="dots-dot" />;
+      })}
+    </svg>
+  );
+}

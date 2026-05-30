@@ -5,6 +5,7 @@
  * localStorage, an HTTP payload, or a future database row. Dates are stored as
  * ISO-8601 strings to stay JSON-friendly and timezone-explicit.
  */
+import type { GameSession } from './games.js';
 
 export type ISODateTime = string;
 
@@ -267,4 +268,6 @@ export interface RoomState {
   gridSpec?: GridSpec;
   /** Per-member available cell ids for the availability grid. */
   availabilityGrid?: AvailabilityGrid;
+  /** Party games in the room (lobby + in-progress). Older states omit this. */
+  games?: GameSession[];
 }

@@ -10,6 +10,7 @@ import { ChatPanel } from '../chat/ChatPanel.js';
 import { AvailabilityGridView } from '../grid/AvailabilityGridView.js';
 import { DoodleCanvas } from '../doodle/DoodleCanvas.js';
 import { EventsPanel } from '../events/EventsPanel.js';
+import { GamesPanel } from '../games/GamesPanel.js';
 import { InventoryPanel } from '../inventory/InventoryPanel.js';
 import { MembersPanel } from '../members/MembersPanel.js';
 import { PollsPanel } from '../polls/PollsPanel.js';
@@ -23,6 +24,7 @@ type TabId =
   | 'plan'
   | 'inventory'
   | 'activities'
+  | 'games'
   | 'chat'
   | 'members'
   | 'summary';
@@ -34,6 +36,7 @@ const TABS: { id: TabId; label: string; icon: string }[] = [
   { id: 'plan', label: 'Plan', icon: '🗓️' },
   { id: 'inventory', label: 'Inventory', icon: '🎒' },
   { id: 'activities', label: 'Activities', icon: '🎉' },
+  { id: 'games', label: 'Games', icon: '🎮' },
   { id: 'chat', label: 'Chat', icon: '💬' },
   { id: 'summary', label: 'Summary', icon: '📋' },
   { id: 'members', label: 'Members', icon: '👥' },
@@ -160,6 +163,7 @@ export function RoomWorkspace() {
             {tab === 'plan' && <EventsPanel />}
             {tab === 'inventory' && <InventoryPanel />}
             {tab === 'activities' && <ActivitiesPanel />}
+            {tab === 'games' && <GamesPanel />}
             {tab === 'chat' && <ChatPanel />}
             {tab === 'summary' && <SummaryView />}
             {tab === 'members' && <MembersPanel />}

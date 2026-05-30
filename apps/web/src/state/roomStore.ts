@@ -8,6 +8,12 @@ import {
   claimItem,
   clearBoard,
   closePoll,
+  createGame as makeGame,
+  joinGame as joinGameLogic,
+  leaveGame as leaveGameLogic,
+  startGame as startGameLogic,
+  makeMove as makeMoveLogic,
+  resetGame as resetGameLogic,
   createActivity,
   createEvent,
   createExpense,
@@ -39,6 +45,9 @@ import {
   type Point,
   type RoomSettings,
   type RoomState,
+  type GameMove,
+  type GameSession,
+  type GameType,
   type GridSpec,
   type RsvpStatus,
   type SchedulePoll,
@@ -161,6 +170,20 @@ interface RoomStore {
     settings?: Partial<RoomSettings>;
   }) => Promise<void>;
   renameMe: (name: string) => Promise<void>;
+
+  // Party games
+  createGame: (type: GameType) => Promise<string>;
+  joinGame: (gameId: string) => Promise<void>;
+  leaveGame: (gameId: string) => Promise<void>;
+  startGame: (gameId: string) => Promise<void>;
+  playMove: (gameId: string, move: GameMove) => Promise<void>;
+  rematchGame: (gameId: string) => Promise<void>;
+  deleteGame: (gameId: string) => Promise<void>;
+}
+
+/** Replace one game in the room's games array via a pure updater. */
+function replaceGame(s: RoomState, gameId: string, fn: (g: GameSession) => GameSession): RoomState {
+  return { ...s, games: (s.games ?? []).map((g) => (g.id === gameId ? fn(g) : g)) };
 }
 
 export const useRoomStore = create<RoomStore>((set, get) => {
@@ -551,6 +574,45 @@ export const useRoomStore = create<RoomStore>((set, get) => {
     async renameMe(name) {
       const me = requireMe();
       await apply((s) => ({ ...s, room: renameMember(s.room, me, name) }));
+    },
+
+    async createGame(type) {
+      const me = requireMe();
+      const current = get().state;
+      if (!current) return '';
+      const game = makeGame({ roomId: current.room.id, type, createdBy: me });
+      await apply((s) => ({ ...s, games: [...(s.games ?? []), game] }));
+      return game.id;
+    },
+
+    async joinGame(gameId) {
+      const me = requireMe();
+      await apply((s) => replaceGame(s, gameId, (g) => joinGameLogic(g, me)));
+    },
+
+    async leaveGame(gameId) {
+      const me = requireMe();
+      await apply((s) => replaceGame(s, gameId, (g) => leaveGameLogic(g, me)));
+    },
+
+    async startGame(gameId) {
+      requireMe();
+      await apply((s) => replaceGame(s, gameId, (g) => startGameLogic(g)));
+    },
+
+    async playMove(gameId, move) {
+      const me = requireMe();
+      await apply((s) => replaceGame(s, gameId, (g) => makeMoveLogic(g, me, move)));
+    },
+
+    async rematchGame(gameId) {
+      requireMe();
+      await apply((s) => replaceGame(s, gameId, (g) => resetGameLogic(g)));
+    },
+
+    async deleteGame(gameId) {
+      requireMe();
+      await apply((s) => ({ ...s, games: (s.games ?? []).filter((g) => g.id !== gameId) }));
     },
   };
 });

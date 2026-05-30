@@ -25,3 +25,4 @@ export * from './templates.js';
 export * from './responsibilities.js';
 export * from './nudges.js';
 export * from './grid.js';
+export * from './games.js';

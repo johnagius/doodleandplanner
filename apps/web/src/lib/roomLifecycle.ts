@@ -11,6 +11,8 @@ export interface CreateRoomFormInput {
   name: string;
   description?: string;
   ownerName: string;
+  /** Optional custom room code; normalised, falling back to a random one. */
+  slug?: string;
   password?: string;
   settings?: Partial<RoomSettings>;
   /** Optional template id to pre-fill inventory + activities. */

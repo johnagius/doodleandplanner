@@ -42,6 +42,27 @@ export function generateSlug(length = 6): string {
   return out;
 }
 
+/** Longest a custom room code may be. */
+export const MAX_SLUG_LENGTH = 24;
+/** Shortest a custom room code may be. */
+export const MIN_SLUG_LENGTH = 3;
+
+/**
+ * Coerce arbitrary user input into a valid, link-safe room code: lowercased,
+ * `[a-z0-9-]` only, collapsed/trimmed hyphens, capped length. Returns '' when
+ * nothing usable (or too short) remains — callers fall back to {@link generateSlug}.
+ */
+export function normalizeSlug(input: string): string {
+  const cleaned = input
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, MAX_SLUG_LENGTH)
+    .replace(/-$/, '');
+  return cleaned.length >= MIN_SLUG_LENGTH ? cleaned : '';
+}
+
 /** A random URL-safe token (base64url) with the given number of random bytes. */
 export function generateToken(bytes = 24): string {
   const buf = new Uint8Array(bytes);

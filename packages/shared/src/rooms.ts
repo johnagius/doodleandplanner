@@ -1,6 +1,6 @@
 /** Room creation and membership logic. All mutators return new objects. */
 import { colorForIndex } from './color.js';
-import { generateId, generateSlug, generateToken } from './ids.js';
+import { generateId, generateSlug, generateToken, normalizeSlug } from './ids.js';
 import { hashPassword } from './password.js';
 import type { Member, Room, RoomSettings, RoomState } from './types.js';
 
@@ -15,6 +15,8 @@ export interface CreateRoomInput {
   name: string;
   description?: string;
   ownerName: string;
+  /** Optional custom room code; normalised, falling back to a random one. */
+  slug?: string;
   /** Optional plaintext password; hashed before storage. */
   password?: string;
   settings?: Partial<RoomSettings>;
@@ -43,7 +45,7 @@ export async function createRoom(input: CreateRoomInput): Promise<CreateRoomResu
 
   const room: Room = {
     id: generateId('room'),
-    slug: generateSlug(),
+    slug: (input.slug && normalizeSlug(input.slug)) || generateSlug(),
     name,
     description: input.description?.trim() || undefined,
     createdAt: now,

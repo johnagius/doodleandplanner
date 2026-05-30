@@ -1,4 +1,4 @@
-import { ROOM_TEMPLATES } from '@dap/shared';
+import { ROOM_TEMPLATES, generateSlug, normalizeSlug } from '@dap/shared';
 import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { GoogleSignInButton } from '../../components/GoogleSignInButton.js';
@@ -136,8 +136,19 @@ function CreateRoomCard({ onCreated }: { onCreated: (slug: string) => void }) {
   const [description, setDescription] = useState('');
   const [password, setPassword] = useState('');
   const [templateId, setTemplateId] = useState('blank');
+  const [slug, setSlug] = useState(() => generateSlug());
+  const [slugEdited, setSlugEdited] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Auto-suggest the room code from the name until the user customises it.
+  useEffect(() => {
+    if (slugEdited) return;
+    const suggested = normalizeSlug(name);
+    if (suggested) setSlug(suggested);
+  }, [name, slugEdited]);
+
+  const slugValid = normalizeSlug(slug).length >= 3;
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -145,14 +156,15 @@ function CreateRoomCard({ onCreated }: { onCreated: (slug: string) => void }) {
     setBusy(true);
     try {
       setPreferredName(ownerName);
-      const { slug } = await createAndStoreRoom({
+      const { slug: created } = await createAndStoreRoom({
         name,
         ownerName,
+        slug,
         description: description || undefined,
         password: password || undefined,
         templateId,
       });
-      onCreated(slug);
+      onCreated(created);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not create room');
       setBusy(false);
@@ -199,6 +211,45 @@ function CreateRoomCard({ onCreated }: { onCreated: (slug: string) => void }) {
         />
       </label>
       <label className="field">
+        Room code <span className="muted small">(in the share link)</span>
+        <div className="row" style={{ gap: '0.4rem' }}>
+          <input
+            className="input"
+            value={slug}
+            onChange={(e) => {
+              setSlug(
+                e.target.value
+                  .toLowerCase()
+                  .replace(/[^a-z0-9-]/g, '')
+                  .slice(0, 24),
+              );
+              setSlugEdited(true);
+            }}
+            placeholder="summer-bbq"
+            aria-label="Room code"
+            spellCheck={false}
+            autoCapitalize="none"
+          />
+          <button
+            type="button"
+            className="btn btn-ghost"
+            title="Suggest another code"
+            aria-label="Suggest another code"
+            onClick={() => {
+              setSlug(generateSlug());
+              setSlugEdited(true);
+            }}
+          >
+            🎲
+          </button>
+        </div>
+        <span className="muted small">
+          {slugValid
+            ? `Link: …/r/${normalizeSlug(slug)}`
+            : 'At least 3 letters, numbers or hyphens'}
+        </span>
+      </label>
+      <label className="field">
         Your name
         <input
           className="input"
@@ -229,7 +280,7 @@ function CreateRoomCard({ onCreated }: { onCreated: (slug: string) => void }) {
         />
       </label>
       {error && <div className="banner banner-danger">{error}</div>}
-      <button className="btn btn-primary btn-block" type="submit" disabled={busy}>
+      <button className="btn btn-primary btn-block" type="submit" disabled={busy || !slugValid}>
         {busy ? 'Creating…' : 'Create room'}
       </button>
     </form>

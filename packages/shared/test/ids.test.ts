@@ -4,6 +4,7 @@ import {
   generateId,
   generateSlug,
   generateToken,
+  normalizeSlug,
   safeEqual,
   toBase64Url,
 } from '../src/ids.js';
@@ -32,6 +33,25 @@ describe('generateSlug', () => {
   it('is reasonably unique across many draws', () => {
     const seen = new Set(Array.from({ length: 1000 }, () => generateSlug()));
     expect(seen.size).toBeGreaterThan(990);
+  });
+});
+
+describe('normalizeSlug', () => {
+  it('lowercases and hyphenates a friendly name', () => {
+    expect(normalizeSlug('Summer BBQ 2026')).toBe('summer-bbq-2026');
+    expect(normalizeSlug('  Ski Trip!! ')).toBe('ski-trip');
+  });
+
+  it('collapses and trims hyphens and caps length', () => {
+    expect(normalizeSlug('a---b__c')).toBe('a-b-c');
+    expect(normalizeSlug('-lead-and-trail-')).toBe('lead-and-trail');
+    expect(normalizeSlug('x'.repeat(40))).toHaveLength(24);
+  });
+
+  it('returns empty when nothing usable (too short) remains', () => {
+    expect(normalizeSlug('!!')).toBe('');
+    expect(normalizeSlug('ab')).toBe('');
+    expect(normalizeSlug('')).toBe('');
   });
 });
 

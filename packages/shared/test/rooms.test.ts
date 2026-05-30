@@ -59,6 +59,15 @@ describe('createRoom', () => {
     expect(room.settings.defaultSlotMinutes).toBe(60);
     expect(room.settings.openJoin).toBe(true);
   });
+
+  it('honours a normalised custom slug, falling back to random when unusable', async () => {
+    const custom = await createRoom({ name: 'Trip', ownerName: 'A', slug: 'Summer BBQ!' });
+    expect(custom.room.slug).toBe('summer-bbq');
+
+    // Too short / unusable → a generated slug is used instead.
+    const fallback = await createRoom({ name: 'Trip', ownerName: 'A', slug: '!!' });
+    expect(fallback.room.slug).toMatch(/^[23456789abcdefghjkmnpqrstvwxyz]{6}$/);
+  });
 });
 
 describe('membership', () => {

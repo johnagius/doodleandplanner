@@ -186,6 +186,20 @@ export interface PlannedEvent {
   createdAt: ISODateTime;
 }
 
+/** A pinned meet-up location on the room map, with an optional time + note. */
+export interface MeetPoint {
+  id: string;
+  roomId: string;
+  label: string;
+  lat: number;
+  lng: number;
+  note?: string;
+  /** Optional meet-up time (ISO-8601). */
+  time?: ISODateTime;
+  createdBy: string;
+  createdAt: ISODateTime;
+}
+
 export interface Point {
   x: number;
   y: number;
@@ -270,4 +284,6 @@ export interface RoomState {
   availabilityGrid?: AvailabilityGrid;
   /** Party games in the room (lobby + in-progress). Older states omit this. */
   games?: GameSession[];
+  /** Pinned map meet-up points. Older states omit this. */
+  meetPoints?: MeetPoint[];
 }

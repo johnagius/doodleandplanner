@@ -1367,3 +1367,94 @@ label.field {
   stroke-width: 5;
   opacity: 0.55;
 }
+
+/* --- Map & meet-ups -------------------------------------------------------- */
+.map-layout {
+  display: grid;
+  grid-template-columns: minmax(240px, 320px) 1fr;
+  gap: 1rem;
+  align-items: start;
+}
+.map-canvas {
+  height: 520px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  z-index: 0;
+}
+.map-side {
+  max-height: 520px;
+  overflow-y: auto;
+}
+.meet-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.6rem 0.75rem;
+}
+.map-pin {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50% 50% 50% 0;
+  background: var(--pin, #6366f1);
+  transform: rotate(-45deg);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  border: 2px solid #fff;
+}
+.map-pin span {
+  transform: rotate(45deg);
+  font-size: 13px;
+}
+.map-live {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--live, #16a34a);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--live, #16a34a) 35%, transparent);
+  animation: live-pulse 1.8s ease-out infinite;
+}
+@keyframes live-pulse {
+  0% {
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--live, #16a34a) 45%, transparent);
+  }
+  70% {
+    box-shadow: 0 0 0 10px color-mix(in srgb, var(--live, #16a34a) 0%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--live, #16a34a) 0%, transparent);
+  }
+}
+/* Leaflet popups inherit the app's surface colours. */
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  background: var(--surface);
+  color: var(--text);
+}
+.leaflet-popup-content a {
+  color: var(--primary-dark);
+}
+@media (max-width: 720px) {
+  .map-layout {
+    grid-template-columns: 1fr;
+  }
+  .map-canvas {
+    height: 380px;
+  }
+  .map-side {
+    max-height: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .map-live {
+    animation: none;
+  }
+}

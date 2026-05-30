@@ -14,6 +14,8 @@ import {
   startGame as startGameLogic,
   makeMove as makeMoveLogic,
   resetGame as resetGameLogic,
+  createMeetPoint,
+  updateMeetPoint,
   createActivity,
   createEvent,
   createExpense,
@@ -48,6 +50,7 @@ import {
   type GameMove,
   type GameSession,
   type GameType,
+  type MeetPoint,
   type GridSpec,
   type RsvpStatus,
   type SchedulePoll,
@@ -179,6 +182,20 @@ interface RoomStore {
   playMove: (gameId: string, move: GameMove) => Promise<void>;
   rematchGame: (gameId: string) => Promise<void>;
   deleteGame: (gameId: string) => Promise<void>;
+
+  // Map meet-up points
+  addMeetPoint: (input: {
+    label: string;
+    lat: number;
+    lng: number;
+    note?: string;
+    time?: string;
+  }) => Promise<void>;
+  editMeetPoint: (
+    pointId: string,
+    patch: Partial<Pick<MeetPoint, 'label' | 'note' | 'time' | 'lat' | 'lng'>>,
+  ) => Promise<void>;
+  removeMeetPoint: (pointId: string) => Promise<void>;
 }
 
 /** Replace one game in the room's games array via a pure updater. */
@@ -613,6 +630,35 @@ export const useRoomStore = create<RoomStore>((set, get) => {
     async deleteGame(gameId) {
       requireMe();
       await apply((s) => ({ ...s, games: (s.games ?? []).filter((g) => g.id !== gameId) }));
+    },
+
+    async addMeetPoint(input) {
+      const me = requireMe();
+      await apply((s) => ({
+        ...s,
+        meetPoints: [
+          ...(s.meetPoints ?? []),
+          createMeetPoint({ ...input, roomId: s.room.id, createdBy: me }),
+        ],
+      }));
+    },
+
+    async editMeetPoint(pointId, patch) {
+      requireMe();
+      await apply((s) => ({
+        ...s,
+        meetPoints: (s.meetPoints ?? []).map((p) =>
+          p.id === pointId ? updateMeetPoint(p, patch) : p,
+        ),
+      }));
+    },
+
+    async removeMeetPoint(pointId) {
+      requireMe();
+      await apply((s) => ({
+        ...s,
+        meetPoints: (s.meetPoints ?? []).filter((p) => p.id !== pointId),
+      }));
     },
   };
 });

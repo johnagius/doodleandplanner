@@ -50,7 +50,7 @@ Rooms are shareable via an invite link and can be **password protected**.
   in your currency.
 - **Activities** — propose things to do, vote with interest, and auto-build a
   timed **itinerary / running order** for the day.
-- **Discussion** — a per-room chat thread for the group.
+- **Discussion** — a per-room chat thread with photo sharing and emoji reactions.
 - **Templates** — start a room pre-filled for a Camping trip, Birthday, Dinner
   party, Game night or City break (or blank).
 - **Trip summary** — a shareable, printable one-pager pulling together the

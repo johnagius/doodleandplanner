@@ -29,6 +29,7 @@ Let members capture/share photos and browse them as geotagged albums.
 
 ## Recently done
 
+- Chat: emoji reactions on messages (👍❤️😂🎉😮😢), live-synced.
 - Account identity — signed-in members are recognised across devices by Google
   email (one person = one member everywhere), beyond per-device localStorage.
 - Map place search (type an address → drop a pin) via Nominatim.

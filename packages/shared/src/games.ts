@@ -12,7 +12,7 @@
 import { generateId } from './ids.js';
 import type { ISODateTime } from './types.js';
 
-export type GameType = 'tictactoe' | 'dots';
+export type GameType = 'tictactoe' | 'connect4' | 'dots';
 export type GameStatus = 'lobby' | 'playing' | 'finished';
 
 export interface GameSeat {
@@ -43,6 +43,14 @@ export interface TicTacToeGame extends GameBase {
   cells: (number | null)[];
 }
 
+export interface Connect4Game extends GameBase {
+  type: 'connect4';
+  cols: number;
+  rows: number;
+  /** cols×rows cells, row-major from the TOP; seat index or null. */
+  cells: (number | null)[];
+}
+
 export interface DotsGame extends GameBase {
   type: 'dots';
   /** Number of boxes per side (n × n boxes, (n+1) × (n+1) dots). */
@@ -57,10 +65,11 @@ export interface DotsGame extends GameBase {
   scores: number[];
 }
 
-export type GameSession = TicTacToeGame | DotsGame;
+export type GameSession = TicTacToeGame | Connect4Game | DotsGame;
 
 export type GameMove =
   | { kind: 'cell'; index: number }
+  | { kind: 'drop'; col: number }
   | { kind: 'edge'; orient: 'h' | 'v'; index: number };
 
 export interface GameMeta {
@@ -82,6 +91,14 @@ export const GAME_CATALOG: GameMeta[] = [
     blurb: 'Three in a row on a 3×3 grid.',
   },
   {
+    type: 'connect4',
+    name: 'Connect Four',
+    icon: '🔴',
+    minPlayers: 2,
+    maxPlayers: 2,
+    blurb: 'Drop discs to get four in a row — any direction.',
+  },
+  {
     type: 'dots',
     name: 'Dots & Boxes',
     icon: '🔲',
@@ -98,6 +115,8 @@ export function gameMeta(type: GameType): GameMeta {
 }
 
 const DEFAULT_DOTS_SIZE = 3;
+const C4_COLS = 7;
+const C4_ROWS = 6;
 
 /** Create a brand-new game in the lobby with its creator seated first. */
 export function createGame(input: {
@@ -122,6 +141,15 @@ export function createGame(input: {
   };
   if (input.type === 'tictactoe') {
     return { ...base, type: 'tictactoe', cells: Array(9).fill(null) };
+  }
+  if (input.type === 'connect4') {
+    return {
+      ...base,
+      type: 'connect4',
+      cols: C4_COLS,
+      rows: C4_ROWS,
+      cells: Array(C4_COLS * C4_ROWS).fill(null),
+    };
   }
   const size = input.size ?? DEFAULT_DOTS_SIZE;
   return {
@@ -210,7 +238,85 @@ export function makeMove(
   now?: () => Date,
 ): GameSession {
   if (!isMyTurn(game, memberId)) return game;
-  return game.type === 'tictactoe' ? ticTacToeMove(game, move, now) : dotsMove(game, move, now);
+  switch (game.type) {
+    case 'tictactoe':
+      return ticTacToeMove(game, move, now);
+    case 'connect4':
+      return connect4Move(game, move, now);
+    default:
+      return dotsMove(game, move, now);
+  }
+}
+
+const C4_DIRS: ReadonlyArray<readonly [number, number]> = [
+  [0, 1],
+  [1, 0],
+  [1, 1],
+  [1, -1],
+];
+
+/** Count same-seat cells stepping (dr,dc) from (row,col), exclusive of start. */
+function countDir(
+  game: Connect4Game,
+  cells: (number | null)[],
+  row: number,
+  col: number,
+  dr: number,
+  dc: number,
+  seat: number,
+): number {
+  let n = 0;
+  let r = row + dr;
+  let c = col + dc;
+  while (r >= 0 && r < game.rows && c >= 0 && c < game.cols && cells[r * game.cols + c] === seat) {
+    n++;
+    r += dr;
+    c += dc;
+  }
+  return n;
+}
+
+function connect4HasWin(
+  game: Connect4Game,
+  cells: (number | null)[],
+  row: number,
+  col: number,
+  seat: number,
+): boolean {
+  for (const [dr, dc] of C4_DIRS) {
+    const line =
+      1 +
+      countDir(game, cells, row, col, dr, dc, seat) +
+      countDir(game, cells, row, col, -dr, -dc, seat);
+    if (line >= 4) return true;
+  }
+  return false;
+}
+
+function connect4Move(game: Connect4Game, move: GameMove, now?: () => Date): GameSession {
+  if (move.kind !== 'drop') return game;
+  if (move.col < 0 || move.col >= game.cols) return game;
+  // Find the lowest empty row in the chosen column.
+  let row = -1;
+  for (let r = game.rows - 1; r >= 0; r--) {
+    if (game.cells[r * game.cols + move.col] === null) {
+      row = r;
+      break;
+    }
+  }
+  if (row < 0) return game; // column full
+
+  const cells = game.cells.slice();
+  cells[row * game.cols + move.col] = game.turn;
+
+  if (connect4HasWin(game, cells, row, move.col, game.turn)) {
+    return touch({ ...game, cells, status: 'finished', winners: [game.turn] }, now);
+  }
+  if (cells.every((c) => c !== null)) {
+    return touch({ ...game, cells, status: 'finished', winners: [] }, now);
+  }
+  const turn = (game.turn + 1) % game.seats.length;
+  return touch({ ...game, cells, turn }, now);
 }
 
 function ticTacToeMove(game: TicTacToeGame, move: GameMove, now?: () => Date): GameSession {

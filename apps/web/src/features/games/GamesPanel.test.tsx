@@ -61,6 +61,22 @@ describe('GamesPanel', () => {
     expect(screen.getByText(/Need at least 2 players/)).toBeInTheDocument();
   });
 
+  it('drops a disc in a started Connect Four game', async () => {
+    const roomId = useRoomStore.getState().state!.room.id;
+    let g = makeGame({ roomId, type: 'connect4', createdBy: aliceId });
+    g = joinG(g, bobId);
+    g = startG(g);
+    useRoomStore.setState((s) => ({ state: { ...s.state!, games: [g] } }));
+
+    const user = userEvent.setup();
+    renderPanel();
+    await user.click(screen.getByRole('button', { name: /In progress/ }));
+    expect(await screen.findByLabelText('Connect Four board')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /Drop in column 4/ }));
+    await waitFor(() => expect(screen.getByText(/Bob's turn/)).toBeInTheDocument());
+  });
+
   it('plays a move in a started tic-tac-toe game', async () => {
     const roomId = useRoomStore.getState().state!.room.id;
     let g = makeGame({ roomId, type: 'tictactoe', createdBy: aliceId });

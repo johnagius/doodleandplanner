@@ -1458,3 +1458,58 @@ label.field {
     animation: none;
   }
 }
+
+/* Connect Four */
+.c4-board {
+  display: flex;
+  gap: 6px;
+  padding: 10px;
+  background: linear-gradient(160deg, var(--primary), var(--primary-darker));
+  border-radius: 16px;
+  box-shadow: var(--shadow-md);
+}
+.c4-col {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-radius: 10px;
+  transition: background 0.12s ease;
+}
+.c4-col:not(:disabled):hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+.c4-col:disabled {
+  cursor: default;
+}
+.c4-slot {
+  display: grid;
+  place-items: center;
+  width: clamp(28px, 9vw, 40px);
+  height: clamp(28px, 9vw, 40px);
+  border-radius: 50%;
+  background: var(--bg-2);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.35);
+}
+.c4-disc {
+  width: 82%;
+  height: 82%;
+  border-radius: 50%;
+  box-shadow:
+    inset 0 -2px 3px rgba(0, 0, 0, 0.35),
+    inset 0 2px 3px rgba(255, 255, 255, 0.35);
+  animation: c4-drop 0.22s ease;
+}
+@keyframes c4-drop {
+  from {
+    transform: translateY(-180%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .c4-disc {
+    animation: none;
+  }
+}

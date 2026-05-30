@@ -8,6 +8,7 @@ import {
   resetGame,
   seatOf,
   startGame,
+  type Connect4Game,
   type DotsGame,
   type GameSession,
   type TicTacToeGame,
@@ -15,7 +16,7 @@ import {
 
 const now = () => new Date('2026-05-30T12:00:00Z');
 
-function seatTwo(type: 'tictactoe' | 'dots'): GameSession {
+function seatTwo(type: 'tictactoe' | 'connect4' | 'dots'): GameSession {
   let g = createGame({ roomId: 'r1', type, createdBy: 'alice', now });
   g = joinGame(g, 'bob', now);
   return startGame(g, now);
@@ -105,6 +106,61 @@ describe('games — tic-tac-toe', () => {
     expect(r.status).toBe('playing');
     expect(r.cells.every((c) => c === null)).toBe(true);
     expect(r.seats).toHaveLength(2);
+  });
+});
+
+describe('games — connect four', () => {
+  it('drops discs to the bottom and stacks them', () => {
+    let g = seatTwo('connect4') as Connect4Game;
+    expect(g.cols).toBe(7);
+    expect(g.rows).toBe(6);
+
+    g = makeMove(g, 'alice', { kind: 'drop', col: 3 }, now) as Connect4Game;
+    // Bottom row (row 5) of column 3 is Alice (seat 0).
+    expect(g.cells[5 * 7 + 3]).toBe(0);
+    expect(g.turn).toBe(1);
+    g = makeMove(g, 'bob', { kind: 'drop', col: 3 }, now) as Connect4Game;
+    // Stacks on top (row 4).
+    expect(g.cells[4 * 7 + 3]).toBe(1);
+  });
+
+  it('detects a vertical four-in-a-row', () => {
+    let g = seatTwo('connect4');
+    // Alice stacks col 0 four high; Bob plays col 1 in between.
+    g = makeMove(g, 'alice', { kind: 'drop', col: 0 }, now);
+    g = makeMove(g, 'bob', { kind: 'drop', col: 1 }, now);
+    g = makeMove(g, 'alice', { kind: 'drop', col: 0 }, now);
+    g = makeMove(g, 'bob', { kind: 'drop', col: 1 }, now);
+    g = makeMove(g, 'alice', { kind: 'drop', col: 0 }, now);
+    g = makeMove(g, 'bob', { kind: 'drop', col: 1 }, now);
+    g = makeMove(g, 'alice', { kind: 'drop', col: 0 }, now);
+    expect(g.status).toBe('finished');
+    expect(g.winners).toEqual([0]);
+  });
+
+  it('detects a horizontal four-in-a-row', () => {
+    let g = seatTwo('connect4');
+    // Alice across cols 0-3 on the bottom; Bob stacks col 6.
+    g = makeMove(g, 'alice', { kind: 'drop', col: 0 }, now);
+    g = makeMove(g, 'bob', { kind: 'drop', col: 6 }, now);
+    g = makeMove(g, 'alice', { kind: 'drop', col: 1 }, now);
+    g = makeMove(g, 'bob', { kind: 'drop', col: 6 }, now);
+    g = makeMove(g, 'alice', { kind: 'drop', col: 2 }, now);
+    g = makeMove(g, 'bob', { kind: 'drop', col: 6 }, now);
+    g = makeMove(g, 'alice', { kind: 'drop', col: 3 }, now);
+    expect(g.status).toBe('finished');
+    expect(g.winners).toEqual([0]);
+  });
+
+  it('rejects a move in a full column and the wrong move kind', () => {
+    let g = seatTwo('connect4') as Connect4Game;
+    // Fill column 0 (6 discs) alternating turns.
+    for (let i = 0; i < 6; i++) {
+      g = makeMove(g, i % 2 === 0 ? 'alice' : 'bob', { kind: 'drop', col: 0 }, now) as Connect4Game;
+    }
+    const whoseTurn = g.turn === 0 ? 'alice' : 'bob';
+    expect(makeMove(g, whoseTurn, { kind: 'drop', col: 0 })).toBe(g); // full
+    expect(makeMove(g, whoseTurn, { kind: 'cell', index: 0 })).toBe(g); // wrong kind
   });
 });
 

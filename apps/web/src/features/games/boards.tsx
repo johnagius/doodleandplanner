@@ -1,4 +1,4 @@
-import type { DotsGame, Member, TicTacToeGame } from '@dap/shared';
+import type { Connect4Game, DotsGame, Member, TicTacToeGame } from '@dap/shared';
 
 const SEAT_MARKS = ['✕', '◯', '△', '◇'];
 
@@ -32,6 +32,48 @@ export function TicTacToeBoard({
             onClick={() => onCell(i)}
           >
             {cell !== null ? SEAT_MARKS[cell] : ''}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+export function Connect4Board({
+  game,
+  canMove,
+  memberFor,
+  onDrop,
+}: {
+  game: Connect4Game;
+  canMove: boolean;
+  memberFor: (seat: number) => Member | undefined;
+  onDrop: (col: number) => void;
+}) {
+  const { cols, rows, cells } = game;
+  return (
+    <div className="c4-board" role="group" aria-label="Connect Four board">
+      {Array.from({ length: cols }, (_, c) => {
+        const full = cells[c] !== null; // top cell of this column occupied
+        return (
+          <button
+            key={c}
+            type="button"
+            className="c4-col"
+            disabled={!canMove || full}
+            aria-label={full ? `Column ${c + 1}, full` : `Drop in column ${c + 1}`}
+            onClick={() => onDrop(c)}
+          >
+            {Array.from({ length: rows }, (_, r) => {
+              const v = cells[r * cols + c];
+              return (
+                <span key={r} className="c4-slot">
+                  {v != null && (
+                    <span className="c4-disc" style={{ background: seatColor(v, memberFor) }} />
+                  )}
+                </span>
+              );
+            })}
           </button>
         );
       })}

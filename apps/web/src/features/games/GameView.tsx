@@ -9,7 +9,7 @@ import {
 } from '@dap/shared';
 import { Avatar } from '../../components/Avatar.js';
 import { useRoomStore } from '../../state/roomStore.js';
-import { DotsBoard, TicTacToeBoard } from './boards.js';
+import { Connect4Board, DotsBoard, TicTacToeBoard } from './boards.js';
 
 export function GameView({ game, onBack }: { game: GameSession; onBack: () => void }) {
   const room = useRoomStore((s) => s.state)!.room;
@@ -84,14 +84,23 @@ export function GameView({ game, onBack }: { game: GameSession; onBack: () => vo
         {/* Board */}
         {game.status !== 'lobby' && (
           <div className="game-board-wrap">
-            {game.type === 'tictactoe' ? (
+            {game.type === 'tictactoe' && (
               <TicTacToeBoard
                 game={game}
                 canMove={canMove}
                 memberFor={memberFor}
                 onCell={(index) => void playMove(game.id, { kind: 'cell', index })}
               />
-            ) : (
+            )}
+            {game.type === 'connect4' && (
+              <Connect4Board
+                game={game}
+                canMove={canMove}
+                memberFor={memberFor}
+                onDrop={(col) => void playMove(game.id, { kind: 'drop', col })}
+              />
+            )}
+            {game.type === 'dots' && (
               <DotsBoard
                 game={game}
                 canMove={canMove}

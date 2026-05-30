@@ -36,8 +36,10 @@ interface GoogleId {
     callback: (resp: { credential: string }) => void;
     auto_select?: boolean;
     cancel_on_tap_outside?: boolean;
+    use_fedcm_for_prompt?: boolean;
   }) => void;
   renderButton: (parent: HTMLElement, options: Record<string, unknown>) => void;
+  prompt: () => void;
   disableAutoSelect: () => void;
 }
 
@@ -49,6 +51,7 @@ declare global {
 
 const GIS_SRC = 'https://accounts.google.com/gsi/client';
 let scriptPromise: Promise<void> | null = null;
+let oneTapPrompted = false;
 const cache = new Map<string, { token: string; expiresAt: number }>();
 
 function loadGis(): Promise<void> {
@@ -151,6 +154,7 @@ export async function renderGoogleSignInButton(
     callback: (resp) => onCredential(resp.credential),
     auto_select: false,
     cancel_on_tap_outside: true,
+    use_fedcm_for_prompt: true,
   });
   parent.replaceChildren();
   id.renderButton(parent, {
@@ -161,4 +165,10 @@ export async function renderGoogleSignInButton(
     shape: 'pill',
     logo_alignment: 'left',
   });
+  // Show the One Tap prompt once per load so a signed-out visitor gets an
+  // immediate, dismissible "sign in with Google?" card.
+  if (!oneTapPrompted) {
+    oneTapPrompted = true;
+    id.prompt();
+  }
 }

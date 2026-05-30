@@ -1,55 +1,101 @@
 import { useEffect, useRef } from 'react';
 
 /**
- * Lightweight WebGL hero backdrop: animated, theme-tinted "aurora" blobs drawn
- * in a fragment shader on a full-bleed canvas. No dependencies. Degrades to a
- * CSS gradient (set on the wrapper) when WebGL is unavailable, and pauses for
- * users who prefer reduced motion.
+ * Interactive WebGL hero: a domain-warped fractal-noise flow field with an
+ * iridescent palette, film grain and a vignette. The flow bends toward the
+ * pointer (eased), giving a tactile, studio-grade backdrop. No dependencies.
+ * Degrades to a CSS gradient when WebGL is unavailable; pauses motion for
+ * users who prefer reduced motion (still renders one static frame).
  */
 const FRAG = `
 precision highp float;
 uniform vec2 u_res;
 uniform float u_time;
 uniform float u_dark;
+uniform vec2 u_mouse;     // 0..1, eased pointer
+uniform float u_active;   // 0..1 pointer presence
 
-// smooth blob field
-float blob(vec2 uv, vec2 c, float r) {
-  float d = length(uv - c);
-  return smoothstep(r, 0.0, d);
+// hash / value noise --------------------------------------------------------
+vec2 hash2(vec2 p){
+  p = vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)));
+  return -1.0 + 2.0 * fract(sin(p) * 43758.5453123);
+}
+float noise(vec2 p){
+  vec2 i = floor(p);
+  vec2 f = fract(p);
+  vec2 u = f * f * (3.0 - 2.0 * f);
+  return mix(
+    mix(dot(hash2(i + vec2(0.0,0.0)), f - vec2(0.0,0.0)),
+        dot(hash2(i + vec2(1.0,0.0)), f - vec2(1.0,0.0)), u.x),
+    mix(dot(hash2(i + vec2(0.0,1.0)), f - vec2(0.0,1.0)),
+        dot(hash2(i + vec2(1.0,1.0)), f - vec2(1.0,1.0)), u.x),
+    u.y);
+}
+// fractal brownian motion ---------------------------------------------------
+float fbm(vec2 p){
+  float v = 0.0;
+  float a = 0.5;
+  mat2 rot = mat2(1.6, 1.2, -1.2, 1.6);
+  for (int i = 0; i < 6; i++){
+    v += a * noise(p);
+    p = rot * p;
+    a *= 0.5;
+  }
+  return v;
 }
 
-void main() {
+// iridescent palette (Inigo Quilez cosine palette)
+vec3 palette(float t){
+  vec3 a = vec3(0.50, 0.45, 0.55);
+  vec3 b = vec3(0.45, 0.40, 0.50);
+  vec3 c = vec3(1.0, 1.0, 1.0);
+  vec3 d = vec3(0.10, 0.33, 0.67); // indigo -> violet -> pink sweep
+  return a + b * cos(6.28318 * (c * t + d));
+}
+
+void main(){
   vec2 uv = gl_FragCoord.xy / u_res.xy;
-  float t = u_time * 0.08;
-
   vec2 p = uv;
-  p.x *= u_res.x / u_res.y;
+  p.x *= u_res.x / u_res.y;               // aspect-correct
+  float t = u_time * 0.06;
 
-  // three drifting blobs
-  vec2 c1 = vec2(0.35 + 0.18 * sin(t * 1.3), 0.40 + 0.12 * cos(t * 1.1));
-  vec2 c2 = vec2(0.72 + 0.14 * cos(t * 0.9), 0.65 + 0.16 * sin(t * 1.4));
-  vec2 c3 = vec2(0.55 + 0.20 * sin(t * 0.7 + 2.0), 0.30 + 0.10 * cos(t * 1.7));
-  c1.x *= u_res.x / u_res.y; c2.x *= u_res.x / u_res.y; c3.x *= u_res.x / u_res.y;
+  // pointer attraction: pull the field toward the cursor
+  vec2 m = u_mouse;
+  m.x *= u_res.x / u_res.y;
+  vec2 toM = m - p;
+  float md = length(toM);
+  vec2 pull = toM * (0.18 * u_active) / (md * md + 0.15);
 
-  float b1 = blob(p, c1, 0.45);
-  float b2 = blob(p, c2, 0.50);
-  float b3 = blob(p, c3, 0.40);
+  // domain warping: noise of noise of noise
+  vec2 q = vec2(fbm(p * 1.5 + vec2(0.0, t)),
+                fbm(p * 1.5 + vec2(5.2, 1.3 - t)));
+  vec2 r = vec2(fbm(p * 1.5 + 3.0 * q + vec2(1.7, 9.2) + pull + t * 0.5),
+                fbm(p * 1.5 + 3.0 * q + vec2(8.3, 2.8) - pull));
+  float f = fbm(p * 1.5 + 3.5 * r);
 
-  // indigo / violet / pink palette
-  vec3 indigo = vec3(0.39, 0.40, 0.95);
-  vec3 violet = vec3(0.66, 0.33, 0.97);
-  vec3 pink   = vec3(0.93, 0.28, 0.60);
+  // map the warped field through the iridescent palette
+  float hue = f + 0.25 * length(r) + 0.15 * sin(t);
+  vec3 col = palette(hue);
 
-  vec3 col = indigo * b1 + violet * b2 + pink * b3;
+  // depth shading from the warp magnitude
+  col *= 0.65 + 0.6 * f;
+  col = mix(col, palette(hue + 0.15), clamp(length(q), 0.0, 1.0) * 0.5);
 
-  // base + tint; soft lavender base in light mode, deep indigo in dark mode
-  vec3 base = mix(vec3(0.90, 0.91, 0.99), vec3(0.05, 0.06, 0.11), u_dark);
-  float intensity = mix(0.60, 0.65, u_dark);
-  col = base + col * intensity;
+  // theme base + intensity (calmer & lighter in light mode for legibility)
+  vec3 base = mix(vec3(0.95, 0.96, 1.0), vec3(0.03, 0.04, 0.08), u_dark);
+  float strength = mix(0.34, 0.82, u_dark);
+  col = base + col * strength;
 
-  // subtle grain to avoid banding
-  float g = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453);
-  col += (g - 0.5) * 0.02;
+  // soft glow around the pointer
+  col += palette(hue + 0.3) * (0.12 * u_active) * smoothstep(0.5, 0.0, md);
+
+  // vignette
+  float vig = smoothstep(1.15, 0.35, length(uv - 0.5));
+  col *= 0.85 + 0.15 * vig;
+
+  // film grain (subtler in light mode)
+  float g = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233)) + u_time) * 43758.5453);
+  col += (g - 0.5) * mix(0.012, 0.028, u_dark);
 
   gl_FragColor = vec4(col, 1.0);
 }
@@ -78,11 +124,11 @@ export function HeroCanvas({ className }: { className?: string }) {
   useEffect(() => {
     const canvas = ref.current;
     if (!canvas) return;
-    const cv: HTMLCanvasElement = canvas; // non-null binding for nested closures
+    const cv: HTMLCanvasElement = canvas;
     const gl =
       (cv.getContext('webgl', { antialias: true, alpha: false }) as WebGLRenderingContext) ||
       (cv.getContext('experimental-webgl') as WebGLRenderingContext | null);
-    if (!gl) return; // CSS fallback on the wrapper handles this case.
+    if (!gl) return;
 
     const prog = gl.createProgram();
     const vs = compile(gl, gl.VERTEX_SHADER, VERT);
@@ -104,9 +150,28 @@ export function HeroCanvas({ className }: { className?: string }) {
     const uRes = gl.getUniformLocation(prog, 'u_res');
     const uTime = gl.getUniformLocation(prog, 'u_time');
     const uDark = gl.getUniformLocation(prog, 'u_dark');
+    const uMouse = gl.getUniformLocation(prog, 'u_mouse');
+    const uActive = gl.getUniformLocation(prog, 'u_active');
 
     const isDark = () => document.documentElement.getAttribute('data-theme') === 'dark';
-    const prefersReduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    const prefersReduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+
+    // Pointer state (target) + eased state (rendered).
+    const target = { x: 0.5, y: 0.5, active: 0 };
+    const eased = { x: 0.5, y: 0.5, active: 0 };
+
+    const onMove = (e: PointerEvent) => {
+      const rect = cv.getBoundingClientRect();
+      target.x = (e.clientX - rect.left) / rect.width;
+      target.y = 1 - (e.clientY - rect.top) / rect.height; // flip Y for GL
+      target.active = 1;
+    };
+    const onLeave = () => {
+      target.active = 0;
+    };
+    const host = cv.parentElement ?? cv;
+    host.addEventListener('pointermove', onMove);
+    host.addEventListener('pointerleave', onLeave);
 
     const resize = () => {
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -121,15 +186,30 @@ export function HeroCanvas({ className }: { className?: string }) {
 
     let raf = 0;
     const start = performance.now();
-    const frame = (now: number) => {
+    const render = (tSeconds: number) => {
+      // ease pointer toward target
+      eased.x += (target.x - eased.x) * 0.08;
+      eased.y += (target.y - eased.y) * 0.08;
+      eased.active += (target.active - eased.active) * 0.06;
       resize();
       gl.uniform2f(uRes, cv.width, cv.height);
-      gl.uniform1f(uTime, prefersReduced ? 0 : (now - start) / 1000);
+      gl.uniform1f(uTime, tSeconds);
       gl.uniform1f(uDark, isDark() ? 1 : 0);
+      gl.uniform2f(uMouse, eased.x, eased.y);
+      gl.uniform1f(uActive, eased.active);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
-      if (!prefersReduced) raf = requestAnimationFrame(frame);
     };
-    frame(start);
+
+    const frame = (now: number) => {
+      render((now - start) / 1000);
+      raf = requestAnimationFrame(frame);
+    };
+
+    if (prefersReduced) {
+      render(0); // one static frame
+    } else {
+      frame(start);
+    }
 
     const onLost = (e: Event) => {
       e.preventDefault();
@@ -140,6 +220,8 @@ export function HeroCanvas({ className }: { className?: string }) {
     return () => {
       cancelAnimationFrame(raf);
       cv.removeEventListener('webglcontextlost', onLost);
+      host.removeEventListener('pointermove', onMove);
+      host.removeEventListener('pointerleave', onLeave);
     };
   }, []);
 

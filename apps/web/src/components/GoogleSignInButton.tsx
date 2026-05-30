@@ -3,8 +3,9 @@ import { useGoogleStore } from '../state/googleStore.js';
 import type { GoogleProfile } from '../lib/google/calendar.js';
 
 /**
- * "Sign in with Google" button. Renders nothing when no OAuth client is
- * configured (VITE_GOOGLE_CLIENT_ID unset), so the UI stays clean until then.
+ * "Sign in with Google" button. When no OAuth client is configured
+ * (VITE_GOOGLE_CLIENT_ID unset) it renders disabled with an explanatory tooltip,
+ * so the capability is always visible.
  */
 export function GoogleSignInButton({
   onSignedIn,
@@ -13,7 +14,22 @@ export function GoogleSignInButton({
 }) {
   const { profile, connecting, connect, disconnect } = useGoogleStore();
 
-  if (!isGoogleConfigured()) return null;
+  if (!isGoogleConfigured()) {
+    return (
+      <button
+        type="button"
+        className="btn google-btn"
+        disabled
+        title="Google sign-in activates once an OAuth client ID is configured for this deployment."
+      >
+        <GoogleGlyph />
+        Sign in with Google
+        <span className="badge" style={{ marginLeft: 6 }}>
+          soon
+        </span>
+      </button>
+    );
+  }
 
   if (profile) {
     return (

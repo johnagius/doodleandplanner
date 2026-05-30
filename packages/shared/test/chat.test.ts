@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { appendMessage, createMessage, MAX_MESSAGE_LENGTH } from '../src/chat.js';
+import { appendMessage, createMessage, MAX_MESSAGE_LENGTH, toggleReaction } from '../src/chat.js';
 
 describe('createMessage', () => {
   it('creates a trimmed message', () => {

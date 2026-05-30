@@ -275,6 +275,8 @@ export interface Message {
   text: string;
   /** Optional attached photo (id into the room's photos / photo store). */
   photoId?: string;
+  /** Emoji reactions: emoji → member ids who reacted. Older messages omit this. */
+  reactions?: Record<string, string[]>;
   createdAt: ISODateTime;
 }
 

@@ -6,9 +6,11 @@ import { capturePhoto } from '../../lib/capturePhoto.js';
 import { useRoomStore } from '../../state/roomStore.js';
 import { PhotoLightbox } from '../gallery/PhotoLightbox.js';
 import { ChatPhoto } from './ChatPhoto.js';
+import { MessageReactions } from './MessageReactions.js';
 
 export function ChatPanel() {
   const state = useRoomStore((s) => s.state)!;
+  const meId = useRoomStore((s) => s.meId);
   const postMessage = useRoomStore((s) => s.postMessage);
   const addPhoto = useRoomStore((s) => s.addPhoto);
   const { show } = useToast();
@@ -83,6 +85,7 @@ export function ChatPanel() {
                       onOpen={() => setOpenId(m.photoId!)}
                     />
                   )}
+                  <MessageReactions message={m} meId={meId} />
                 </div>
               </div>
             );

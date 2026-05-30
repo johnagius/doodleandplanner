@@ -1841,3 +1841,79 @@ label.field {
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.7);
 }
+
+/* Chat message reactions */
+.chat-reactions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+  margin-top: 0.35rem;
+}
+.reaction-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.1rem 0.45rem;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-2);
+  cursor: pointer;
+}
+.reaction-chip.mine {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+  color: var(--primary-dark);
+}
+.reaction-add-wrap {
+  position: relative;
+}
+.reaction-add {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  font-size: 0.85rem;
+  line-height: 1;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+.chat-msg:hover .reaction-add,
+.reaction-add[aria-expanded='true'] {
+  opacity: 1;
+}
+.reaction-picker {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  margin-bottom: 4px;
+  display: flex;
+  gap: 0.15rem;
+  padding: 0.25rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  box-shadow: var(--shadow-md);
+  z-index: 5;
+}
+.reaction-option {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  font-size: 1.05rem;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  cursor: pointer;
+}
+.reaction-option:hover {
+  background: var(--surface-3);
+}

@@ -4,6 +4,7 @@ import {
   addOption,
   addStroke,
   appendMessage,
+  toggleReaction,
   castVote,
   claimItem,
   clearBoard,
@@ -179,6 +180,7 @@ interface RoomStore {
 
   // chat
   postMessage: (text: string, photoId?: string) => Promise<void>;
+  reactToMessage: (messageId: string, emoji: string) => Promise<void>;
 
   // availability
   shareMyAvailability: (busy: BusyInterval[]) => Promise<void>;
@@ -591,6 +593,14 @@ export const useRoomStore = create<RoomStore>((set, get) => {
           s.messages ?? [],
           createMessage({ roomId: s.room.id, authorId: me, text, photoId }),
         ),
+      }));
+    },
+
+    async reactToMessage(messageId, emoji) {
+      const me = requireMe();
+      await apply((s) => ({
+        ...s,
+        messages: toggleReaction(s.messages ?? [], messageId, emoji, me),
       }));
     },
 

@@ -127,7 +127,16 @@ export function RoomWorkspace() {
             className={`tab ${tab === t.id ? 'active' : ''}`}
             onClick={() => setTab(t.id)}
           >
-            <span aria-hidden>{t.icon}</span> {t.label}
+            {tab === t.id && !reduceMotion && (
+              <motion.span
+                layoutId="tab-pill"
+                className="tab-pill"
+                transition={{ type: 'spring', stiffness: 480, damping: 38 }}
+              />
+            )}
+            <span className="tab-label">
+              <span aria-hidden>{t.icon}</span> {t.label}
+            </span>
           </button>
         ))}
       </nav>

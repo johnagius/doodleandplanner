@@ -483,15 +483,26 @@ a.card:active {
   color: var(--text);
   cursor: pointer;
   transition:
-    transform 0.05s ease,
+    transform 0.08s cubic-bezier(0.34, 1.56, 0.64, 1),
     background 0.15s ease,
-    border-color 0.15s ease;
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 .btn:hover {
   background: var(--surface-2);
 }
 .btn:active {
-  transform: translateY(1px);
+  transform: scale(0.96);
+}
+@media (prefers-reduced-motion: reduce) {
+  .btn,
+  .card,
+  .feature-card {
+    transition: none;
+  }
+  .btn:active {
+    transform: none;
+  }
 }
 .btn:disabled {
   opacity: 0.55;
@@ -652,17 +663,33 @@ label.field {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  transition:
-    background 0.15s ease,
-    color 0.15s ease,
-    box-shadow 0.15s ease;
+  position: relative;
+  transition: color 0.15s ease;
 }
 .tab:hover {
   color: var(--text);
-  background: color-mix(in srgb, var(--surface) 70%, transparent);
 }
 .tab.active {
   color: var(--primary-dark);
+}
+/* Sliding active-tab pill (animated via Framer Motion layoutId). */
+.tab-pill {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  z-index: 0;
+}
+.tab-label {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+/* Reduced-motion / no-JS fallback: static active background. */
+.tab.active:not(:has(.tab-pill)) {
   background: var(--surface);
   box-shadow: var(--shadow-sm);
 }

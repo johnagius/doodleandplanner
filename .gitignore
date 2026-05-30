@@ -29,3 +29,5 @@ npm-debug.log*
 .vscode/*
 !.vscode/extensions.json
 *.swp
+apps/web/e2e/_*
+apps/web/test-results/

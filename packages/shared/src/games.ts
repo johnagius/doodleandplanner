@@ -246,12 +246,14 @@ export function createGame(input: {
     return { ...base, type: 'reversi', size: REVERSI_SIZE, cells };
   }
   if (input.type === 'battleship') {
-    // Fleets are placed when the game starts (see startGame).
+    // Ships are arranged in the placing phase once the game starts.
     return {
       ...base,
       type: 'battleship',
       size: BATTLESHIP_SIZE,
+      phase: 'placing',
       fleets: [[], []],
+      ready: [false, false],
       shots: emptyShots(),
     };
   }

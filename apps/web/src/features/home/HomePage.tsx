@@ -3,6 +3,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { GoogleSignInButton } from '../../components/GoogleSignInButton.js';
 import { Reveal, RevealItem, RevealStagger } from '../../components/Reveal.js';
+import { TiltCard } from '../../components/TiltCard.js';
 import {
   getPreferredName,
   getRepository,
@@ -112,14 +113,16 @@ function FeatureSection() {
       </Reveal>
       <RevealStagger className="feature-grid">
         {FEATURES.map((f) => (
-          <RevealItem key={f.title} className="feature-card">
-            <span className="feature-icon" aria-hidden>
-              {f.icon}
-            </span>
-            <h3 className="feature-card-title">{f.title}</h3>
-            <p className="muted small" style={{ margin: 0 }}>
-              {f.body}
-            </p>
+          <RevealItem key={f.title}>
+            <TiltCard className="feature-card">
+              <span className="feature-icon" aria-hidden>
+                {f.icon}
+              </span>
+              <h3 className="feature-card-title">{f.title}</h3>
+              <p className="muted small" style={{ margin: 0 }}>
+                {f.body}
+              </p>
+            </TiltCard>
           </RevealItem>
         ))}
       </RevealStagger>

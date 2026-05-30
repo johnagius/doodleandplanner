@@ -1,6 +1,7 @@
 import type { Photo } from '@dap/shared';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Modal } from '../../components/Modal.js';
+import { downloadPhoto } from '../../lib/downloadPhoto.js';
 import { usePhotoUrl } from '../../lib/usePhotoUrl.js';
 import { useRoomStore } from '../../state/roomStore.js';
 
@@ -10,12 +11,16 @@ export function PhotoLightbox({
   authorName,
   eventSuggestions,
   onClose,
+  onPrev,
+  onNext,
 }: {
   slug: string;
   photo: Photo;
   authorName: string;
   eventSuggestions: string[];
   onClose: () => void;
+  onPrev?: () => void;
+  onNext?: () => void;
 }) {
   const url = usePhotoUrl(slug, photo.id);
   const editPhoto = useRoomStore((s) => s.editPhoto);
@@ -23,22 +28,46 @@ export function PhotoLightbox({
   const [caption, setCaption] = useState(photo.caption ?? '');
   const [event, setEvent] = useState(photo.event ?? '');
 
+  // Re-sync the editable fields when navigating to another photo.
+  useEffect(() => {
+    setCaption(photo.caption ?? '');
+    setEvent(photo.event ?? '');
+  }, [photo.id, photo.caption, photo.event]);
+
+  // Arrow-key navigation between photos.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'ArrowLeft' && onPrev) onPrev();
+      if (e.key === 'ArrowRight' && onNext) onNext();
+    }
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onPrev, onNext]);
+
   const dirty = caption !== (photo.caption ?? '') || event !== (photo.event ?? '');
-
-  async function save() {
-    await editPhoto(photo.id, { caption, event });
-  }
-
+  const save = () => editPhoto(photo.id, { caption, event });
   const location = [photo.place, photo.country].filter(Boolean).join(', ');
 
   return (
     <Modal open onClose={onClose} title="Photo">
       <div className="lightbox">
-        {url ? (
-          <img className="lightbox-img" src={url} alt={photo.caption ?? ''} />
-        ) : (
-          <div className="lightbox-img lightbox-loading" aria-hidden />
-        )}
+        <div className="lightbox-stage">
+          {onPrev && (
+            <button className="lightbox-nav prev" onClick={onPrev} aria-label="Previous photo">
+              ‹
+            </button>
+          )}
+          {url ? (
+            <img className="lightbox-img" src={url} alt={photo.caption ?? ''} />
+          ) : (
+            <div className="lightbox-img lightbox-loading" aria-hidden />
+          )}
+          {onNext && (
+            <button className="lightbox-nav next" onClick={onNext} aria-label="Next photo">
+              ›
+            </button>
+          )}
+        </div>
 
         <div className="stack" style={{ gap: '0.6rem' }}>
           <label className="field">
@@ -79,6 +108,12 @@ export function PhotoLightbox({
                   Save
                 </button>
               )}
+              <button
+                className="btn btn-sm btn-ghost"
+                onClick={() => void downloadPhoto(slug, photo.id, photo.caption)}
+              >
+                ⬇ Download
+              </button>
               <button
                 className="btn btn-sm btn-ghost"
                 onClick={() => {

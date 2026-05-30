@@ -1,5 +1,6 @@
 import { createPhoto, createRoom, emptyRoomState } from '@dap/shared';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { ToastProvider } from '../../components/Toast.js';
 import {
@@ -60,5 +61,24 @@ describe('GalleryPanel', () => {
     expect(screen.getByRole('heading', { name: /Italy/ })).toBeInTheDocument();
     expect(screen.getByText('Beach day')).toBeInTheDocument();
     expect(screen.getByText('2 photos')).toBeInTheDocument();
+  });
+
+  it('selects photos in multi-select mode', async () => {
+    const roomId = useRoomStore.getState().state!.room.id;
+    const authorId = useRoomStore.getState().meId!;
+    const base = { roomId, authorId, mime: 'image/jpeg', width: 100, height: 100 };
+    useRoomStore.setState((s) => ({
+      state: {
+        ...s.state!,
+        photos: [createPhoto({ ...base, caption: 'A' }), createPhoto({ ...base, caption: 'B' })],
+      },
+    }));
+    const user = userEvent.setup();
+    renderPanel();
+
+    await user.click(screen.getByRole('button', { name: /Select/ }));
+    await user.click(screen.getByRole('button', { name: 'A' }));
+    expect(screen.getByText('1 selected')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Delete \(1\)/ })).toBeInTheDocument();
   });
 });

@@ -1720,3 +1720,63 @@ label.field {
     animation: none;
   }
 }
+
+/* Gallery multi-select + lightbox navigation */
+.gallery-thumb.selected {
+  outline: 3px solid var(--primary);
+  outline-offset: -3px;
+}
+.gallery-check {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  background: rgba(0, 0, 0, 0.35);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+.gallery-check.on {
+  background: var(--primary);
+}
+.gallery-check.on::after {
+  content: '✓';
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 900;
+}
+.lightbox-stage {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+.lightbox-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  font-size: 1.6rem;
+  line-height: 1;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.45);
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+}
+.lightbox-nav:hover {
+  background: rgba(0, 0, 0, 0.7);
+}
+.lightbox-nav.prev {
+  left: 8px;
+}
+.lightbox-nav.next {
+  right: 8px;
+}

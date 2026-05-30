@@ -1,12 +1,10 @@
 import { eventsForCountry, findMember } from '@dap/shared';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { Avatar } from '../../components/Avatar.js';
 import { useToast } from '../../components/Toast.js';
 import { capturePhoto } from '../../lib/capturePhoto.js';
 import { useRoomStore } from '../../state/roomStore.js';
 import { PhotoLightbox } from '../gallery/PhotoLightbox.js';
-import { ChatPhoto } from './ChatPhoto.js';
-import { MessageReactions } from './MessageReactions.js';
+import { ChatMessage } from './ChatMessage.js';
 
 export function ChatPanel() {
   const state = useRoomStore((s) => s.state)!;
@@ -61,35 +59,15 @@ export function ChatPanel() {
         <div className="empty">No messages yet. Say hi to the group! 👋</div>
       ) : (
         <div className="chat-log" data-testid="chat-log">
-          {messages.map((m) => {
-            const author = findMember(state.room, m.authorId);
-            return (
-              <div key={m.id} className="chat-msg">
-                <Avatar
-                  member={{ name: author?.name ?? '?', color: author?.color ?? '#888' }}
-                  size={28}
-                />
-                <div className="chat-bubble">
-                  <div className="row small muted" style={{ gap: 6 }}>
-                    <strong>{author?.name ?? 'Someone'}</strong>
-                    <span>
-                      {new Date(m.createdAt).toLocaleTimeString([], { timeStyle: 'short' })}
-                    </span>
-                  </div>
-                  {m.text && <div className="chat-text">{m.text}</div>}
-                  {m.photoId && (
-                    <ChatPhoto
-                      slug={state.room.slug}
-                      photoId={m.photoId}
-                      alt={m.text || 'Shared photo'}
-                      onOpen={() => setOpenId(m.photoId!)}
-                    />
-                  )}
-                  <MessageReactions message={m} meId={meId} />
-                </div>
-              </div>
-            );
-          })}
+          {messages.map((m) => (
+            <ChatMessage
+              key={m.id}
+              message={m}
+              room={state.room}
+              meId={meId}
+              onOpenPhoto={(id) => setOpenId(id)}
+            />
+          ))}
           <div ref={endRef} />
         </div>
       )}

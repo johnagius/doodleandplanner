@@ -277,6 +277,8 @@ export interface Message {
   photoId?: string;
   /** Emoji reactions: emoji → member ids who reacted. Older messages omit this. */
   reactions?: Record<string, string[]>;
+  /** Set when the message was edited after posting. */
+  editedAt?: ISODateTime;
   createdAt: ISODateTime;
 }
 

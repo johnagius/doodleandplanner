@@ -38,6 +38,33 @@ export function appendMessage(messages: Message[], message: Message, cap = DEFAU
 export const REACTION_EMOJI = ['👍', '❤️', '😂', '🎉', '😮', '😢'] as const;
 
 /**
+ * Edit a message's text (author only). Trims and length-checks like creation.
+ * Returns the same array reference when the edit is a no-op or not permitted.
+ */
+export function editMessage(
+  messages: Message[],
+  messageId: string,
+  authorId: string,
+  text: string,
+): Message[] {
+  const trimmed = text.trim();
+  return messages.map((m) => {
+    if (m.id !== messageId) return m;
+    if (m.authorId !== authorId) return m; // only the author may edit
+    if (!trimmed && !m.photoId) return m; // don't allow emptying a text-only message
+    if (trimmed.length > MAX_MESSAGE_LENGTH) return m;
+    return { ...m, text: trimmed, editedAt: new Date().toISOString() };
+  });
+}
+
+/** Remove a message (author only). Returns the same reference if not permitted. */
+export function deleteMessage(messages: Message[], messageId: string, authorId: string): Message[] {
+  const target = messages.find((m) => m.id === messageId);
+  if (!target || target.authorId !== authorId) return messages;
+  return messages.filter((m) => m.id !== messageId);
+}
+
+/**
  * Toggle a member's emoji reaction on a message immutably. Adds the member to
  * that emoji's list, or removes them if already present (dropping the emoji key
  * when its last reactor leaves). Returns a new messages array; the target

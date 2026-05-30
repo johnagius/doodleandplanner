@@ -5,6 +5,8 @@ import {
   addStroke,
   appendMessage,
   toggleReaction,
+  editMessage,
+  deleteMessage,
   castVote,
   claimItem,
   clearBoard,
@@ -181,6 +183,8 @@ interface RoomStore {
   // chat
   postMessage: (text: string, photoId?: string) => Promise<void>;
   reactToMessage: (messageId: string, emoji: string) => Promise<void>;
+  editMessage: (messageId: string, text: string) => Promise<void>;
+  deleteMessage: (messageId: string) => Promise<void>;
 
   // availability
   shareMyAvailability: (busy: BusyInterval[]) => Promise<void>;
@@ -601,6 +605,22 @@ export const useRoomStore = create<RoomStore>((set, get) => {
       await apply((s) => ({
         ...s,
         messages: toggleReaction(s.messages ?? [], messageId, emoji, me),
+      }));
+    },
+
+    async editMessage(messageId, text) {
+      const me = requireMe();
+      await apply((s) => ({
+        ...s,
+        messages: editMessage(s.messages ?? [], messageId, me, text),
+      }));
+    },
+
+    async deleteMessage(messageId) {
+      const me = requireMe();
+      await apply((s) => ({
+        ...s,
+        messages: deleteMessage(s.messages ?? [], messageId, me),
       }));
     },
 

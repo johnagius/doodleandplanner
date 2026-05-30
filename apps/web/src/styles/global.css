@@ -1917,3 +1917,28 @@ label.field {
 .reaction-option:hover {
   background: var(--surface-3);
 }
+
+/* Chat message author actions (edit / delete) */
+.chat-msg-actions {
+  display: inline-flex;
+  gap: 0.15rem;
+  margin-left: auto;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+.chat-msg:hover .chat-msg-actions {
+  opacity: 1;
+}
+.chat-msg-action {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 0.75rem;
+  padding: 0 0.15rem;
+  color: var(--muted);
+  border-radius: 4px;
+}
+.chat-msg-action:hover {
+  color: var(--text);
+  background: var(--surface-3);
+}

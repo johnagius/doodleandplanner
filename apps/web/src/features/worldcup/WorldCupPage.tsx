@@ -5,6 +5,7 @@ import { isRealtimeBackend } from '../../lib/storage/index.js';
 import { useWorldCupStore } from '../../state/worldCupStore.js';
 import { BracketView } from './BracketView.js';
 import { GroupTables } from './GroupTables.js';
+import { IdentityModal } from './IdentityModal.js';
 import { Leaderboard } from './Leaderboard.js';
 import { MatchCard } from './MatchCard.js';
 import { PredictorBar } from './PredictorBar.js';
@@ -27,7 +28,9 @@ export function WorldCupPage() {
   const error = useWorldCupStore((s) => s.error);
   const offline = useWorldCupStore((s) => s.offline);
   const admin = useWorldCupStore((s) => s.admin);
+  const meId = useWorldCupStore((s) => s.meId);
   const [tab, setTab] = useState<Tab>('fixtures');
+  const [identityAsked, setIdentityAsked] = useState(false);
 
   useEffect(() => {
     void load();
@@ -68,6 +71,12 @@ export function WorldCupPage() {
 
   return (
     <div className="container">
+      <IdentityModal
+        open={!meId && !identityAsked}
+        onClose={() => setIdentityAsked(true)}
+        wc={wc}
+      />
+
       <section className="wc-hero">
         <div className="wc-hero-body">
           <div className="row spread row-wrap" style={{ gap: '0.75rem' }}>

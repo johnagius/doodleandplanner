@@ -87,10 +87,12 @@ describe('WorldCupPage', () => {
     expect(
       await screen.findByRole('heading', { name: /World Cup 2026 Predictions/ }),
     ).toBeInTheDocument();
-    // Four default predictors, no login.
+    // First run asks who you are, offering the four default names.
+    const dialog = await screen.findByRole('dialog');
     for (const name of ['John', 'Daniel', 'Noel', 'Saviour']) {
-      expect(screen.getByRole('button', { name })).toBeInTheDocument();
+      expect(within(dialog).getByRole('button', { name })).toBeInTheDocument();
     }
+    await user.keyboard('{Escape}'); // dismiss to browse the rest
 
     await user.click(screen.getByRole('tab', { name: /Groups/ }));
     expect(await screen.findByText('Group A')).toBeInTheDocument();
@@ -135,19 +137,21 @@ describe('WorldCupPage', () => {
     expect(
       await screen.findByRole('heading', { name: /World Cup 2026 Predictions/ }),
     ).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'John' })).toBeInTheDocument();
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByRole('button', { name: 'John' })).toBeInTheDocument();
     expect(useWorldCupStore.getState().offline).toBe(true);
   });
 
-  it('adds a new predictor name', async () => {
+  it('adds a new name from the first-run prompt', async () => {
     const user = userEvent.setup();
     renderPage();
-    await screen.findByRole('heading', { name: /World Cup 2026 Predictions/ });
+    const dialog = await screen.findByRole('dialog');
 
-    await user.click(screen.getByRole('button', { name: '+ Add name' }));
-    await user.type(screen.getByLabelText('New predictor name'), 'Mark');
-    await user.click(screen.getByRole('button', { name: 'Add' }));
+    await user.click(within(dialog).getByRole('button', { name: '+ Add your name' }));
+    await user.type(within(dialog).getByLabelText('Your name'), 'Mark');
+    await user.click(within(dialog).getByRole('button', { name: 'Add' }));
 
+    // Added, auto-selected, and the prompt closes.
     expect(await screen.findByRole('button', { name: 'Mark' })).toBeInTheDocument();
   });
 
@@ -157,8 +161,10 @@ describe('WorldCupPage', () => {
     const { container } = renderPage();
 
     await screen.findByRole('heading', { name: /World Cup 2026 Predictions/ });
-    // Pick who I am, then predict 1–0 for the (future, unlocked) match.
-    await user.click(screen.getByRole('button', { name: 'John' }));
+    // Confirm who I am via the first-run prompt, then predict for the match.
+    const dialog = await screen.findByRole('dialog');
+    await user.click(within(dialog).getByRole('button', { name: 'John' }));
+    await user.click(screen.getByRole('button', { name: 'Yes, this is me' }));
     await user.click(await screen.findByRole('button', { name: 'Aland goals: one more' }));
 
     await waitFor(() => {

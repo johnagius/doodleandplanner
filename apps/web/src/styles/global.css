@@ -2018,6 +2018,36 @@ label.field {
   margin: 0;
 }
 
+/* First-run identity prompt */
+.wc-identity-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+.wc-identity-name {
+  font: inherit;
+  font-weight: 700;
+  font-size: 1.05rem;
+  padding: 0.9rem 0.6rem;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease,
+    transform 0.1s ease;
+}
+.wc-identity-name:hover {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+  color: var(--primary-dark);
+}
+.wc-identity-name:active {
+  transform: scale(0.97);
+}
+
 /* Predictor picker */
 .wc-predictor-bar {
   display: flex;

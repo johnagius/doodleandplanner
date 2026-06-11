@@ -8,13 +8,17 @@ test.describe('@smoke World Cup', () => {
     await expect(page.getByRole('heading', { name: /World Cup 2026 Predictions/ })).toBeVisible();
   });
 
-  test('shows predictors, fixtures and switches sections', async ({ page }) => {
+  test('asks who you are, then shows fixtures and sections', async ({ page }) => {
     await page.goto('/world-cup');
 
-    // The four default predictors are offered with no login.
+    // First run asks who you are, offering the four default names.
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
     for (const name of ['John', 'Daniel', 'Noel', 'Saviour']) {
-      await expect(page.getByRole('button', { name, exact: true })).toBeVisible();
+      await expect(dialog.getByRole('button', { name, exact: true })).toBeVisible();
     }
+    await page.keyboard.press('Escape');
+    await expect(dialog).toBeHidden();
 
     // Group standings render for every group.
     await page.getByRole('tab', { name: /Groups/ }).click();

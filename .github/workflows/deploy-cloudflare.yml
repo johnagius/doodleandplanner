@@ -1,0 +1,31 @@
+name: Deploy to Cloudflare Pages
+
+# Publishes the web app to the Cloudflare Pages project (doodleandplanner.pages.dev)
+# on every push to main, so the live site never lags behind the repo. Requires two
+# repository secrets: CLOUDFLARE_API_TOKEN (with "Cloudflare Pages: Edit") and
+# CLOUDFLARE_ACCOUNT_ID.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Publish to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy apps/web/dist --project-name=doodleandplanner --branch=main

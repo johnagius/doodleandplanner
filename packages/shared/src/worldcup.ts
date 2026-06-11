@@ -97,12 +97,18 @@ export interface WorldCupState {
   /** Season label, e.g. "2026". */
   season: string;
   title: string;
+  /** Seed-data version, bumped when teams/fixtures change so stale boards can be
+   * refreshed in place (see {@link WC_SEED_VERSION}). Absent ⇒ version 1. */
+  version?: number;
   teams: WcTeam[];
   matches: WcMatch[];
   predictors: WcPredictor[];
   predictions: WcPrediction[];
   createdAt: ISODateTime;
 }
+
+/** Bump when the seeded teams or fixtures change; boards below this re-seed. */
+export const WC_SEED_VERSION = 2;
 
 // --- Scoring ---------------------------------------------------------------
 
@@ -238,10 +244,11 @@ export function slotLabel(
   return sourceLabel(source);
 }
 
-/** True once a match can no longer be predicted: it has kicked off or finished. */
-export function isMatchLocked(match: WcMatch, now: Date = new Date()): boolean {
-  if (match.result) return true;
-  return now.getTime() >= toMs(match.kickoff);
+/** True once a match can no longer be predicted: once its result is entered.
+ * (We deliberately don't lock at kickoff — a late guess is fine until the
+ * organiser records the score.) */
+export function isMatchLocked(match: WcMatch): boolean {
+  return !!match.result;
 }
 
 /** True when both teams of a match are known (so it can be predicted). */
@@ -249,9 +256,26 @@ export function isMatchReady(match: WcMatch): boolean {
   return !!match.homeId && !!match.awayId;
 }
 
-/** The UTC calendar day ("YYYY-MM-DD") a match kicks off. */
+/** Kick-off times are shown in Malta's timezone, and the calendar groups by
+ * Malta days. (Most 2026 matches are in North America, so Malta is the evening
+ * after.) */
+export const WC_TIMEZONE = 'Europe/Malta';
+
+const maltaDayFmt = new Intl.DateTimeFormat('en-CA', {
+  timeZone: WC_TIMEZONE,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
+
+/** The Malta-local calendar day ("YYYY-MM-DD") for an instant. */
+export function dayKeyOf(date: Date): string {
+  return maltaDayFmt.format(date);
+}
+
+/** The Malta-local calendar day a match kicks off. */
 export function matchDateKey(match: WcMatch): string {
-  return match.kickoff.slice(0, 10);
+  return dayKeyOf(new Date(match.kickoff));
 }
 
 /** Sorted unique tournament days that have at least one match. */
@@ -273,8 +297,8 @@ export function matchesOn(state: WorldCupState, dateKey: string): WcMatch[] {
  */
 export function defaultDay(state: WorldCupState, now: Date = new Date()): string {
   const days = tournamentDays(state);
-  if (days.length === 0) return now.toISOString().slice(0, 10);
-  const today = now.toISOString().slice(0, 10);
+  if (days.length === 0) return dayKeyOf(now);
+  const today = dayKeyOf(now);
   // Prefer today if it has matches…
   if (days.includes(today)) return today;
   // …otherwise the next upcoming day, else the most recent past day.
@@ -348,7 +372,7 @@ export function setPrediction(state: WorldCupState, input: SetPredictionInput): 
   if (!findPredictor(state, input.predictorId)) throw new Error('Unknown predictor');
   if (!isMatchReady(match)) throw new Error('Both teams must be known before predicting');
   const now = (input.now ?? (() => new Date()))();
-  if (isMatchLocked(match, now)) throw new Error('This match is locked');
+  if (isMatchLocked(match)) throw new Error('This match is locked');
   const home = normalizeGoals(input.home);
   const away = normalizeGoals(input.away);
 
@@ -636,102 +660,162 @@ export function playedCount(state: WorldCupState): number {
 const GROUP_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
 
 /**
- * A plausible 48-team field for the 2026 finals, four to a group. This is the
- * board's starting data — real fixtures and the official draw can differ; the
- * organiser drives everything from here by entering results.
+ * The real 2026 World Cup field from the final draw (5 December 2025): 48 teams,
+ * four to a group, in their drawn order. The short code doubles as the team id.
  */
 const SEED_TEAMS: Array<[string, string, string]> = [
   // Group A
   ['MEX', 'Mexico', '🇲🇽'],
-  ['CRO', 'Croatia', '🇭🇷'],
-  ['NGA', 'Nigeria', '🇳🇬'],
-  ['KSA', 'Saudi Arabia', '🇸🇦'],
+  ['RSA', 'South Africa', '🇿🇦'],
+  ['KOR', 'South Korea', '🇰🇷'],
+  ['CZE', 'Czechia', '🇨🇿'],
   // Group B
   ['CAN', 'Canada', '🇨🇦'],
+  ['BIH', 'Bosnia and Herzegovina', '🇧🇦'],
+  ['QAT', 'Qatar', '🇶🇦'],
+  ['SUI', 'Switzerland', '🇨🇭'],
+  // Group C
+  ['BRA', 'Brazil', '🇧🇷'],
+  ['MAR', 'Morocco', '🇲🇦'],
+  ['HAI', 'Haiti', '🇭🇹'],
+  ['SCO', 'Scotland', '🏴󠁧󠁢󠁳󠁣󠁴󠁿'],
+  // Group D
+  ['USA', 'United States', '🇺🇸'],
+  ['PAR', 'Paraguay', '🇵🇾'],
+  ['AUS', 'Australia', '🇦🇺'],
+  ['TUR', 'Türkiye', '🇹🇷'],
+  // Group E
+  ['GER', 'Germany', '🇩🇪'],
+  ['CUW', 'Curaçao', '🇨🇼'],
+  ['CIV', "Côte d'Ivoire", '🇨🇮'],
+  ['ECU', 'Ecuador', '🇪🇨'],
+  // Group F
+  ['NED', 'Netherlands', '🇳🇱'],
+  ['JPN', 'Japan', '🇯🇵'],
+  ['SWE', 'Sweden', '🇸🇪'],
+  ['TUN', 'Tunisia', '🇹🇳'],
+  // Group G
   ['BEL', 'Belgium', '🇧🇪'],
   ['EGY', 'Egypt', '🇪🇬'],
-  ['QAT', 'Qatar', '🇶🇦'],
-  // Group C
-  ['USA', 'United States', '🇺🇸'],
-  ['NED', 'Netherlands', '🇳🇱'],
-  ['GHA', 'Ghana', '🇬🇭'],
-  ['IRQ', 'Iraq', '🇮🇶'],
-  // Group D
-  ['ARG', 'Argentina', '🇦🇷'],
-  ['DEN', 'Denmark', '🇩🇰'],
-  ['CIV', "Côte d'Ivoire", '🇨🇮'],
-  ['NZL', 'New Zealand', '🇳🇿'],
-  // Group E
-  ['FRA', 'France', '🇫🇷'],
-  ['URU', 'Uruguay', '🇺🇾'],
-  ['SEN', 'Senegal', '🇸🇳'],
-  ['UAE', 'United Arab Emirates', '🇦🇪'],
-  // Group F
-  ['BRA', 'Brazil', '🇧🇷'],
-  ['SUI', 'Switzerland', '🇨🇭'],
-  ['CMR', 'Cameroon', '🇨🇲'],
-  ['AUS', 'Australia', '🇦🇺'],
-  // Group G
-  ['ESP', 'Spain', '🇪🇸'],
-  ['COL', 'Colombia', '🇨🇴'],
-  ['ALG', 'Algeria', '🇩🇿'],
-  ['JPN', 'Japan', '🇯🇵'],
-  // Group H
-  ['GER', 'Germany', '🇩🇪'],
-  ['ECU', 'Ecuador', '🇪🇨'],
-  ['TUN', 'Tunisia', '🇹🇳'],
-  ['KOR', 'South Korea', '🇰🇷'],
-  // Group I
-  ['ENG', 'England', '🏴󠁧󠁢󠁥󠁮󠁧󠁿'],
-  ['SRB', 'Serbia', '🇷🇸'],
-  ['MAR', 'Morocco', '🇲🇦'],
-  ['PAN', 'Panama', '🇵🇦'],
-  // Group J
-  ['POR', 'Portugal', '🇵🇹'],
-  ['POL', 'Poland', '🇵🇱'],
   ['IRN', 'Iran', '🇮🇷'],
-  ['JAM', 'Jamaica', '🇯🇲'],
-  // Group K
-  ['ITA', 'Italy', '🇮🇹'],
-  ['AUT', 'Austria', '🇦🇹'],
-  ['PAR', 'Paraguay', '🇵🇾'],
-  ['UZB', 'Uzbekistan', '🇺🇿'],
-  // Group L
-  ['TUR', 'Türkiye', '🇹🇷'],
-  ['UKR', 'Ukraine', '🇺🇦'],
+  ['NZL', 'New Zealand', '🇳🇿'],
+  // Group H
+  ['ESP', 'Spain', '🇪🇸'],
+  ['CPV', 'Cape Verde', '🇨🇻'],
+  ['KSA', 'Saudi Arabia', '🇸🇦'],
+  ['URU', 'Uruguay', '🇺🇾'],
+  // Group I
+  ['FRA', 'France', '🇫🇷'],
+  ['SEN', 'Senegal', '🇸🇳'],
+  ['IRQ', 'Iraq', '🇮🇶'],
   ['NOR', 'Norway', '🇳🇴'],
-  ['CRC', 'Costa Rica', '🇨🇷'],
+  // Group J
+  ['ARG', 'Argentina', '🇦🇷'],
+  ['ALG', 'Algeria', '🇩🇿'],
+  ['AUT', 'Austria', '🇦🇹'],
+  ['JOR', 'Jordan', '🇯🇴'],
+  // Group K
+  ['POR', 'Portugal', '🇵🇹'],
+  ['COD', 'DR Congo', '🇨🇩'],
+  ['UZB', 'Uzbekistan', '🇺🇿'],
+  ['COL', 'Colombia', '🇨🇴'],
+  // Group L
+  ['ENG', 'England', '🏴󠁧󠁢󠁥󠁮󠁧󠁿'],
+  ['CRO', 'Croatia', '🇭🇷'],
+  ['GHA', 'Ghana', '🇬🇭'],
+  ['PAN', 'Panama', '🇵🇦'],
 ];
 
-/** Host cities, cycled for a bit of flavour on each match card. */
-const VENUES = [
-  'Mexico City',
-  'New York / New Jersey',
-  'Los Angeles',
-  'Dallas',
-  'Atlanta',
-  'Toronto',
-  'Houston',
-  'Kansas City',
-  'Guadalajara',
-  'Boston',
-  'Philadelphia',
-  'Miami',
-  'Seattle',
-  'San Francisco Bay',
-  'Vancouver',
-  'Monterrey',
-];
-
-// Round-robin pairings (indices within a group of four) so each team plays
-// each other once across three matchdays.
-const GROUP_PAIRINGS: Array<[number, number]> = [
-  [0, 1],
-  [2, 3], // MD1
-  [0, 2],
-  [1, 3], // MD2
-  [0, 3],
-  [1, 2], // MD3
+/**
+ * The official 2026 group-stage schedule. Each entry is
+ * [group, matchday, homeId, awayId, kickoff (UTC ISO), host city]. Kick-offs are
+ * stored as true UTC instants and rendered in Malta time by the UI.
+ */
+const GROUP_FIXTURES: Array<[string, number, string, string, string, string]> = [
+  // Group A
+  ['A', 1, 'MEX', 'RSA', '2026-06-11T19:00:00Z', 'Mexico City'],
+  ['A', 1, 'KOR', 'CZE', '2026-06-12T02:00:00Z', 'Guadalajara'],
+  ['A', 2, 'CZE', 'RSA', '2026-06-18T16:00:00Z', 'Atlanta'],
+  ['A', 2, 'MEX', 'KOR', '2026-06-19T01:00:00Z', 'Guadalajara'],
+  ['A', 3, 'CZE', 'MEX', '2026-06-25T01:00:00Z', 'Mexico City'],
+  ['A', 3, 'RSA', 'KOR', '2026-06-25T01:00:00Z', 'Monterrey'],
+  // Group B
+  ['B', 1, 'CAN', 'BIH', '2026-06-12T19:00:00Z', 'Toronto'],
+  ['B', 1, 'QAT', 'SUI', '2026-06-13T19:00:00Z', 'Bay Area'],
+  ['B', 2, 'SUI', 'BIH', '2026-06-18T19:00:00Z', 'Los Angeles'],
+  ['B', 2, 'CAN', 'QAT', '2026-06-18T22:00:00Z', 'Vancouver'],
+  ['B', 3, 'SUI', 'CAN', '2026-06-24T19:00:00Z', 'Vancouver'],
+  ['B', 3, 'BIH', 'QAT', '2026-06-24T19:00:00Z', 'Seattle'],
+  // Group C
+  ['C', 1, 'BRA', 'MAR', '2026-06-13T22:00:00Z', 'New York New Jersey'],
+  ['C', 1, 'HAI', 'SCO', '2026-06-14T01:00:00Z', 'Boston'],
+  ['C', 2, 'SCO', 'MAR', '2026-06-19T22:00:00Z', 'Boston'],
+  ['C', 2, 'BRA', 'HAI', '2026-06-20T00:30:00Z', 'Philadelphia'],
+  ['C', 3, 'SCO', 'BRA', '2026-06-24T22:00:00Z', 'Miami'],
+  ['C', 3, 'MAR', 'HAI', '2026-06-24T22:00:00Z', 'Atlanta'],
+  // Group D
+  ['D', 1, 'USA', 'PAR', '2026-06-13T01:00:00Z', 'Los Angeles'],
+  ['D', 1, 'AUS', 'TUR', '2026-06-14T04:00:00Z', 'Vancouver'],
+  ['D', 2, 'USA', 'AUS', '2026-06-19T19:00:00Z', 'Seattle'],
+  ['D', 2, 'TUR', 'PAR', '2026-06-20T03:00:00Z', 'Bay Area'],
+  ['D', 3, 'TUR', 'USA', '2026-06-26T02:00:00Z', 'Los Angeles'],
+  ['D', 3, 'PAR', 'AUS', '2026-06-26T02:00:00Z', 'Bay Area'],
+  // Group E
+  ['E', 1, 'GER', 'CUW', '2026-06-14T17:00:00Z', 'Houston'],
+  ['E', 1, 'CIV', 'ECU', '2026-06-14T23:00:00Z', 'Philadelphia'],
+  ['E', 2, 'GER', 'CIV', '2026-06-20T20:00:00Z', 'Toronto'],
+  ['E', 2, 'ECU', 'CUW', '2026-06-21T00:00:00Z', 'Kansas City'],
+  ['E', 3, 'CUW', 'CIV', '2026-06-25T20:00:00Z', 'Philadelphia'],
+  ['E', 3, 'ECU', 'GER', '2026-06-25T20:00:00Z', 'New York New Jersey'],
+  // Group F
+  ['F', 1, 'NED', 'JPN', '2026-06-14T20:00:00Z', 'Dallas'],
+  ['F', 1, 'SWE', 'TUN', '2026-06-15T02:00:00Z', 'Monterrey'],
+  ['F', 2, 'NED', 'SWE', '2026-06-20T17:00:00Z', 'Houston'],
+  ['F', 2, 'TUN', 'JPN', '2026-06-21T04:00:00Z', 'Monterrey'],
+  ['F', 3, 'JPN', 'SWE', '2026-06-25T23:00:00Z', 'Dallas'],
+  ['F', 3, 'TUN', 'NED', '2026-06-25T23:00:00Z', 'Kansas City'],
+  // Group G
+  ['G', 1, 'BEL', 'EGY', '2026-06-15T19:00:00Z', 'Seattle'],
+  ['G', 1, 'IRN', 'NZL', '2026-06-16T01:00:00Z', 'Los Angeles'],
+  ['G', 2, 'BEL', 'IRN', '2026-06-21T19:00:00Z', 'Los Angeles'],
+  ['G', 2, 'NZL', 'EGY', '2026-06-22T01:00:00Z', 'Vancouver'],
+  ['G', 3, 'EGY', 'IRN', '2026-06-27T03:00:00Z', 'Seattle'],
+  ['G', 3, 'NZL', 'BEL', '2026-06-27T03:00:00Z', 'Vancouver'],
+  // Group H
+  ['H', 1, 'ESP', 'CPV', '2026-06-15T16:00:00Z', 'Atlanta'],
+  ['H', 1, 'KSA', 'URU', '2026-06-15T22:00:00Z', 'Miami'],
+  ['H', 2, 'ESP', 'KSA', '2026-06-21T16:00:00Z', 'Atlanta'],
+  ['H', 2, 'URU', 'CPV', '2026-06-21T22:00:00Z', 'Miami'],
+  ['H', 3, 'CPV', 'KSA', '2026-06-27T00:00:00Z', 'Houston'],
+  ['H', 3, 'URU', 'ESP', '2026-06-27T00:00:00Z', 'Guadalajara'],
+  // Group I
+  ['I', 1, 'FRA', 'SEN', '2026-06-16T19:00:00Z', 'New York New Jersey'],
+  ['I', 1, 'IRQ', 'NOR', '2026-06-16T22:00:00Z', 'Boston'],
+  ['I', 2, 'FRA', 'IRQ', '2026-06-22T21:00:00Z', 'Philadelphia'],
+  ['I', 2, 'NOR', 'SEN', '2026-06-23T00:00:00Z', 'New York New Jersey'],
+  ['I', 3, 'NOR', 'FRA', '2026-06-26T19:00:00Z', 'Boston'],
+  ['I', 3, 'SEN', 'IRQ', '2026-06-26T19:00:00Z', 'Toronto'],
+  // Group J
+  ['J', 1, 'ARG', 'ALG', '2026-06-17T01:00:00Z', 'Kansas City'],
+  ['J', 1, 'AUT', 'JOR', '2026-06-17T04:00:00Z', 'Bay Area'],
+  ['J', 2, 'ARG', 'AUT', '2026-06-22T17:00:00Z', 'Dallas'],
+  ['J', 2, 'JOR', 'ALG', '2026-06-23T03:00:00Z', 'Bay Area'],
+  ['J', 3, 'ALG', 'AUT', '2026-06-28T02:00:00Z', 'Kansas City'],
+  ['J', 3, 'JOR', 'ARG', '2026-06-28T02:00:00Z', 'Dallas'],
+  // Group K
+  ['K', 1, 'POR', 'COD', '2026-06-17T17:00:00Z', 'Houston'],
+  ['K', 1, 'UZB', 'COL', '2026-06-18T02:00:00Z', 'Mexico City'],
+  ['K', 2, 'POR', 'UZB', '2026-06-23T17:00:00Z', 'Houston'],
+  ['K', 2, 'COL', 'COD', '2026-06-24T02:00:00Z', 'Guadalajara'],
+  ['K', 3, 'COL', 'POR', '2026-06-27T23:30:00Z', 'Miami'],
+  ['K', 3, 'COD', 'UZB', '2026-06-27T23:30:00Z', 'Atlanta'],
+  // Group L
+  ['L', 1, 'ENG', 'CRO', '2026-06-17T20:00:00Z', 'Dallas'],
+  ['L', 1, 'GHA', 'PAN', '2026-06-17T23:00:00Z', 'Toronto'],
+  ['L', 2, 'ENG', 'GHA', '2026-06-23T20:00:00Z', 'Boston'],
+  ['L', 2, 'PAN', 'CRO', '2026-06-23T23:00:00Z', 'Toronto'],
+  ['L', 3, 'PAN', 'ENG', '2026-06-27T21:00:00Z', 'New York New Jersey'],
+  ['L', 3, 'CRO', 'GHA', '2026-06-27T21:00:00Z', 'Philadelphia'],
 ];
 
 // Round-of-32 template: which group winners / runners-up / best thirds meet.
@@ -775,15 +859,15 @@ function kickoff(day: string, slot: number): string {
 }
 
 /**
- * Assign kickoffs to a list of matches: `perDay` matches per day, starting at
- * `startDay`, walking the calendar forward. Mutates `match.kickoff`.
+ * Assign kickoffs to a list of knockout matches: `perDay` matches per day,
+ * starting at `startDay`, walking the calendar forward. (Group matches use their
+ * exact real times instead.) Mutates `match.kickoff`.
  */
 function schedule(matches: WcMatch[], startDay: string, perDay: number): void {
   matches.forEach((m, i) => {
     const dayOffset = Math.floor(i / perDay);
     const slot = i % perDay;
     m.kickoff = kickoff(dayString(startDay, dayOffset), slot);
-    m.venue = VENUES[m.order % VENUES.length];
   });
 }
 
@@ -798,43 +882,28 @@ export function seedWorldCup(now: () => Date = () => new Date()): WorldCupState 
     flag,
     group: GROUP_LETTERS[Math.floor(i / 4)]!,
   }));
-  const teamsByGroup = new Map<string, WcTeam[]>();
-  for (const g of GROUP_LETTERS) {
-    teamsByGroup.set(
-      g,
-      teams.filter((t) => t.group === g),
-    );
-  }
 
   const matches: WcMatch[] = [];
   let order = 0;
 
-  // Group stage — emit matchday by matchday so the calendar reads chronologically.
-  const groupMatches: WcMatch[] = [];
-  for (let md = 0; md < 3; md++) {
-    for (const g of GROUP_LETTERS) {
-      const gt = teamsByGroup.get(g)!;
-      for (let p = 0; p < 2; p++) {
-        const [hi, ai] = GROUP_PAIRINGS[md * 2 + p]!;
-        const idx = md * 2 + p + 1; // 1..6 within the group
-        const match: WcMatch = {
-          id: `g-${g}-${idx}`,
-          stage: 'group',
-          group: g,
-          matchday: md + 1,
-          order: order++,
-          kickoff: '',
-          homeId: gt[hi]!.id,
-          awayId: gt[ai]!.id,
-        };
-        groupMatches.push(match);
-        matches.push(match);
-      }
-    }
+  // Group stage — straight from the official fixture list.
+  const perGroupCount: Record<string, number> = {};
+  for (const [group, matchday, homeId, awayId, kickoffAt, venue] of GROUP_FIXTURES) {
+    const idx = (perGroupCount[group] = (perGroupCount[group] ?? 0) + 1);
+    matches.push({
+      id: `g-${group}-${idx}`,
+      stage: 'group',
+      group,
+      matchday,
+      order: order++,
+      kickoff: kickoffAt,
+      venue,
+      homeId,
+      awayId,
+    });
   }
-  schedule(groupMatches, '2026-06-11', 4);
 
-  // Round of 32.
+  // Round of 32 (28 June – 3 July).
   const r32: WcMatch[] = R32_TEMPLATE.map(([home, away], i) => ({
     id: `r32-${i + 1}`,
     stage: 'r32',
@@ -844,9 +913,9 @@ export function seedWorldCup(now: () => Date = () => new Date()): WorldCupState 
     awaySource: parseSlot(away),
   }));
   matches.push(...r32);
-  schedule(r32, '2026-06-30', 4);
+  schedule(r32, '2026-06-28', 3);
 
-  // Round of 16 — winners of consecutive R32 ties.
+  // Round of 16 — winners of consecutive R32 ties (4–7 July).
   const r16: WcMatch[] = [];
   for (let i = 0; i < 8; i++) {
     r16.push({
@@ -859,7 +928,7 @@ export function seedWorldCup(now: () => Date = () => new Date()): WorldCupState 
     });
   }
   matches.push(...r16);
-  schedule(r16, '2026-07-05', 2);
+  schedule(r16, '2026-07-04', 2);
 
   // Quarter-finals.
   const qf: WcMatch[] = [];
@@ -874,7 +943,7 @@ export function seedWorldCup(now: () => Date = () => new Date()): WorldCupState 
     });
   }
   matches.push(...qf);
-  schedule(qf, '2026-07-10', 2);
+  schedule(qf, '2026-07-09', 2);
 
   // Semi-finals.
   const sf: WcMatch[] = [];
@@ -922,6 +991,7 @@ export function seedWorldCup(now: () => Date = () => new Date()): WorldCupState 
   return {
     season: '2026',
     title: 'World Cup 2026 Predictions',
+    version: WC_SEED_VERSION,
     teams,
     matches,
     predictors,

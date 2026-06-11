@@ -36,12 +36,24 @@ function seed(): WorldCupState {
   return seedWorldCup(NOW);
 }
 
-/** Play every group match as a 2-0 home win, making the first-listed team in
- * each group the winner, the second the runner-up and the third the best third. */
+/** The four teams of a group in their seeded (drawn) order. */
+function seedOrder(state: WorldCupState, group: string): string[] {
+  return state.teams.filter((t) => t.group === group).map((t) => t.id);
+}
+
+/** Play every group so the higher-seeded team (earlier in the drawn order) wins
+ * 2-0. Each group then finishes in seeded order: 1st = winner, 2nd = runner-up,
+ * 3rd = the group's third-placed team — regardless of the real fixture pairings. */
 function playAllGroups(state: WorldCupState): WorldCupState {
+  const rank = new Map<string, number>();
+  for (const g of new Set(state.teams.map((t) => t.group))) {
+    seedOrder(state, g).forEach((id, i) => rank.set(id, i));
+  }
   let s = state;
   for (const m of state.matches) {
-    if (m.stage === 'group') s = setResult(s, { matchId: m.id, home: 2, away: 0 });
+    if (m.stage !== 'group') continue;
+    const homeWins = (rank.get(m.homeId!) ?? 9) < (rank.get(m.awayId!) ?? 9);
+    s = setResult(s, { matchId: m.id, home: homeWins ? 2 : 0, away: homeWins ? 0 : 2 });
   }
   return s;
 }
@@ -157,9 +169,9 @@ describe('predictions', () => {
   it('rejects locked matches, unready knockouts and unknown ids', () => {
     const s = seed();
     const p = s.predictors[0]!;
-    const late = () => new Date('2026-07-01T00:00:00Z');
+    const played = setResult(s, { matchId: 'g-A-1', home: 1, away: 0 });
     expect(() =>
-      setPrediction(s, { matchId: 'g-A-1', predictorId: p.id, home: 1, away: 0, now: late }),
+      setPrediction(played, { matchId: 'g-A-1', predictorId: p.id, home: 1, away: 0, now: NOW }),
     ).toThrow(/locked/);
     expect(() =>
       setPrediction(s, { matchId: 'r32-1', predictorId: p.id, home: 1, away: 0, now: NOW }),
@@ -177,7 +189,7 @@ describe('group standings', () => {
   it('orders by points, then goal difference, then goals for', () => {
     const s = playAllGroups(seed());
     const table = groupStandings(s, 'A');
-    expect(table.map((r) => r.teamId)).toEqual(['MEX', 'CRO', 'NGA', 'KSA']);
+    expect(table.map((r) => r.teamId)).toEqual(['MEX', 'RSA', 'KOR', 'CZE']);
     expect(table[0]).toMatchObject({
       points: 9,
       won: 3,
@@ -202,13 +214,13 @@ describe('bracket population', () => {
   it('fills the Round of 32 from final group standings', () => {
     const s = playAllGroups(seed());
     const r32_1 = findMatch(s, 'r32-1')!;
-    // W:A vs T:1
-    expect(r32_1.homeId).toBe('MEX');
+    // W:A vs T:1 → group A winner vs the best third-placed team.
+    expect(r32_1.homeId).toBe(seedOrder(s, 'A')[0]); // MEX
     expect(r32_1.awayId).toBe(thirdPlacedRanking(s)[0]!.teamId);
-    // r32-9 is W:I vs R:J → England vs Poland (group J runner-up).
+    // r32-9 is W:I vs R:J → group I winner vs group J runner-up.
     const r32_9 = findMatch(s, 'r32-9')!;
-    expect(r32_9.homeId).toBe('ENG');
-    expect(r32_9.awayId).toBe('POL');
+    expect(r32_9.homeId).toBe(seedOrder(s, 'I')[0]); // FRA
+    expect(r32_9.awayId).toBe(seedOrder(s, 'J')[1]); // ALG
     // Every R32 slot is filled with a distinct team.
     const r32 = s.matches.filter((m) => m.stage === 'r32');
     const ids = r32.flatMap((m) => [m.homeId, m.awayId]);
@@ -349,7 +361,8 @@ describe('calendar + labels', () => {
 
   it('locks a match once it has a result', () => {
     let s = seed();
+    expect(isMatchLocked(findMatch(s, 'g-A-1')!)).toBe(false);
     s = setResult(s, { matchId: 'g-A-1', home: 1, away: 1 });
-    expect(isMatchLocked(findMatch(s, 'g-A-1')!, new Date('2026-06-01T00:00:00Z'))).toBe(true);
+    expect(isMatchLocked(findMatch(s, 'g-A-1')!)).toBe(true);
   });
 });

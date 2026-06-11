@@ -20,6 +20,7 @@ async function seedControlledBoard(): Promise<void> {
   const wc: WorldCupState = {
     season: '2026',
     title: 'Test Cup',
+    version: 9999, // never auto-reseeded in this test
     teams: [
       { id: 'AAA', name: 'Aland', flag: '🅰️', group: 'A' },
       { id: 'BBB', name: 'Bland', flag: '🅱️', group: 'A' },

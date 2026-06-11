@@ -1,5 +1,27 @@
-import { createRoom, emptyRoomState, seedWorldCup, type RoomState } from '@dap/shared';
+import {
+  WC_SEED_VERSION,
+  createRoom,
+  emptyRoomState,
+  seedWorldCup,
+  type RoomState,
+  type WorldCupState,
+} from '@dap/shared';
 import { getRepository, type Repository } from '../../lib/storage/index.js';
+
+/**
+ * Refresh a stale board's teams + fixtures to the current seed while keeping the
+ * people: their names carry over, but predictions are cleared because the
+ * matches (and their ids) have changed.
+ */
+function reseed(old: WorldCupState): WorldCupState {
+  const fresh = seedWorldCup();
+  return {
+    ...fresh,
+    predictors: old.predictors.length ? old.predictors : fresh.predictors,
+    predictions: [],
+    createdAt: old.createdAt,
+  };
+}
 
 /**
  * The World Cup board is a single, shared "room" so it can ride the same
@@ -14,7 +36,12 @@ export const WORLD_CUP_SLUG = 'world-cup';
  */
 export async function loadOrCreateWorldCup(repo: Repository = getRepository()): Promise<RoomState> {
   const existing = await repo.getRoom(WORLD_CUP_SLUG);
-  if (existing?.worldCup) return existing;
+  if (existing?.worldCup) {
+    // Up-to-date board: use it. Stale seed (older teams/fixtures): refresh in
+    // place, keeping the predictors.
+    if ((existing.worldCup.version ?? 1) >= WC_SEED_VERSION) return existing;
+    return repo.saveRoom({ ...existing, worldCup: reseed(existing.worldCup) });
+  }
   if (existing) {
     // Room exists but predates the World Cup feature — seed it in place.
     return repo.saveRoom({ ...existing, worldCup: seedWorldCup() });

@@ -70,11 +70,7 @@ export function MatchCard({ matchId }: { matchId: string }) {
           {formatKickoff(match.kickoff)}
           {match.venue ? ` · ${match.venue}` : ''}
         </span>
-        {result ? (
-          <span className="badge badge-success wc-ft">FT</span>
-        ) : locked && ready ? (
-          <span className="badge badge-warn">🔒 Kicked off</span>
-        ) : null}
+        {result && <span className="badge badge-success wc-ft">FT</span>}
       </div>
 
       <div className="wc-fixture">

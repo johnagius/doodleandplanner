@@ -4,7 +4,12 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { ToastProvider } from '../../components/Toast.js';
-import { LocalStorageRepository, getRepository, setRepository } from '../../lib/storage/index.js';
+import {
+  LocalStorageRepository,
+  getRepository,
+  setRepository,
+  type Repository,
+} from '../../lib/storage/index.js';
 import { useWorldCupStore } from '../../state/worldCupStore.js';
 import { WORLD_CUP_SLUG } from './worldCupRoom.js';
 import { WorldCupPage } from './WorldCupPage.js';
@@ -95,6 +100,42 @@ describe('WorldCupPage', () => {
 
     await user.click(screen.getByRole('tab', { name: /Leaderboard/ }));
     expect(await screen.findByText(/No results yet/)).toBeInTheDocument();
+  });
+
+  it('falls back to a local board when the backend is unreachable', async () => {
+    // A "remote" repo that fails like a CORS-blocked / offline fetch.
+    const broken: Repository = {
+      async createRoom() {
+        throw new TypeError('NetworkError when attempting to fetch resource');
+      },
+      async getRoom() {
+        throw new TypeError('NetworkError when attempting to fetch resource');
+      },
+      async saveRoom(s) {
+        return s;
+      },
+      async deleteRoom() {},
+      async listRooms() {
+        return [];
+      },
+      subscribe() {
+        return () => {};
+      },
+      async uploadPhoto() {},
+      async getPhotoBlob() {
+        return null;
+      },
+      async deletePhotoBytes() {},
+    };
+    setRepository(broken);
+
+    renderPage();
+    // The board still opens (seeded locally) instead of erroring out.
+    expect(
+      await screen.findByRole('heading', { name: /World Cup 2026 Predictions/ }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'John' })).toBeInTheDocument();
+    expect(useWorldCupStore.getState().offline).toBe(true);
   });
 
   it('adds a new predictor name', async () => {

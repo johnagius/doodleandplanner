@@ -25,6 +25,7 @@ export function WorldCupPage() {
   const state = useWorldCupStore((s) => s.state);
   const loading = useWorldCupStore((s) => s.loading);
   const error = useWorldCupStore((s) => s.error);
+  const offline = useWorldCupStore((s) => s.offline);
   const admin = useWorldCupStore((s) => s.admin);
   const [tab, setTab] = useState<Tab>('fixtures');
 
@@ -81,14 +82,16 @@ export function WorldCupPage() {
                 {played} / {total} played
               </span>
               <span
-                className={`badge ${isRealtimeBackend() ? 'badge-success' : ''}`}
+                className={`badge ${isRealtimeBackend() && !offline ? 'badge-success' : ''}`}
                 title={
-                  isRealtimeBackend()
+                  isRealtimeBackend() && !offline
                     ? 'Predictions sync live to everyone'
-                    : 'Saved on this device and synced across your tabs'
+                    : offline
+                      ? 'Backend unreachable — saved on this device for now'
+                      : 'Saved on this device and synced across your tabs'
                 }
               >
-                {isRealtimeBackend() ? '🟢 Live sync' : '🔵 This device'}
+                {isRealtimeBackend() && !offline ? '🟢 Live sync' : '🔵 This device'}
               </span>
               <button
                 className={`btn btn-sm ${admin ? 'btn-primary' : ''}`}

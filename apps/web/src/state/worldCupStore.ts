@@ -9,7 +9,7 @@ import {
   type WorldCupState,
 } from '@dap/shared';
 import { create } from 'zustand';
-import { getRepository } from '../lib/storage/index.js';
+import { LocalStorageRepository, getRepository, type Repository } from '../lib/storage/index.js';
 import { WORLD_CUP_SLUG, loadOrCreateWorldCup } from '../features/worldcup/worldCupRoom.js';
 
 const PREDICTOR_KEY = 'dap:wc:predictor';
@@ -31,10 +31,24 @@ function writeLocal(key: string, value: string | null): void {
   }
 }
 
+/** Heuristic: did a fetch fail at the network level (offline, CORS, DNS, Worker down)? */
+function isNetworkError(err: unknown): boolean {
+  if (err instanceof TypeError) return true; // fetch() rejections surface as TypeError
+  const m = (err instanceof Error ? err.message : String(err)).toLowerCase();
+  return (
+    m.includes('network') ||
+    m.includes('failed to fetch') ||
+    m.includes('load failed') ||
+    m.includes('fetch resource')
+  );
+}
+
 interface WorldCupStore {
   state: RoomState | null;
   loading: boolean;
   error: string | null;
+  /** True when the backend was unreachable and we fell back to a local board. */
+  offline: boolean;
   /** The predictor "I" am, persisted on this device. */
   meId: string | null;
   /** Organiser mode reveals result-entry controls (local toggle, no auth). */
@@ -61,7 +75,11 @@ function withWorldCup(s: RoomState, fn: (wc: WorldCupState) => WorldCupState): R
 }
 
 export const useWorldCupStore = create<WorldCupStore>((set, get) => {
-  const repo = () => getRepository();
+  // The repository actually in use this session: normally the configured one
+  // (remote when VITE_API_BASE is set), but if that backend can't be reached we
+  // swap to a local board so the page still works.
+  let activeRepo: Repository = getRepository();
+  const repo = () => activeRepo;
 
   // Same optimistic-write bookkeeping as the room store: while our own saves are
   // in flight, defer inbound realtime updates so we don't clobber local edits
@@ -116,6 +134,7 @@ export const useWorldCupStore = create<WorldCupStore>((set, get) => {
     state: null,
     loading: false,
     error: null,
+    offline: false,
     meId: readLocal(PREDICTOR_KEY),
     admin: readLocal(ADMIN_KEY) === '1',
     unsubscribe: null,
@@ -125,22 +144,36 @@ export const useWorldCupStore = create<WorldCupStore>((set, get) => {
       pendingWrites = 0;
       deferredRemote = null;
       lastSavedJson = null;
-      set({ loading: true, error: null });
+      activeRepo = getRepository();
+      set({ loading: true, error: null, offline: false });
+
+      let state: RoomState;
+      let offline = false;
       try {
-        const state = await loadOrCreateWorldCup();
-        const unsub = repo().subscribe(WORLD_CUP_SLUG, onIncoming);
-        // Drop a stale selected predictor that no longer exists.
-        const meId = get().meId;
-        const stillThere = meId && state.worldCup?.predictors.some((p) => p.id === meId);
-        set({
-          state,
-          loading: false,
-          unsubscribe: unsub,
-          meId: stillThere ? meId : null,
-        });
+        state = await loadOrCreateWorldCup(activeRepo);
       } catch (err) {
-        set({ loading: false, error: err instanceof Error ? err.message : 'Could not load' });
+        // Backend unreachable (offline, CORS, Worker down) → fall back to a local
+        // board so the page still opens. Other errors surface as-is.
+        if (isNetworkError(err) && !(activeRepo instanceof LocalStorageRepository)) {
+          try {
+            activeRepo = new LocalStorageRepository();
+            state = await loadOrCreateWorldCup(activeRepo);
+            offline = true;
+          } catch (err2) {
+            set({ loading: false, error: err2 instanceof Error ? err2.message : 'Could not load' });
+            return;
+          }
+        } else {
+          set({ loading: false, error: err instanceof Error ? err.message : 'Could not load' });
+          return;
+        }
       }
+
+      const unsub = activeRepo.subscribe(WORLD_CUP_SLUG, onIncoming);
+      // Drop a stale selected predictor that no longer exists.
+      const meId = get().meId;
+      const stillThere = meId && state.worldCup?.predictors.some((p) => p.id === meId);
+      set({ state, loading: false, offline, unsubscribe: unsub, meId: stillThere ? meId : null });
     },
 
     leave() {

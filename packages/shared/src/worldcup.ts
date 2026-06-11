@@ -456,6 +456,53 @@ export function clearResult(state: WorldCupState, matchId: string): WorldCupStat
   return populateBracket({ ...state, matches });
 }
 
+/**
+ * A live/finished score for one match from an external feed (football-data.org).
+ * Teams are identified by their three-letter code, which matches our team ids.
+ */
+export interface WcLiveScore {
+  homeTla: string;
+  awayTla: string;
+  /** Feed status: TIMED | SCHEDULED | IN_PLAY | PAUSED | FINISHED | … */
+  status: string;
+  /** Live minute, when the feed provides it (paid feature; often absent). */
+  minute?: number | null;
+  home: number | null;
+  away: number | null;
+  /** 'HOME_TEAM' | 'AWAY_TEAM' | 'DRAW' | null — the advancing side for KO ties. */
+  winner?: string | null;
+}
+
+/**
+ * Apply finished scores from the feed to any match that doesn't already have a
+ * result, so results fill in automatically (no manual organiser entry needed).
+ * Pure and idempotent: only empty results are filled, and the bracket
+ * re-populates from them.
+ */
+export function applyLiveResults(state: WorldCupState, scores: WcLiveScore[]): WorldCupState {
+  let next = state;
+  for (const sc of scores) {
+    if (sc.status !== 'FINISHED' || sc.home == null || sc.away == null) continue;
+    const match = next.matches.find(
+      (m) => m.homeId === sc.homeTla && m.awayId === sc.awayTla && !m.result,
+    );
+    if (!match) continue;
+    let advancesId: string | undefined;
+    if (match.stage !== 'group' && sc.home === sc.away) {
+      // Knockout tie level after normal time → the feed's winner advanced (pens).
+      advancesId =
+        sc.winner === 'HOME_TEAM'
+          ? match.homeId
+          : sc.winner === 'AWAY_TEAM'
+            ? match.awayId
+            : undefined;
+      if (!advancesId) continue; // can't tell who advanced yet — leave it
+    }
+    next = setResult(next, { matchId: match.id, home: sc.home, away: sc.away, advancesId });
+  }
+  return next;
+}
+
 /** Winner team id of a played match, or undefined if drawn-without-advance / unplayed. */
 export function winnerOf(match: WcMatch): string | undefined {
   if (!match.result || !match.homeId || !match.awayId) return undefined;

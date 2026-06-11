@@ -2334,6 +2334,14 @@ label.field {
   color: var(--primary-dark);
   font-variant-numeric: tabular-nums;
 }
+.wc-live {
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-weight: 800;
+}
+.wc-live-score {
+  color: var(--danger);
+}
 .wc-pens {
   text-align: center;
 }

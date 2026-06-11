@@ -37,6 +37,15 @@ export function WorldCupPage() {
     return () => leave();
   }, [load, leave]);
 
+  // Poll the football feed: auto-fill finished results and refresh in-play info.
+  useEffect(() => {
+    if (!isRealtimeBackend()) return;
+    const tick = () => void useWorldCupStore.getState().syncLiveScores();
+    tick();
+    const id = setInterval(tick, 90_000);
+    return () => clearInterval(id);
+  }, []);
+
   const wc = state?.worldCup ?? null;
 
   if (loading && !wc) {

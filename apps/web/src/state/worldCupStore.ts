@@ -1,5 +1,6 @@
 import {
   addPredictor,
+  applyLiveResults,
   clearPrediction,
   clearResult,
   removePredictor,
@@ -12,6 +13,15 @@ import {
 import { create } from 'zustand';
 import { LocalStorageRepository, getRepository, type Repository } from '../lib/storage/index.js';
 import { WORLD_CUP_SLUG, loadOrCreateWorldCup } from '../features/worldcup/worldCupRoom.js';
+import { fetchLiveScores } from '../features/worldcup/liveScores.js';
+
+/** Live in-play info for one board match, for display while a game is on. */
+export interface WcLiveInfo {
+  status: string;
+  minute: number | null;
+  home: number | null;
+  away: number | null;
+}
 
 const PREDICTOR_KEY = 'dap:wc:predictor';
 const ADMIN_KEY = 'dap:wc:admin';
@@ -54,12 +64,16 @@ interface WorldCupStore {
   meId: string | null;
   /** Organiser mode reveals result-entry controls (local toggle, no auth). */
   admin: boolean;
+  /** Live in-play status/score per board match id (from the football feed). */
+  live: Record<string, WcLiveInfo>;
   unsubscribe: (() => void) | null;
 
   load: () => Promise<void>;
   leave: () => void;
   selectPredictor: (id: string | null) => void;
   setAdmin: (on: boolean) => void;
+  /** Pull live scores: auto-fill finished results and refresh in-play info. */
+  syncLiveScores: () => Promise<void>;
 
   predict: (matchId: string, home: number, away: number) => Promise<void>;
   unpredict: (matchId: string) => Promise<void>;
@@ -139,6 +153,7 @@ export const useWorldCupStore = create<WorldCupStore>((set, get) => {
     offline: false,
     meId: readLocal(PREDICTOR_KEY),
     admin: readLocal(ADMIN_KEY) === '1',
+    live: {},
     unsubscribe: null,
 
     async load() {
@@ -181,6 +196,40 @@ export const useWorldCupStore = create<WorldCupStore>((set, get) => {
     leave() {
       get().unsubscribe?.();
       set({ unsubscribe: null });
+    },
+
+    async syncLiveScores() {
+      const current = get().state;
+      const wc = current?.worldCup;
+      if (!wc) return;
+      const scores = await fetchLiveScores();
+      if (scores.length === 0) return;
+
+      // Auto-fill any finished results that aren't on the board yet (only writes
+      // when something actually changed, so we don't spam the shared room).
+      const nextWc = applyLiveResults(wc, scores);
+      if (nextWc !== wc) {
+        await apply((s) =>
+          s.worldCup ? { ...s, worldCup: applyLiveResults(s.worldCup, scores) } : s,
+        );
+      }
+
+      // Refresh the in-play display map (local-only; not persisted).
+      const board = get().state?.worldCup;
+      if (!board) return;
+      const live: Record<string, WcLiveInfo> = {};
+      for (const sc of scores) {
+        const m = board.matches.find((x) => x.homeId === sc.homeTla && x.awayId === sc.awayTla);
+        if (m) {
+          live[m.id] = {
+            status: sc.status,
+            minute: sc.minute ?? null,
+            home: sc.home,
+            away: sc.away,
+          };
+        }
+      }
+      set({ live });
     },
 
     selectPredictor(id) {

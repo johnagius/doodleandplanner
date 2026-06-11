@@ -9,6 +9,8 @@ import { corsHeaders, isPresenceFrame, json, route } from './router.js';
 export interface Env {
   ROOMS: DurableObjectNamespace;
   ALLOWED_ORIGINS: string;
+  /** football-data.org API token (Worker secret) for live World Cup scores. */
+  FOOTBALL_DATA_TOKEN?: string;
 }
 
 /** Minimal SQLite surface used for photo blobs (typed loosely for portability). */

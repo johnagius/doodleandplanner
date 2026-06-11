@@ -31,6 +31,7 @@ export function MatchCard({ matchId }: { matchId: string }) {
   const wc = useWorldCupStore((s) => s.state?.worldCup) ?? null;
   const meId = useWorldCupStore((s) => s.meId);
   const admin = useWorldCupStore((s) => s.admin);
+  const live = useWorldCupStore((s) => s.live[matchId]);
   const { predict, unpredict } = useWorldCupStore();
   const { show } = useToast();
   const now = useNow();
@@ -44,6 +45,7 @@ export function MatchCard({ matchId }: { matchId: string }) {
   const ready = isMatchReady(match);
   const locked = isMatchLocked(match, new Date(now));
   const result = match.result;
+  const isLive = !result && !!live && (live.status === 'IN_PLAY' || live.status === 'PAUSED');
   const myPick = meId
     ? wc.predictions.find((p) => p.matchId === matchId && p.predictorId === meId)
     : undefined;
@@ -85,6 +87,10 @@ export function MatchCard({ matchId }: { matchId: string }) {
         </span>
         {result ? (
           <span className="badge badge-success wc-ft">FT</span>
+        ) : isLive ? (
+          <span className="badge wc-ft wc-live">
+            🔴 LIVE{live!.minute ? ` ${live!.minute}'` : ''}
+          </span>
         ) : locked ? (
           <span className="badge badge-warn wc-ft">🔒 Kicked off</span>
         ) : (
@@ -101,6 +107,12 @@ export function MatchCard({ matchId }: { matchId: string }) {
               <span>{result.home}</span>
               <span className="wc-dash">–</span>
               <span>{result.away}</span>
+            </div>
+          ) : isLive && live!.home != null ? (
+            <div className="wc-scoreline wc-live-score" aria-label="Live score">
+              <span>{live!.home}</span>
+              <span className="wc-dash">–</span>
+              <span>{live!.away}</span>
             </div>
           ) : canPredict ? (
             <div className="wc-pick-steppers">

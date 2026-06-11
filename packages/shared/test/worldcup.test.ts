@@ -3,6 +3,7 @@ import {
   WC_POINTS,
   addPredictor,
   allGroupsComplete,
+  applyLiveResults,
   clearPrediction,
   clearResult,
   defaultDay,
@@ -352,6 +353,28 @@ describe('predictors', () => {
     const s = seed();
     expect(() => addPredictor(s, '  ')).toThrow(/required/);
     expect(() => addPredictor(s, 'john')).toThrow(/already/i);
+  });
+});
+
+describe('live results', () => {
+  it('auto-fills finished feed scores into empty matches', () => {
+    let s = seed();
+    s = applyLiveResults(s, [
+      { homeTla: 'MEX', awayTla: 'RSA', status: 'FINISHED', home: 2, away: 1, winner: 'HOME_TEAM' },
+      { homeTla: 'KOR', awayTla: 'CZE', status: 'TIMED', home: null, away: null }, // ignored
+    ]);
+    expect(findMatch(s, 'g-A-1')!.result).toMatchObject({ home: 2, away: 1 });
+    expect(findMatch(s, 'g-A-2')!.result).toBeUndefined();
+  });
+
+  it('never overwrites an existing result and is idempotent', () => {
+    const base = setResult(seed(), { matchId: 'g-A-1', home: 0, away: 0 });
+    const scores = [
+      { homeTla: 'MEX', awayTla: 'RSA', status: 'FINISHED', home: 2, away: 1, winner: 'HOME_TEAM' },
+    ];
+    expect(applyLiveResults(base, scores)).toEqual(base); // existing result kept
+    const once = applyLiveResults(seed(), scores);
+    expect(applyLiveResults(once, scores)).toEqual(once); // idempotent
   });
 });
 

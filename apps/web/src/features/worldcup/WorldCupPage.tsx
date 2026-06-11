@@ -175,7 +175,7 @@ function FixturesView() {
           <div className="wc-day-date">{formatDayLong(day)}</div>
           <div className="muted small">
             Day {index + 1} of {days.length} · {matches.length} match
-            {matches.length === 1 ? '' : 'es'}
+            {matches.length === 1 ? '' : 'es'} · 🇲🇹 Malta time
           </div>
         </div>
         <button

@@ -2283,7 +2283,14 @@ label.field {
 }
 .wc-clear-row {
   display: flex;
+  align-items: center;
   justify-content: center;
+  gap: 0.6rem;
+}
+.wc-saved {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--success);
 }
 .wc-clear-pick {
   color: var(--muted);
@@ -2291,6 +2298,11 @@ label.field {
 }
 .wc-clear-pick:hover {
   color: var(--danger);
+}
+.wc-countdown {
+  background: var(--primary-soft);
+  color: var(--primary-dark);
+  font-variant-numeric: tabular-nums;
 }
 .wc-pens {
   text-align: center;

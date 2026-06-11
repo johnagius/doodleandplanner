@@ -375,10 +375,13 @@ describe('calendar + labels', () => {
     expect(sourceLabel(findMatch(s, 'final-1')!.homeSource)).toBe('Winner of SF 1');
   });
 
-  it('locks a match once it has a result', () => {
+  it('locks a match at kickoff, and once it has a result', () => {
     let s = seed();
-    expect(isMatchLocked(findMatch(s, 'g-A-1')!)).toBe(false);
+    const early = new Date('2026-06-01T00:00:00Z');
+    const late = new Date('2026-07-01T00:00:00Z');
+    expect(isMatchLocked(findMatch(s, 'g-A-1')!, early)).toBe(false); // before kickoff
+    expect(isMatchLocked(findMatch(s, 'g-A-1')!, late)).toBe(true); // after kickoff
     s = setResult(s, { matchId: 'g-A-1', home: 1, away: 1 });
-    expect(isMatchLocked(findMatch(s, 'g-A-1')!)).toBe(true);
+    expect(isMatchLocked(findMatch(s, 'g-A-1')!, early)).toBe(true); // result locks regardless
   });
 });

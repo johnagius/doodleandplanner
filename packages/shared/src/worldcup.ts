@@ -244,11 +244,12 @@ export function slotLabel(
   return sourceLabel(source);
 }
 
-/** True once a match can no longer be predicted: once its result is entered.
- * (We deliberately don't lock at kickoff — a late guess is fine until the
- * organiser records the score.) */
-export function isMatchLocked(match: WcMatch): boolean {
-  return !!match.result;
+/** True once a match can no longer be predicted: it has kicked off or already
+ * has a result. (A mistaken pick can still be *cleared* after kickoff — see
+ * {@link clearPrediction} — just not placed or changed.) */
+export function isMatchLocked(match: WcMatch, now: Date = new Date()): boolean {
+  if (match.result) return true;
+  return now.getTime() >= toMs(match.kickoff);
 }
 
 /** True when both teams of a match are known (so it can be predicted). */
@@ -292,18 +293,18 @@ export function matchesOn(state: WorldCupState, dateKey: string): WcMatch[] {
 }
 
 /**
- * The day the UI should open on: the earliest day that still has an
- * un-resulted match, falling back to the last day once everything is played.
+ * The day the UI should open on: the day of the next match that hasn't kicked
+ * off yet, so you land on matches you can still predict. Falls back to the last
+ * day once everything has started.
  */
 export function defaultDay(state: WorldCupState, now: Date = new Date()): string {
   const days = tournamentDays(state);
   if (days.length === 0) return dayKeyOf(now);
-  const today = dayKeyOf(now);
-  // Prefer today if it has matches…
-  if (days.includes(today)) return today;
-  // …otherwise the next upcoming day, else the most recent past day.
-  const upcoming = days.find((d) => d >= today);
-  return upcoming ?? days[days.length - 1]!;
+  const t = now.getTime();
+  const nextUp = [...state.matches]
+    .filter((m) => toMs(m.kickoff) > t)
+    .sort((a, b) => toMs(a.kickoff) - toMs(b.kickoff))[0];
+  return nextUp ? matchDateKey(nextUp) : days[days.length - 1]!;
 }
 
 export function predictionFor(
@@ -372,7 +373,7 @@ export function setPrediction(state: WorldCupState, input: SetPredictionInput): 
   if (!findPredictor(state, input.predictorId)) throw new Error('Unknown predictor');
   if (!isMatchReady(match)) throw new Error('Both teams must be known before predicting');
   const now = (input.now ?? (() => new Date()))();
-  if (isMatchLocked(match)) throw new Error('This match is locked');
+  if (isMatchLocked(match, now)) throw new Error('This match is locked');
   const home = normalizeGoals(input.home);
   const away = normalizeGoals(input.away);
 
@@ -390,14 +391,14 @@ export function setPrediction(state: WorldCupState, input: SetPredictionInput): 
 }
 
 /** Remove a predictor's pick for a match (e.g. an accidental entry). Allowed
- * until the match is locked by a result. */
+ * even after kickoff — to fix a mistake — but not once the result is recorded. */
 export function clearPrediction(
   state: WorldCupState,
   matchId: string,
   predictorId: string,
 ): WorldCupState {
   const match = findMatch(state, matchId);
-  if (match && isMatchLocked(match)) throw new Error('This match is locked');
+  if (match?.result) throw new Error('This match is locked');
   return {
     ...state,
     predictions: state.predictions.filter(

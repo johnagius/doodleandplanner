@@ -15,6 +15,7 @@ class_name = "RoomDurableObject"
 tag = "v1"
 new_sqlite_classes = ["RoomDurableObject"]
 
-# Lock CORS to the deployed front-end (comma-separated). "*" allows any origin.
+# Allowed front-end origins (comma-separated). "*" allows any origin. Includes
+# the GitHub Pages mirror so it shares the same live backend as pages.dev.
 [vars]
-ALLOWED_ORIGINS = "https://doodleandplanner.pages.dev"
+ALLOWED_ORIGINS = "https://doodleandplanner.pages.dev,https://johnagius.github.io"

@@ -14,7 +14,9 @@ import {
 import { useState } from 'react';
 import { useToast } from '../../components/Toast.js';
 import { useWorldCupStore } from '../../state/worldCupStore.js';
+import { Countdown } from './Countdown.js';
 import { ScoreStepper } from './ScoreStepper.js';
+import { useNow } from './useNow.js';
 import { formatKickoff } from './wcFormat.js';
 
 const POINT_CLASS: Record<WcScoreCategory, string> = {
@@ -31,6 +33,7 @@ export function MatchCard({ matchId }: { matchId: string }) {
   const admin = useWorldCupStore((s) => s.admin);
   const { predict, unpredict } = useWorldCupStore();
   const { show } = useToast();
+  const now = useNow();
 
   if (!wc) return null;
   const match = wc.matches.find((m) => m.id === matchId);
@@ -39,7 +42,7 @@ export function MatchCard({ matchId }: { matchId: string }) {
   const home = findTeam(wc, match.homeId);
   const away = findTeam(wc, match.awayId);
   const ready = isMatchReady(match);
-  const locked = isMatchLocked(match);
+  const locked = isMatchLocked(match, new Date(now));
   const result = match.result;
   const myPick = meId
     ? wc.predictions.find((p) => p.matchId === matchId && p.predictorId === meId)
@@ -52,6 +55,7 @@ export function MatchCard({ matchId }: { matchId: string }) {
     const a = (myPick?.away ?? 0) + (side === 'away' ? delta : 0);
     try {
       await predict(matchId, Math.max(0, h), Math.max(0, a));
+      show('Pick saved ✓');
     } catch (err) {
       show(err instanceof Error ? err.message : 'Could not save pick');
     }
@@ -79,7 +83,13 @@ export function MatchCard({ matchId }: { matchId: string }) {
           {formatKickoff(match.kickoff)}
           {match.venue ? ` · ${match.venue}` : ''}
         </span>
-        {result && <span className="badge badge-success wc-ft">FT</span>}
+        {result ? (
+          <span className="badge badge-success wc-ft">FT</span>
+        ) : locked ? (
+          <span className="badge badge-warn wc-ft">🔒 Kicked off</span>
+        ) : (
+          <Countdown kickoff={match.kickoff} now={now} />
+        )}
       </div>
 
       <div className="wc-fixture">
@@ -131,15 +141,16 @@ export function MatchCard({ matchId }: { matchId: string }) {
         </div>
       )}
 
-      {!result && canPredict && myPick && (
+      {!result && myPick && (
         <div className="wc-clear-row">
+          <span className="wc-saved">✓ Saved</span>
           <button type="button" className="btn btn-sm btn-ghost wc-clear-pick" onClick={clearPick}>
-            ✕ Clear my pick
+            ✕ Clear{locked ? ' (mistake)' : ' my pick'}
           </button>
         </div>
       )}
       {!result && canPredict && !myPick && (
-        <p className="muted small wc-hint">Tap +/− to lock in your score prediction.</p>
+        <p className="muted small wc-hint">Tap +/− to predict — it saves automatically.</p>
       )}
       {!result && !meId && ready && !locked && (
         <p className="muted small wc-hint">Pick your name above to predict this match.</p>

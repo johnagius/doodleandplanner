@@ -389,6 +389,23 @@ export function setPrediction(state: WorldCupState, input: SetPredictionInput): 
   return { ...state, predictions: [...others, prediction] };
 }
 
+/** Remove a predictor's pick for a match (e.g. an accidental entry). Allowed
+ * until the match is locked by a result. */
+export function clearPrediction(
+  state: WorldCupState,
+  matchId: string,
+  predictorId: string,
+): WorldCupState {
+  const match = findMatch(state, matchId);
+  if (match && isMatchLocked(match)) throw new Error('This match is locked');
+  return {
+    ...state,
+    predictions: state.predictions.filter(
+      (p) => !(p.matchId === matchId && p.predictorId === predictorId),
+    ),
+  };
+}
+
 function normalizeGoals(n: number): number {
   if (!Number.isFinite(n) || n < 0) return 0;
   return Math.min(99, Math.round(n));

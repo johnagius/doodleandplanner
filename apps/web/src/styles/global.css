@@ -2281,6 +2281,17 @@ label.field {
   margin: 0;
   text-align: center;
 }
+.wc-clear-row {
+  display: flex;
+  justify-content: center;
+}
+.wc-clear-pick {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+.wc-clear-pick:hover {
+  color: var(--danger);
+}
 .wc-pens {
   text-align: center;
 }

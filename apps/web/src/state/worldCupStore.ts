@@ -1,5 +1,6 @@
 import {
   addPredictor,
+  clearPrediction,
   clearResult,
   removePredictor,
   renamePredictor,
@@ -61,6 +62,7 @@ interface WorldCupStore {
   setAdmin: (on: boolean) => void;
 
   predict: (matchId: string, home: number, away: number) => Promise<void>;
+  unpredict: (matchId: string) => Promise<void>;
   enterResult: (matchId: string, home: number, away: number, advancesId?: string) => Promise<void>;
   clearMatchResult: (matchId: string) => Promise<void>;
   addName: (name: string) => Promise<void>;
@@ -196,6 +198,11 @@ export const useWorldCupStore = create<WorldCupStore>((set, get) => {
       await apply((s) =>
         withWorldCup(s, (wc) => setPrediction(wc, { matchId, predictorId: me, home, away })),
       );
+    },
+
+    async unpredict(matchId) {
+      const me = requireMe();
+      await apply((s) => withWorldCup(s, (wc) => clearPrediction(wc, matchId, me)));
     },
 
     async enterResult(matchId, home, away, advancesId) {

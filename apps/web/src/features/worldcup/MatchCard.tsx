@@ -29,7 +29,7 @@ export function MatchCard({ matchId }: { matchId: string }) {
   const wc = useWorldCupStore((s) => s.state?.worldCup) ?? null;
   const meId = useWorldCupStore((s) => s.meId);
   const admin = useWorldCupStore((s) => s.admin);
-  const { predict } = useWorldCupStore();
+  const { predict, unpredict } = useWorldCupStore();
   const { show } = useToast();
 
   if (!wc) return null;
@@ -54,6 +54,15 @@ export function MatchCard({ matchId }: { matchId: string }) {
       await predict(matchId, Math.max(0, h), Math.max(0, a));
     } catch (err) {
       show(err instanceof Error ? err.message : 'Could not save pick');
+    }
+  }
+
+  async function clearPick() {
+    try {
+      await unpredict(matchId);
+      show('Pick removed');
+    } catch (err) {
+      show(err instanceof Error ? err.message : 'Could not remove pick');
     }
   }
 
@@ -122,6 +131,13 @@ export function MatchCard({ matchId }: { matchId: string }) {
         </div>
       )}
 
+      {!result && canPredict && myPick && (
+        <div className="wc-clear-row">
+          <button type="button" className="btn btn-sm btn-ghost wc-clear-pick" onClick={clearPick}>
+            ✕ Clear my pick
+          </button>
+        </div>
+      )}
       {!result && canPredict && !myPick && (
         <p className="muted small wc-hint">Tap +/− to lock in your score prediction.</p>
       )}

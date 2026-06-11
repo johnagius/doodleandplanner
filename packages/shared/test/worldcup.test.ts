@@ -3,6 +3,7 @@ import {
   WC_POINTS,
   addPredictor,
   allGroupsComplete,
+  clearPrediction,
   clearResult,
   defaultDay,
   findMatch,
@@ -157,6 +158,21 @@ describe('predictions', () => {
       s.predictions.filter((x) => x.matchId === 'g-A-1' && x.predictorId === p.id),
     ).toHaveLength(1);
     expect(predictionFor(s, 'g-A-1', p.id)).toMatchObject({ home: 3, away: 2 });
+  });
+
+  it('clears a pick (mistaken entry) until the result is in', () => {
+    let s = seed();
+    const p = s.predictors[0]!;
+    s = setPrediction(s, { matchId: 'g-A-1', predictorId: p.id, home: 0, away: 0, now: NOW });
+    expect(predictionFor(s, 'g-A-1', p.id)).toBeTruthy();
+    s = clearPrediction(s, 'g-A-1', p.id);
+    expect(predictionFor(s, 'g-A-1', p.id)).toBeUndefined();
+    // Clearing an absent pick is a harmless no-op.
+    expect(clearPrediction(s, 'g-A-1', p.id).predictions).toHaveLength(0);
+    // Once the score is recorded the pick is locked.
+    s = setPrediction(s, { matchId: 'g-A-1', predictorId: p.id, home: 1, away: 1, now: NOW });
+    const played = setResult(s, { matchId: 'g-A-1', home: 1, away: 0 });
+    expect(() => clearPrediction(played, 'g-A-1', p.id)).toThrow(/locked/);
   });
 
   it('clamps silly goal inputs', () => {

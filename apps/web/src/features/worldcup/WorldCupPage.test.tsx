@@ -2,7 +2,7 @@ import { createRoom, emptyRoomState, type WorldCupState } from '@dap/shared';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ToastProvider } from '../../components/Toast.js';
 import {
   LocalStorageRepository,
@@ -173,7 +173,8 @@ describe('WorldCupPage', () => {
       expect(chip?.textContent).toContain('1');
     });
 
-    // Become the organiser and enter the real result: 1–0 (an exact hit).
+    // Become the organiser (confirmed) and enter the real result: 1–0.
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
     await user.click(screen.getByRole('button', { name: /Organiser/ }));
     await user.click(await screen.findByRole('button', { name: 'Home result goals: one more' }));
     await user.click(screen.getByRole('button', { name: 'Save' }));

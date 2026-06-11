@@ -104,9 +104,25 @@ export function WorldCupPage() {
               </span>
               <button
                 className={`btn btn-sm ${admin ? 'btn-primary' : ''}`}
-                onClick={() => setAdmin(!admin)}
+                onClick={() => {
+                  if (admin) {
+                    setAdmin(false);
+                    return;
+                  }
+                  // Guard against accidental taps — only the organiser should
+                  // enter official results (it scores everyone's predictions).
+                  if (
+                    window.confirm(
+                      'Turn on organiser mode? Only the organiser should use this — ' +
+                        "it lets you enter official full-time results that score everyone's " +
+                        'predictions. Most people should leave it off.',
+                    )
+                  ) {
+                    setAdmin(true);
+                  }
+                }}
                 aria-pressed={admin}
-                title="Reveal result-entry controls on each match"
+                title="Organiser only: enter official results"
               >
                 🔧 Organiser {admin ? 'on' : 'off'}
               </button>

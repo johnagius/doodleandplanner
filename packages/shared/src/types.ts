@@ -6,6 +6,7 @@
  * ISO-8601 strings to stay JSON-friendly and timezone-explicit.
  */
 import type { GameSession } from './games.js';
+import type { WorldCupState } from './worldcup.js';
 
 export type ISODateTime = string;
 
@@ -320,4 +321,6 @@ export interface RoomState {
   meetPoints?: MeetPoint[];
   /** Shared photo metadata (bytes stored separately). Older states omit this. */
   photos?: Photo[];
+  /** World Cup predictions board (only on the dedicated singleton room). */
+  worldCup?: WorldCupState;
 }

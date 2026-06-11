@@ -26,6 +26,13 @@ with opt-in live locations. Rooms are shareable via
 invite link and can be password protected, and sync live across devices through
 the Worker when configured.
 
+There is also a standalone **World Cup 2026 predictions** board at `/world-cup`
+(no login): friends predict every match scoreline and earn points by how close
+they are; the knockout bracket auto-populates from group results. It lives in a
+single well-known room (slug `world-cup`) under `RoomState.worldCup`, so it
+reuses the same persistence + realtime sync as everything else. Domain logic is
+in `packages/shared/src/worldcup.ts`; the UI is in `apps/web/src/features/worldcup`.
+
 ## Monorepo layout
 
 ```

@@ -4,6 +4,7 @@ import { ToastProvider } from './components/Toast.js';
 import { WelcomeModal } from './components/WelcomeModal.js';
 import { HomePage } from './features/home/HomePage.js';
 import { RoomPage } from './features/room/RoomPage.js';
+import { WorldCupPage } from './features/worldcup/WorldCupPage.js';
 import { NotFoundPage } from './features/home/NotFoundPage.js';
 
 export function App() {
@@ -19,6 +20,9 @@ export function App() {
             <span className="brand-name">Doodle &amp; Planner</span>
           </Link>
           <div className="row" style={{ gap: '0.4rem' }}>
+            <Link className="btn btn-sm btn-ghost" to="/world-cup">
+              ⚽ World Cup
+            </Link>
             <ThemeToggle />
             <a
               className="btn btn-sm btn-ghost"
@@ -34,6 +38,7 @@ export function App() {
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/r/:slug" element={<RoomPage />} />
+            <Route path="/world-cup" element={<WorldCupPage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </main>

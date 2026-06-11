@@ -37,6 +37,27 @@ export function HomePage() {
     <div className="container">
       <ScrollHero />
 
+      <Reveal>
+        <button
+          className="card wc-home-card"
+          onClick={() => navigate('/world-cup')}
+          aria-label="Open World Cup 2026 predictions"
+        >
+          <span className="wc-home-emoji" aria-hidden>
+            ⚽
+          </span>
+          <span className="wc-home-text">
+            <span className="card-title">World Cup 2026 Predictions</span>
+            <span className="muted small">
+              Predict every match with friends — no login. Closest score wins the points.
+            </span>
+          </span>
+          <span className="wc-home-arrow" aria-hidden>
+            →
+          </span>
+        </button>
+      </Reveal>
+
       <Reveal className="grid grid-2">
         <CreateRoomCard onCreated={(slug) => navigate(`/r/${slug}`)} />
         <JoinRoomCard onJoin={(code) => navigate(`/r/${code.trim()}`)} onImport={importRoom} />

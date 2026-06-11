@@ -7,7 +7,10 @@ availability + event creation, an **inventory checklist** ("who brings what"), a
 **activities** board, **multiplayer party games**, and a **live map** of where
 you're meeting.
 
-Rooms are shareable via an invite link and can be **password protected**.
+Rooms are shareable via an invite link and can be **password protected**. There's
+also a standalone **⚽ World Cup 2026 predictions** board (`/world-cup`) where
+friends predict every scoreline — no login — and score points for how close they
+get.
 
 **▶︎ Live: https://doodleandplanner.pages.dev**
 
@@ -24,6 +27,14 @@ Rooms are shareable via an invite link and can be **password protected**.
   one-click **Sign in with Google** (no scary scopes) or "continue as guest".
 - **Invite friends** — an invite dialog with the native **share sheet** (Web
   Share API), copy link, and prefilled **email invite** — no contacts access.
+- **World Cup predictions** — a dedicated `/world-cup` board (no login) where
+  friends predict every match scoreline. Each fixture is laid out day by day on
+  the calendar; the organiser enters the full-time result and points are awarded
+  by how close each guess was (exact score scores most, right margin next, right
+  result next, then a consolation for being a goal or two off). Group standings
+  compute automatically and, once the groups finish, the **knockout bracket
+  populates itself** (Round of 32 → final) for the next round of guessing. Live
+  group tables, a bracket view, and a predictors' leaderboard come built in.
 - **Party games** — a **Games** lobby with live, turn-based **Tic-Tac-Toe**,
   **Connect Four**, **Reversi**, **Battleship** and **Dots & Boxes (2–4
   players)** that sync across devices in real time, with a "your move" badge,

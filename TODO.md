@@ -22,6 +22,24 @@ Let members capture/share photos and browse them as geotagged albums.
       render inline and open in the lightbox, and chat photos also land in the
       gallery (and its country/event albums).
 
+## ⚽ World Cup 2026 predictions — ✅ done
+
+A standalone `/world-cup` board (no login) for predicting the tournament.
+
+- [x] **Engine** (`@dap/shared/worldcup`) — pure, tested tournament model: 48
+      teams in 12 groups, 104 fixtures, a fully-wired knockout bracket, group
+      standings, best-third ranking, closeness scoring and a leaderboard.
+- [x] **Predict & score** — pick a scoreline for every match; points by how
+      close (5 exact · 4 right margin · 3 right result · 2/1 near-miss). Picks
+      lock at kickoff; the organiser enters results after the game.
+- [x] **Auto-populating bracket** — group results feed the standings, which fill
+      the Round of 32 → final; clearing a result cascades downstream.
+- [x] **UI** — day-by-day fixtures, live group tables, a bracket view and a
+      predictors' leaderboard. Names start as John/Daniel/Noel/Saviour with an
+      "add name" option; rides the same localStorage + Worker sync as rooms.
+- [ ] Per-match "who's still to predict" nudges and a share card.
+- [ ] Let the organiser edit fixtures/teams (currently a fixed 2026 seed).
+
 ## Ideas / later
 
 - Optional full-res photos via R2 (needs an R2 bucket + token scope).

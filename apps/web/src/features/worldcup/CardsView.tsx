@@ -8,6 +8,7 @@ import {
 } from '@dap/shared';
 import { EmptyState } from '../../components/EmptyState.js';
 import { useWorldCupStore } from '../../state/worldCupStore.js';
+import { usePlayerPhoto } from './playerPhoto.js';
 
 const MEDALS = ['🥇', '🥈', '🥉'];
 
@@ -70,6 +71,9 @@ export function CardsView({ wc }: { wc: WorldCupState }) {
             ))}
         </div>
       )}
+      <p className="muted small" style={{ textAlign: 'center' }}>
+        Photos via Wikimedia Commons · ratings are our own (real FIFA data is proprietary).
+      </p>
     </div>
   );
 }
@@ -87,6 +91,7 @@ const STAT_ROWS: Array<[string, keyof WcPlayerCard['stats']]> = [
  * is the art. */
 export function PlayerCardView({ card, wc }: { card: WcPlayerCard; wc: WorldCupState }) {
   const team = findTeam(wc, card.player.nat);
+  const photo = usePlayerPhoto(card.player.name);
   return (
     <div className={`wc-fifa-card tier-${card.tier}`}>
       <div className="wc-fifa-head">
@@ -97,7 +102,11 @@ export function PlayerCardView({ card, wc }: { card: WcPlayerCard; wc: WorldCupS
         </span>
       </div>
       <div className="wc-fifa-photo" aria-hidden>
-        <span className="wc-fifa-photo-flag">{team?.flag ?? '⚽'}</span>
+        {photo ? (
+          <img src={photo} alt="" loading="lazy" />
+        ) : (
+          <span className="wc-fifa-photo-flag">{team?.flag ?? '⚽'}</span>
+        )}
       </div>
       <div className="wc-fifa-name" title={card.player.name}>
         {card.player.name}

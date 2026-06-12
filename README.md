@@ -28,13 +28,18 @@ get.
 - **Invite friends** — an invite dialog with the native **share sheet** (Web
   Share API), copy link, and prefilled **email invite** — no contacts access.
 - **World Cup predictions** — a dedicated `/world-cup` board (no login) where
-  friends predict every match scoreline. Each fixture is laid out day by day on
-  the calendar; the organiser enters the full-time result and points are awarded
-  by how close each guess was (exact score scores most, right margin next, right
-  result next, then a consolation for being a goal or two off). Group standings
-  compute automatically and, once the groups finish, the **knockout bracket
-  populates itself** (Round of 32 → final) for the next round of guessing. Live
-  group tables, a bracket view, and a predictors' leaderboard come built in.
+  friends predict every match scoreline, in **Malta time**. Each fixture is laid
+  out day by day with a **live countdown**; picks **lock at kickoff** and rivals'
+  predictions stay **hidden until then**. Points are awarded by how close each
+  guess was (exact score scores most, right margin next, right result next, then a
+  consolation for being a goal or two off). **Results auto-fill from a live feed**
+  (football-data.org) so no one has to enter them. Group standings compute
+  automatically and, once the groups finish, the **knockout bracket populates
+  itself** (Round of 32 → final). The **leaderboard** shows rank movement, the
+  day's top scorer, recent form, badges and head-to-head comparisons; there's a
+  **squad chat** with emoji reactions and gentle "still to predict" reminders.
+  Everyone shares one board through the realtime Worker (with a graceful local
+  fallback). A first-run "Who are you?" prompt remembers you on the device.
 - **Party games** — a **Games** lobby with live, turn-based **Tic-Tac-Toe**,
   **Connect Four**, **Reversi**, **Battleship** and **Dots & Boxes (2–4
   players)** that sync across devices in real time, with a "your move" badge,

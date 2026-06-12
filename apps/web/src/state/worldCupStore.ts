@@ -1,12 +1,16 @@
 import {
   addPredictor,
+  appendMessage,
   applyLiveResults,
   clearPrediction,
   clearResult,
+  createMessage,
+  deleteMessage,
   removePredictor,
   renamePredictor,
   setPrediction,
   setResult,
+  toggleReaction,
   type RoomState,
   type WorldCupState,
 } from '@dap/shared';
@@ -82,6 +86,11 @@ interface WorldCupStore {
   addName: (name: string) => Promise<void>;
   renameName: (id: string, name: string) => Promise<void>;
   removeName: (id: string) => Promise<void>;
+
+  // Banter (squad chat) — stored in RoomState.messages, authored by the predictor.
+  postBanter: (text: string) => Promise<void>;
+  reactBanter: (messageId: string, emoji: string) => Promise<void>;
+  deleteBanter: (messageId: string) => Promise<void>;
 }
 
 /** Apply a pure update to the embedded WorldCupState. */
@@ -283,6 +292,30 @@ export const useWorldCupStore = create<WorldCupStore>((set, get) => {
     async removeName(id) {
       await apply((s) => withWorldCup(s, (wc) => removePredictor(wc, id)));
       if (get().meId === id) get().selectPredictor(null);
+    },
+
+    async postBanter(text) {
+      const me = requireMe();
+      await apply((s) => ({
+        ...s,
+        messages: appendMessage(
+          s.messages ?? [],
+          createMessage({ roomId: s.room.id, authorId: me, text }),
+        ),
+      }));
+    },
+
+    async reactBanter(messageId, emoji) {
+      const me = requireMe();
+      await apply((s) => ({
+        ...s,
+        messages: toggleReaction(s.messages ?? [], messageId, emoji, me),
+      }));
+    },
+
+    async deleteBanter(messageId) {
+      const me = requireMe();
+      await apply((s) => ({ ...s, messages: deleteMessage(s.messages ?? [], messageId, me) }));
     },
   };
 });

@@ -34,10 +34,19 @@ A standalone `/world-cup` board (no login) for predicting the tournament.
       lock at kickoff; the organiser enters results after the game.
 - [x] **Auto-populating bracket** — group results feed the standings, which fill
       the Round of 32 → final; clearing a result cascades downstream.
-- [x] **UI** — day-by-day fixtures, live group tables, a bracket view and a
-      predictors' leaderboard. Names start as John/Daniel/Noel/Saviour with an
-      "add name" option; rides the same localStorage + Worker sync as rooms.
-- [ ] Per-match "who's still to predict" nudges and a share card.
+- [x] **UI** — day-by-day fixtures (Malta time) with a live countdown, live group
+      tables, a bracket view and a predictors' leaderboard. First-run "Who are
+      you?" prompt; names start as John/Daniel/Noel/Saviour with "add name".
+- [x] **Live results** — auto-filled from football-data.org via a Worker proxy
+      (token kept server-side, cached), plus a 🔴 LIVE badge for in-play games.
+- [x] **Hidden picks** — rivals' predictions stay hidden until kickoff, then
+      reveal (no copying).
+- [x] **Leaderboard glow-up** — rank movement, day champion, recent form, badges
+      and head-to-head player comparisons.
+- [x] **Banter & nudges** — a squad chat with emoji reactions, "still to predict"
+      prompts and a tab-title reminder before matches lock.
+- [ ] Strategy layer: a per-matchday joker, knockout multipliers, outright bets.
+- [ ] Live match minute (needs a paid football-data tier) and a share card.
 - [ ] Let the organiser edit fixtures/teams (currently a fixed 2026 seed).
 
 ## Ideas / later

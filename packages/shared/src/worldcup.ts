@@ -888,6 +888,48 @@ export function headToHead(state: WorldCupState, aId: string, bId: string): WcHe
   return { rows, aTotal, bTotal };
 }
 
+// --- Nudges (who still needs to predict) -----------------------------------
+
+/** Ready, still-open matches a predictor hasn't picked yet, soonest first. */
+export function pendingForMe(
+  state: WorldCupState,
+  predictorId: string,
+  now: Date = new Date(),
+): WcMatch[] {
+  return state.matches
+    .filter(
+      (m) =>
+        isMatchReady(m) &&
+        !isMatchLocked(m, now) &&
+        !state.predictions.some((p) => p.matchId === m.id && p.predictorId === predictorId),
+    )
+    .sort((a, b) => toMs(a.kickoff) - toMs(b.kickoff));
+}
+
+/** Predictors who haven't picked a given (ready, still-open) match yet. */
+export function pendingPredictors(
+  state: WorldCupState,
+  matchId: string,
+  now: Date = new Date(),
+): WcPredictor[] {
+  const m = findMatch(state, matchId);
+  if (!m || !isMatchReady(m) || isMatchLocked(m, now)) return [];
+  return state.predictors.filter(
+    (p) => !state.predictions.some((x) => x.matchId === matchId && x.predictorId === p.id),
+  );
+}
+
+/** My unpicked, still-open matches kicking off within `withinMs` (default 6h). */
+export function lockingSoon(
+  state: WorldCupState,
+  predictorId: string,
+  now: Date = new Date(),
+  withinMs = 6 * 60 * 60 * 1000,
+): WcMatch[] {
+  const t = now.getTime();
+  return pendingForMe(state, predictorId, now).filter((m) => toMs(m.kickoff) - t <= withinMs);
+}
+
 /** How many matches now have a result (for progress UI). */
 export function playedCount(state: WorldCupState): number {
   return state.matches.filter((m) => !!m.result).length;

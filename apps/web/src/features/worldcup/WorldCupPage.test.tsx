@@ -222,4 +222,20 @@ describe('WorldCupPage', () => {
       expect(container.querySelector('.wc-picks')?.textContent).toContain('Daniel');
     });
   });
+
+  it('lets you post banter', async () => {
+    const user = userEvent.setup();
+    await seedControlledBoard();
+    renderPage();
+    await screen.findByRole('heading', { name: /World Cup 2026 Predictions/ });
+    const dialog = await screen.findByRole('dialog');
+    await user.click(within(dialog).getByRole('button', { name: 'John' }));
+    await user.click(screen.getByRole('button', { name: 'Yes, this is me' }));
+
+    await user.click(screen.getByRole('tab', { name: /Banter/ }));
+    await user.type(screen.getByLabelText('Banter message'), 'Come on England!');
+    await user.click(screen.getByRole('button', { name: 'Send' }));
+
+    expect(await screen.findByText('Come on England!')).toBeInTheDocument();
+  });
 });

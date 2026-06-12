@@ -4,6 +4,7 @@ import {
   findTeam,
   isMatchLocked,
   isMatchReady,
+  pendingPredictors,
   scorePrediction,
   slotLabel,
   type WcMatch,
@@ -46,6 +47,9 @@ export function MatchCard({ matchId }: { matchId: string }) {
   const locked = isMatchLocked(match, new Date(now));
   const result = match.result;
   const isLive = !result && !!live && (live.status === 'IN_PLAY' || live.status === 'PAUSED');
+  // Who still hasn't predicted this open match (names only — not their picks).
+  const stillToPick =
+    !result && !locked && ready ? pendingPredictors(wc, matchId, new Date(now)) : [];
   const myPick = meId
     ? wc.predictions.find((p) => p.matchId === matchId && p.predictorId === meId)
     : undefined;
@@ -166,6 +170,11 @@ export function MatchCard({ matchId }: { matchId: string }) {
       )}
       {!result && !meId && ready && !locked && (
         <p className="muted small wc-hint">Pick your name above to predict this match.</p>
+      )}
+      {stillToPick.length > 0 && stillToPick.length < wc.predictors.length && (
+        <p className="muted small wc-hint">
+          ⏳ Still to pick: {stillToPick.map((p) => p.name).join(', ')}
+        </p>
       )}
 
       <PredictionsRow wc={wc} match={match} meId={meId} revealed={locked} />

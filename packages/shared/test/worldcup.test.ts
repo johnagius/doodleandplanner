@@ -11,6 +11,9 @@ import {
   headToHead,
   latestResultDay,
   leaderboardWithMovement,
+  lockingSoon,
+  pendingForMe,
+  pendingPredictors,
   playerForm,
   playerStats,
   defaultDay,
@@ -426,6 +429,34 @@ describe('leaderboard stats', () => {
     const h2h = headToHead(s, john.id, daniel.id);
     expect(h2h.rows).toHaveLength(1);
     expect(h2h).toMatchObject({ aTotal: 5, bTotal: 1 });
+  });
+});
+
+describe('nudges', () => {
+  it('lists who still needs to predict and what locks soon', () => {
+    let s = seed();
+    const p = s.predictors[0]!;
+    const early = new Date('2026-06-01T00:00:00Z');
+    expect(pendingPredictors(s, 'g-A-1', early)).toHaveLength(4); // nobody picked yet
+    expect(pendingForMe(s, p.id, early)).toHaveLength(72); // every group match is open
+
+    s = setPrediction(s, {
+      matchId: 'g-A-1',
+      predictorId: p.id,
+      home: 1,
+      away: 0,
+      now: () => early,
+    });
+    expect(pendingForMe(s, p.id, early)).toHaveLength(71);
+    expect(pendingPredictors(s, 'g-A-1', early).map((x) => x.id)).not.toContain(p.id);
+
+    // Locking soon = unpicked matches within 6h of now (opener kicks off 19:00Z).
+    const justBefore = new Date('2026-06-11T15:00:00Z');
+    expect(lockingSoon(s, s.predictors[1]!.id, justBefore).map((m) => m.id)).toContain('g-A-1');
+
+    // Once a match has kicked off it drops off the pending lists.
+    const after = new Date('2026-06-12T00:00:00Z');
+    expect(pendingPredictors(s, 'g-A-1', after)).toHaveLength(0);
   });
 });
 

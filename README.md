@@ -39,11 +39,14 @@ get.
   day's top scorer, recent form, badges and head-to-head comparisons. Every match
   card has a **three-view switcher**: **Match** (a **crowd pulse**, a 🎯
   closest-pick crown, **quick reactions** 🔥😱🎉💩, reactions to friends' revealed
-  picks, and **per-match banter**), **Stats** (the two teams' tournament form &
-  record side-by-side plus **historical head-to-head** from the live feed), and
-  **Group** (the live standings with **qualification permutations** — what each
-  team's remaining games can still produce: through / in the hunt / 3rd-place
-  hopeful / out). Gentle "still to predict" nudges keep everyone on track.
+  picks, and **per-match banter**), **Stats** (FIFA ranking, the two teams' form &
+  record side-by-side — goals for/against per game, clean sheets — plus
+  **historical head-to-head** from the live feed), and **Group** (the live
+  standings with **qualification permutations** — what each team's remaining games
+  can still produce: through / in the hunt / 3rd-place hopeful / out). There's also
+  a **🏆 predict-the-winner** game: pick who lifts the trophy (locks at the
+  knockouts) and bank points that grow with your team's run. Gentle "still to
+  predict" nudges keep everyone on track.
   Everyone shares one board through the realtime Worker (with a graceful local
   fallback). A first-run "Who are you?" prompt remembers you on the device.
 - **Party games** — a **Games** lobby with live, turn-based **Tic-Tac-Toe**,

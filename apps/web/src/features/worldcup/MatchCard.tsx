@@ -4,6 +4,7 @@ import {
   WC_STAGE_LABEL,
   closestPredictors,
   consensusScore,
+  fifaRankOf,
   findTeam,
   groupOutlook,
   groupStandings,
@@ -323,6 +324,11 @@ function StatsView({ wc, match }: { wc: WorldCupState; match: WcMatch }) {
   const pos = (r: typeof hr) => (r?.position ? (ORDINALS[r.position] ?? `${r.position}th`) : '—');
   const wdl = (r: typeof hr) => (r ? `${r.won}–${r.drawn}–${r.lost}` : '—');
   const goals = (r: typeof hr) => (r ? `${r.goalsFor}–${r.goalsAgainst}` : '—');
+  const avg = (n: number | undefined, d: number | undefined) => (d ? (n! / d).toFixed(1) : '—');
+  const rankOf = (t: WcTeam) => {
+    const r = fifaRankOf(t.id);
+    return r ? `#${r}` : '—';
+  };
 
   return (
     <div className="wc-statsview">
@@ -335,34 +341,53 @@ function StatsView({ wc, match }: { wc: WorldCupState; match: WcMatch }) {
           {away.flag}
         </span>
       </div>
-      {anyPlayed ? (
-        <table className="wc-cmp-table">
-          <tbody>
-            <CmpRow
-              label={`Group ${hr?.group ?? away?.group ?? ''} position`}
-              h={pos(hr)}
-              a={pos(ar)}
-            />
-            <CmpRow label="Played" h={`${hr?.played ?? 0}`} a={`${ar?.played ?? 0}`} />
-            <CmpRow label="W–D–L" h={wdl(hr)} a={wdl(ar)} />
-            <CmpRow label="Goals (F–A)" h={goals(hr)} a={goals(ar)} />
-            <CmpRow label="Points" h={`${hr?.points ?? 0}`} a={`${ar?.points ?? 0}`} strong />
-            <tr>
-              <td className="wc-cmp-h">
-                <FormDots form={hr?.form ?? []} />
-              </td>
-              <th scope="row" className="wc-cmp-label">
-                Form
-              </th>
-              <td className="wc-cmp-a">
-                <FormDots form={ar?.form ?? []} />
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      ) : (
+      <table className="wc-cmp-table">
+        <tbody>
+          <CmpRow label="FIFA ranking" h={rankOf(home)} a={rankOf(away)} />
+          {anyPlayed && (
+            <>
+              <CmpRow
+                label={`Group ${hr?.group ?? away?.group ?? ''} position`}
+                h={pos(hr)}
+                a={pos(ar)}
+              />
+              <CmpRow label="Played" h={`${hr?.played ?? 0}`} a={`${ar?.played ?? 0}`} />
+              <CmpRow label="W–D–L" h={wdl(hr)} a={wdl(ar)} />
+              <CmpRow label="Goals (F–A)" h={goals(hr)} a={goals(ar)} />
+              <CmpRow
+                label="Avg scored"
+                h={avg(hr?.goalsFor, hr?.played)}
+                a={avg(ar?.goalsFor, ar?.played)}
+              />
+              <CmpRow
+                label="Avg conceded"
+                h={avg(hr?.goalsAgainst, hr?.played)}
+                a={avg(ar?.goalsAgainst, ar?.played)}
+              />
+              <CmpRow
+                label="Clean sheets"
+                h={`${hr?.cleanSheets ?? 0}`}
+                a={`${ar?.cleanSheets ?? 0}`}
+              />
+              <CmpRow label="Points" h={`${hr?.points ?? 0}`} a={`${ar?.points ?? 0}`} strong />
+              <tr>
+                <td className="wc-cmp-h">
+                  <FormDots form={hr?.form ?? []} />
+                </td>
+                <th scope="row" className="wc-cmp-label">
+                  Form
+                </th>
+                <td className="wc-cmp-a">
+                  <FormDots form={ar?.form ?? []} />
+                </td>
+              </tr>
+            </>
+          )}
+        </tbody>
+      </table>
+      {!anyPlayed && (
         <p className="muted small wc-tab-empty">
-          No group games played yet — form and records appear once the group is underway.
+          Form &amp; match stats appear once the group is underway.
         </p>
       )}
       <H2HView state={h2h} home={home} away={away} />

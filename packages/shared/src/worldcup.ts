@@ -1242,6 +1242,8 @@ export interface WcTeamRecord {
   goalsAgainst: number;
   goalDiff: number;
   points: number;
+  /** Group games in which the team conceded nothing. */
+  cleanSheets: number;
   /** Recent group results, most-recent-first. */
   form: Array<'W' | 'D' | 'L'>;
 }
@@ -1263,10 +1265,12 @@ export function teamRecord(state: WorldCupState, teamId: string | undefined): Wc
         (m.homeId === team.id || m.awayId === team.id),
     )
     .sort((a, b) => toMs(b.kickoff) - toMs(a.kickoff) || b.order - a.order);
+  let cleanSheets = 0;
   const form: Array<'W' | 'D' | 'L'> = games.map((m) => {
     const isHome = m.homeId === team.id;
     const gf = isHome ? m.result!.home : m.result!.away;
     const ga = isHome ? m.result!.away : m.result!.home;
+    if (ga === 0) cleanSheets++;
     return gf > ga ? 'W' : gf < ga ? 'L' : 'D';
   });
   return {
@@ -1280,6 +1284,7 @@ export function teamRecord(state: WorldCupState, teamId: string | undefined): Wc
     goalsAgainst: row.goalsAgainst,
     goalDiff: row.goalDiff,
     points: row.points,
+    cleanSheets,
     form,
   };
 }
@@ -1375,6 +1380,66 @@ export function groupOutlook(state: WorldCupState, group: string): WcGroupOutloo
 // --- Seeding ---------------------------------------------------------------
 
 const GROUP_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
+
+/**
+ * FIFA Men's World Ranking positions (June 2026) for the finalists, keyed by
+ * team code. Static reference data — no live feed exposes it — looked up by id
+ * so it works without touching stored board state. (Australia unconfirmed.)
+ */
+export const FIFA_RANKS: Record<string, number> = {
+  ARG: 1,
+  ESP: 2,
+  FRA: 3,
+  ENG: 4,
+  POR: 5,
+  BRA: 6,
+  MAR: 7,
+  NED: 8,
+  BEL: 9,
+  GER: 10,
+  CRO: 11,
+  COL: 13,
+  MEX: 14,
+  SEN: 15,
+  URU: 16,
+  USA: 17,
+  JPN: 18,
+  SUI: 19,
+  IRN: 20,
+  TUR: 22,
+  ECU: 23,
+  AUT: 24,
+  KOR: 25,
+  ALG: 28,
+  EGY: 29,
+  CAN: 30,
+  NOR: 31,
+  CIV: 33,
+  PAN: 34,
+  SWE: 38,
+  CZE: 40,
+  PAR: 41,
+  SCO: 42,
+  TUN: 45,
+  COD: 46,
+  UZB: 50,
+  QAT: 56,
+  IRQ: 57,
+  RSA: 60,
+  KSA: 61,
+  JOR: 63,
+  BIH: 64,
+  CPV: 67,
+  GHA: 73,
+  CUW: 82,
+  HAI: 83,
+  NZL: 85,
+};
+
+/** Current FIFA world ranking for a team code, if known. */
+export function fifaRankOf(teamId: string | undefined): number | undefined {
+  return teamId ? FIFA_RANKS[teamId] : undefined;
+}
 
 /**
  * The real 2026 World Cup field from the final draw (5 December 2025): 48 teams,

@@ -2256,7 +2256,9 @@ label.field {
 
 .wc-fixture {
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  /* minmax(0, 1fr) lets the side columns shrink below the team name's intrinsic
+     width so long names wrap instead of overlapping the centre score. */
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   gap: 0.5rem;
 }
@@ -2286,9 +2288,11 @@ label.field {
 }
 .wc-team-name {
   font-weight: 700;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  /* Wrap long names (e.g. "Bosnia and Herzegovina") onto two lines and allow
+     breaking a single long word so the column can shrink, instead of spilling
+     over the centre score. */
+  overflow-wrap: anywhere;
+  line-height: 1.15;
 }
 .wc-team-context {
   display: inline-flex;

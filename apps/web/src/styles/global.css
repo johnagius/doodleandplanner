@@ -2788,6 +2788,134 @@ label.field {
   border-color: color-mix(in srgb, var(--danger) 35%, var(--border));
   font-weight: 700;
 }
+
+/* Player-card collectible game */
+.wc-cards-board {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.wc-cardrow {
+  display: grid;
+  grid-template-columns: 1.6rem 1fr auto;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0.5rem;
+  border-radius: 8px;
+  background: var(--surface-2);
+}
+.wc-cardrow.is-me {
+  box-shadow: 0 0 0 2px var(--primary-soft);
+}
+.wc-cardrow-rank {
+  text-align: center;
+  font-weight: 800;
+}
+.wc-cardrow-name {
+  font-weight: 700;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.wc-cardrow-count {
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.wc-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 0.8rem;
+}
+.wc-fifa-card {
+  position: relative;
+  border-radius: 14px;
+  padding: 0.6rem 0.7rem 0.7rem;
+  color: #2a2208;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+}
+.wc-fifa-card.tier-gold {
+  background: linear-gradient(160deg, #fbe9a0 0%, #e9c659 55%, #d3a93b 100%);
+}
+.wc-fifa-card.tier-silver {
+  background: linear-gradient(160deg, #eef1f4 0%, #cbd2da 55%, #aab2bd 100%);
+}
+.wc-fifa-card.tier-bronze {
+  background: linear-gradient(160deg, #f0cda0 0%, #cd9b5e 55%, #b07a3c 100%);
+  color: #3a240c;
+}
+.wc-fifa-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+}
+.wc-fifa-ovr {
+  font-size: 1.6rem;
+  font-weight: 900;
+  line-height: 1;
+}
+.wc-fifa-pos {
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+.wc-fifa-flag {
+  margin-left: auto;
+  font-size: 1.2rem;
+}
+.wc-fifa-photo {
+  display: grid;
+  place-items: center;
+  height: 70px;
+}
+.wc-fifa-photo-flag {
+  font-size: 3.2rem;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.25));
+}
+.wc-fifa-photo img {
+  height: 70px;
+  width: auto;
+  object-fit: contain;
+  border-radius: 6px;
+}
+.wc-fifa-name {
+  font-weight: 800;
+  text-transform: uppercase;
+  font-size: 0.85rem;
+  text-align: center;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.wc-fifa-nat {
+  text-align: center;
+  font-size: 0.68rem;
+  font-weight: 700;
+  opacity: 0.75;
+  margin-top: -0.2rem;
+}
+.wc-fifa-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.1rem 0.6rem;
+  margin-top: 0.3rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.18);
+  padding-top: 0.3rem;
+  font-size: 0.74rem;
+  font-variant-numeric: tabular-nums;
+}
+.wc-fifa-stat strong {
+  font-weight: 900;
+}
 .wc-pick-chip.is-provisional {
   border-color: var(--warn);
   background: color-mix(in srgb, var(--warn) 13%, var(--surface-2));

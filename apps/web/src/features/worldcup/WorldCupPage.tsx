@@ -12,6 +12,7 @@ import { isRealtimeBackend } from '../../lib/storage/index.js';
 import { useTitleAlert } from '../../lib/useTitleAlert.js';
 import { useWorldCupStore } from '../../state/worldCupStore.js';
 import { BracketView } from './BracketView.js';
+import { CardsView } from './CardsView.js';
 import { GroupTables } from './GroupTables.js';
 import { IdentityModal } from './IdentityModal.js';
 import { Leaderboard } from './Leaderboard.js';
@@ -20,13 +21,14 @@ import { PredictorBar } from './PredictorBar.js';
 import { ScoringLegend } from './ScoringLegend.js';
 import { formatDayLong } from './wcFormat.js';
 
-type Tab = 'fixtures' | 'groups' | 'bracket' | 'leaderboard';
+type Tab = 'fixtures' | 'groups' | 'bracket' | 'leaderboard' | 'cards';
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'fixtures', label: 'Fixtures', icon: '📅' },
   { id: 'groups', label: 'Groups', icon: '🔢' },
   { id: 'bracket', label: 'Bracket', icon: '🏟️' },
   { id: 'leaderboard', label: 'Leaderboard', icon: '🏆' },
+  { id: 'cards', label: 'Cards', icon: '🃏' },
 ];
 
 export function WorldCupPage() {
@@ -200,6 +202,7 @@ export function WorldCupPage() {
         {tab === 'groups' && <GroupTables wc={wc} />}
         {tab === 'bracket' && <BracketView wc={wc} />}
         {tab === 'leaderboard' && <Leaderboard wc={wc} />}
+        {tab === 'cards' && <CardsView wc={wc} />}
       </div>
     </div>
   );

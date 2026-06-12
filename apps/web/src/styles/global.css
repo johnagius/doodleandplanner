@@ -2393,6 +2393,12 @@ label.field {
   border-top: 1px solid var(--border);
   padding-top: 0.6rem;
 }
+.wc-pick {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+}
 .wc-pick-chip {
   display: inline-flex;
   align-items: center;
@@ -2403,6 +2409,13 @@ label.field {
   background: var(--surface-2);
   font-size: 0.76rem;
   font-weight: 600;
+}
+.wc-pick-reactions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.2rem;
+  padding-left: 0.2rem;
 }
 .wc-pick-chip.is-me {
   box-shadow: 0 0 0 2px var(--primary-soft);

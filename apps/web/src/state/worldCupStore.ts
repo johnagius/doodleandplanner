@@ -11,6 +11,7 @@ import {
   setPrediction,
   setResult,
   toggleMatchReaction,
+  togglePickReaction,
   toggleReaction,
   type RoomState,
   type WorldCupState,
@@ -96,6 +97,8 @@ interface WorldCupStore {
 
   /** Quick, prediction-free emoji reaction on a match. */
   reactMatch: (matchId: string, emoji: string) => Promise<void>;
+  /** React to another predictor's revealed pick. */
+  reactPick: (matchId: string, predictorId: string, emoji: string) => Promise<void>;
 }
 
 /** Apply a pure update to the embedded WorldCupState. */
@@ -326,6 +329,13 @@ export const useWorldCupStore = create<WorldCupStore>((set, get) => {
     async reactMatch(matchId, emoji) {
       const me = requireMe();
       await apply((s) => withWorldCup(s, (wc) => toggleMatchReaction(wc, matchId, emoji, me)));
+    },
+
+    async reactPick(matchId, predictorId, emoji) {
+      const me = requireMe();
+      await apply((s) =>
+        withWorldCup(s, (wc) => togglePickReaction(wc, matchId, predictorId, emoji, me)),
+      );
     },
   };
 });

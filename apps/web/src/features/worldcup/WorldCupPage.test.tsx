@@ -269,6 +269,42 @@ describe('WorldCupPage', () => {
     expect(await screen.findByTitle('Closest pick')).toBeInTheDocument();
   });
 
+  it("reacts to a mate's pick only after it's revealed", async () => {
+    const user = userEvent.setup();
+    await seedControlledBoard([
+      {
+        matchId: 'g-A-1',
+        predictorId: 'p2',
+        home: 2,
+        away: 1,
+        updatedAt: new Date().toISOString(),
+      },
+    ]);
+    const { container } = renderPage();
+
+    await screen.findByRole('heading', { name: /World Cup 2026 Predictions/ });
+    const dialog = await screen.findByRole('dialog');
+    await user.click(within(dialog).getByRole('button', { name: 'John' }));
+    await user.click(screen.getByRole('button', { name: 'Yes, this is me' }));
+
+    // Before kickoff Daniel's pick is hidden — nothing to react to.
+    expect(screen.queryByRole('button', { name: /React to/ })).toBeNull();
+
+    // Organiser enters a result → the match locks and picks reveal.
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    await user.click(screen.getByRole('button', { name: /Organiser/ }));
+    await user.click(await screen.findByRole('button', { name: 'Home result goals: one more' }));
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await screen.findByText('FT');
+
+    // Now react to Daniel's revealed pick and see the tally land.
+    await user.click(await screen.findByRole('button', { name: /React to Daniel/ }));
+    await user.click(screen.getByRole('button', { name: '🔥' }));
+    await waitFor(() => {
+      expect(container.querySelector('.wc-picks')?.textContent).toContain('🔥');
+    });
+  });
+
   it('toggles a quick match reaction on the card', async () => {
     const user = userEvent.setup();
     await seedControlledBoard();

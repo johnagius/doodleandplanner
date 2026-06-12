@@ -329,37 +329,119 @@ function PredictionsRow({
 
   return (
     <div className="wc-picks">
-      {shown.map((p) => {
-        const name = wc.predictors.find((x) => x.id === p.predictorId)?.name ?? '?';
-        const scored = match.result ? scorePrediction(p, match.result) : null;
-        const isClosest = crowned?.has(p.predictorId) ?? false;
-        return (
-          <span
-            key={p.predictorId}
-            className={`wc-pick-chip ${scored ? POINT_CLASS[scored.category] : ''} ${
-              p.predictorId === meId ? 'is-me' : ''
-            }`}
-            title={scored ? WC_SCORE_LABEL[scored.category] : 'Prediction'}
-          >
-            {isClosest && (
-              <span className="wc-pick-crown" title="Closest pick" aria-label="Closest pick">
-                🎯
-              </span>
-            )}
-            <span className="wc-pick-name">{name}</span>
-            <span className="wc-pick-score">
-              {p.home}–{p.away}
-            </span>
-            {scored && <span className="wc-pick-pts">+{scored.points}</span>}
-          </span>
-        );
-      })}
+      {shown.map((p) => (
+        <PickChip
+          key={p.predictorId}
+          wc={wc}
+          match={match}
+          pick={p}
+          meId={meId}
+          crowned={crowned?.has(p.predictorId) ?? false}
+          // You can react to a revealed pick that isn't your own.
+          canReact={revealed && !!meId && p.predictorId !== meId}
+        />
+      ))}
       {hidden > 0 && (
         <span className="wc-pick-chip wc-pick-hidden" title="Everyone’s picks reveal at kickoff">
           🔒 {hidden} more · hidden until kickoff
         </span>
       )}
     </div>
+  );
+}
+
+/** One predictor's pick chip, with its points/crown and (once revealed) the
+ * ability to react to a mate's pick. */
+function PickChip({
+  wc,
+  match,
+  pick,
+  meId,
+  crowned,
+  canReact,
+}: {
+  wc: WorldCupState;
+  match: WcMatch;
+  pick: WorldCupState['predictions'][number];
+  meId: string | null;
+  crowned: boolean;
+  canReact: boolean;
+}) {
+  const { reactPick } = useWorldCupStore();
+  const [picker, setPicker] = useState(false);
+  const name = wc.predictors.find((x) => x.id === pick.predictorId)?.name ?? '?';
+  const scored = match.result ? scorePrediction(pick, match.result) : null;
+  const reactions = Object.entries(pick.reactions ?? {});
+
+  return (
+    <span className="wc-pick">
+      <span
+        className={`wc-pick-chip ${scored ? POINT_CLASS[scored.category] : ''} ${
+          pick.predictorId === meId ? 'is-me' : ''
+        }`}
+        title={scored ? WC_SCORE_LABEL[scored.category] : 'Prediction'}
+      >
+        {crowned && (
+          <span className="wc-pick-crown" title="Closest pick" aria-label="Closest pick">
+            🎯
+          </span>
+        )}
+        <span className="wc-pick-name">{name}</span>
+        <span className="wc-pick-score">
+          {pick.home}–{pick.away}
+        </span>
+        {scored && <span className="wc-pick-pts">+{scored.points}</span>}
+      </span>
+
+      {(reactions.length > 0 || canReact) && (
+        <span className="wc-pick-reactions">
+          {reactions.map(([emoji, who]) => (
+            <button
+              key={emoji}
+              type="button"
+              className={`reaction-chip ${meId && who.includes(meId) ? 'mine' : ''}`}
+              onClick={() => {
+                if (canReact) void reactPick(match.id, pick.predictorId, emoji);
+              }}
+              disabled={!canReact}
+              title={`React ${emoji}`}
+            >
+              {emoji} {who.length}
+            </button>
+          ))}
+          {canReact && (
+            <span className="reaction-add-wrap">
+              <button
+                type="button"
+                className="reaction-add"
+                aria-expanded={picker}
+                aria-label={`React to ${name}'s pick`}
+                onClick={() => setPicker((v) => !v)}
+              >
+                ＋
+              </button>
+              {picker && (
+                <span className="reaction-picker">
+                  {WC_REACTIONS.map((e) => (
+                    <button
+                      key={e}
+                      type="button"
+                      className="reaction-option"
+                      onClick={() => {
+                        void reactPick(match.id, pick.predictorId, e);
+                        setPicker(false);
+                      }}
+                    >
+                      {e}
+                    </button>
+                  ))}
+                </span>
+              )}
+            </span>
+          )}
+        </span>
+      )}
+    </span>
   );
 }
 

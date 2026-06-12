@@ -83,7 +83,7 @@ export class HttpRepository implements Repository {
   async deleteRoom(slug: string): Promise<void> {
     this.sockets.get(slug)?.close();
     this.sockets.delete(slug);
-    this.store.setItem(INDEX_KEY, JSON.stringify(this.readIndex().filter((r) => r.slug !== slug)));
+    this.safeSetIndex(this.readIndex().filter((r) => r.slug !== slug));
   }
 
   async listRooms(): Promise<RoomSummary[]> {
@@ -194,6 +194,16 @@ export class HttpRepository implements Repository {
       updatedAt: new Date().toISOString(),
     };
     const next = [summary, ...this.readIndex().filter((r) => r.slug !== summary.slug)];
-    this.store.setItem(INDEX_KEY, JSON.stringify(next));
+    this.safeSetIndex(next);
+  }
+
+  /** The "my rooms" index is a non-essential convenience: never let a failed
+   * write (e.g. localStorage full / quota exceeded / disabled) break loading. */
+  private safeSetIndex(rooms: RoomSummary[]): void {
+    try {
+      this.store.setItem(INDEX_KEY, JSON.stringify(rooms));
+    } catch {
+      /* storage full or unavailable — fine, the index is best-effort */
+    }
   }
 }

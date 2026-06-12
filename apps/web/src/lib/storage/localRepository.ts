@@ -56,9 +56,19 @@ export class LocalStorageRepository implements Repository {
       updatedAt: new Date().toISOString(),
       state,
     };
-    this.store.setItem(this.key(state.room.slug), JSON.stringify(record));
+    // Degrade gracefully if storage is full/unavailable rather than crashing the
+    // app: the in-memory state still works for this session.
+    this.safeSet(this.key(state.room.slug), JSON.stringify(record));
     this.updateIndex(record);
     return record;
+  }
+
+  private safeSet(key: string, value: string): void {
+    try {
+      this.store.setItem(key, value);
+    } catch {
+      /* quota exceeded / storage disabled — keep going without persisting */
+    }
   }
 
   private updateIndex(record: StoredRoom): void {
@@ -70,7 +80,7 @@ export class LocalStorageRepository implements Repository {
       updatedAt: record.updatedAt,
     };
     const next = [summary, ...index.filter((r) => r.slug !== summary.slug)];
-    this.store.setItem(INDEX_KEY, JSON.stringify(next));
+    this.safeSet(INDEX_KEY, JSON.stringify(next));
   }
 
   private readIndex(): RoomSummary[] {
@@ -101,7 +111,7 @@ export class LocalStorageRepository implements Repository {
 
   async deleteRoom(slug: string): Promise<void> {
     this.store.removeItem(this.key(slug));
-    this.store.setItem(INDEX_KEY, JSON.stringify(this.readIndex().filter((r) => r.slug !== slug)));
+    this.safeSet(INDEX_KEY, JSON.stringify(this.readIndex().filter((r) => r.slug !== slug)));
   }
 
   async listRooms(): Promise<RoomSummary[]> {

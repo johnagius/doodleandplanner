@@ -112,4 +112,28 @@ describe('HttpRepository', () => {
     unsub();
     expect(FakeSocket.last?.closed).toBe(true);
   });
+
+  it('keeps working when localStorage is full (quota exceeded)', async () => {
+    const state = await makeState();
+    const fetchFn = vi.fn(async () => jsonResponse(state)) as unknown as typeof fetch;
+    // A store whose writes always throw, like a full / disabled localStorage.
+    const fullStore = {
+      getItem: () => null,
+      setItem: () => {
+        throw new DOMException('exceeded the quota', 'QuotaExceededError');
+      },
+      removeItem: () => {},
+    } as unknown as Storage;
+    const repo = new HttpRepository('https://api.example.com', {
+      store: fullStore,
+      fetchFn,
+      makeSocket: (url) => new FakeSocket(url),
+    });
+
+    // getRoom must not throw even though remembering the room can't be written.
+    await expect(repo.getRoom(state.room.slug)).resolves.toMatchObject({
+      room: { slug: state.room.slug },
+    });
+    await expect(repo.saveRoom(state)).resolves.toBeTruthy();
+  });
 });

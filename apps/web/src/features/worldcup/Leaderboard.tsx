@@ -68,13 +68,26 @@ function FormDots({ form }: { form: WcScoreCategory[] }) {
 /** Standings of the predictors themselves — who's winning the sweepstake. */
 export function Leaderboard({ wc }: { wc: WorldCupState }) {
   const meId = useWorldCupStore((s) => s.meId);
-  const rows = leaderboardWithMovement(wc);
+  const live = useWorldCupStore((s) => s.live);
+  const [openId, setOpenId] = useState<string | null>(null);
+
+  // Fold in-play games into the table "as it stands" (final results take over
+  // once they land). Scores can lag on the free feed — we flag that.
+  const liveScores: Record<string, { home: number; away: number }> = {};
+  for (const [mid, info] of Object.entries(live)) {
+    const inPlay = info.status === 'IN_PLAY' || info.status === 'PAUSED';
+    const m = findMatch(wc, mid);
+    if (inPlay && info.home != null && info.away != null && m && !m.result) {
+      liveScores[mid] = { home: info.home, away: info.away };
+    }
+  }
+  const liveCount = Object.keys(liveScores).length;
+  const rows = leaderboardWithMovement(wc, liveCount ? liveScores : undefined);
   const played = playedCount(wc);
   const topScore = rows[0]?.points ?? 0;
   const champ = dayChampion(wc);
-  const [openId, setOpenId] = useState<string | null>(null);
 
-  if (played === 0) {
+  if (played === 0 && liveCount === 0) {
     return (
       <EmptyState
         icon="🏆"
@@ -86,6 +99,12 @@ export function Leaderboard({ wc }: { wc: WorldCupState }) {
 
   return (
     <div className="stack">
+      {liveCount > 0 && (
+        <div className="banner wc-live-banner">
+          🔴 Live standings — includes {liveCount} in-play game{liveCount === 1 ? '' : 's'} as it
+          stands (the free feed can lag the real score)
+        </div>
+      )}
       {champ && (
         <div className="banner wc-daychamp">
           🗓️ {formatDayLong(champ.day)} — top scorer <strong>{champ.name}</strong> (+{champ.points})

@@ -776,6 +776,21 @@ describe('fifa ranking', () => {
   });
 });
 
+describe('live leaderboard', () => {
+  it('folds in-play games into the totals as it stands', () => {
+    let s = seed();
+    const [a, b] = s.predictors as [(typeof s.predictors)[0], (typeof s.predictors)[0]];
+    s = setPrediction(s, { matchId: 'g-A-1', predictorId: a.id, home: 1, away: 0, now: NOW });
+    s = setPrediction(s, { matchId: 'g-A-1', predictorId: b.id, home: 0, away: 2, now: NOW });
+    // No result yet → everyone on zero.
+    expect(leaderboard(s).find((r) => r.predictorId === a.id)!.points).toBe(0);
+    // Live 1-0 → a is spot on (5), b is miles off (0).
+    const lb = leaderboard(s, { liveScores: { 'g-A-1': { home: 1, away: 0 } } });
+    expect(lb.find((r) => r.predictorId === a.id)!.points).toBe(5);
+    expect(lb.find((r) => r.predictorId === b.id)!.points).toBe(0);
+  });
+});
+
 describe('altitude & climate', () => {
   it('looks up nation and venue climate', () => {
     expect(teamClimate('ECU')!.altitude).toBeGreaterThan(2000); // Quito

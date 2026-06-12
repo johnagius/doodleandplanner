@@ -2783,6 +2783,11 @@ label.field {
   color: var(--warn);
   letter-spacing: 0.01em;
 }
+.wc-live-banner {
+  background: color-mix(in srgb, var(--danger) 12%, var(--surface));
+  border-color: color-mix(in srgb, var(--danger) 35%, var(--border));
+  font-weight: 700;
+}
 .wc-pick-chip.is-provisional {
   border-color: var(--warn);
   background: color-mix(in srgb, var(--warn) 13%, var(--surface-2));

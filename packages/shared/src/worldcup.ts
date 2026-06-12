@@ -807,9 +807,15 @@ export interface WcLeaderRow {
  */
 export function leaderboard(
   state: WorldCupState,
-  opts?: { resultedBefore?: string },
+  opts?: {
+    resultedBefore?: string;
+    /** Provisional scores for in-play matches (matchId → score) — folds live
+     * games into the totals "as it stands". Ignored when `resultedBefore` is set. */
+    liveScores?: Record<string, { home: number; away: number }>;
+  },
 ): WcLeaderRow[] {
   const before = opts?.resultedBefore;
+  const live = before ? undefined : opts?.liveScores;
   const rows = new Map<string, WcLeaderRow>(
     state.predictors.map((p) => [
       p.id,
@@ -825,13 +831,14 @@ export function leaderboard(
     ]),
   );
   for (const match of state.matches) {
-    if (!match.result) continue;
+    const result = match.result ?? live?.[match.id];
+    if (!result) continue;
     if (before && matchDateKey(match) >= before) continue;
     for (const pred of state.predictions) {
       if (pred.matchId !== match.id) continue;
       const row = rows.get(pred.predictorId);
       if (!row) continue;
-      const { points, category } = scorePrediction(pred, match.result);
+      const { points, category } = scorePrediction(pred, result);
       row.points += points;
       row.scored++;
       if (category === 'exact') row.exact++;
@@ -872,9 +879,13 @@ export interface WcLeaderRowMoved extends WcLeaderRow {
   movement: number;
 }
 
-/** Leaderboard with rank + movement since the last day's results landed. */
-export function leaderboardWithMovement(state: WorldCupState): WcLeaderRowMoved[] {
-  const current = leaderboard(state);
+/** Leaderboard with rank + movement since the last day's results landed.
+ * Pass `liveScores` to fold in-play games into the live "as it stands" table. */
+export function leaderboardWithMovement(
+  state: WorldCupState,
+  liveScores?: Record<string, { home: number; away: number }>,
+): WcLeaderRowMoved[] {
+  const current = leaderboard(state, { liveScores });
   const lastDay = latestResultDay(state);
   const prev = lastDay ? leaderboard(state, { resultedBefore: lastDay }) : current;
   const hasPrev = !!lastDay && prev.some((r) => r.scored > 0);

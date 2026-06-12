@@ -528,6 +528,27 @@ export interface WcLiveScore {
   winner?: string | null;
 }
 
+/** One historical meeting between two teams (from the results feed). */
+export interface WcH2HMeeting {
+  /** ISO date of the meeting. */
+  date: string;
+  homeTla: string;
+  awayTla: string;
+  homeScore: number | null;
+  awayScore: number | null;
+  competition?: string;
+}
+
+/** Aggregated historical head-to-head between two teams, keyed by team code.
+ * (Distinct from {@link WcHeadToHead}, which compares two predictors.) */
+export interface WcTeamH2H {
+  numberOfMatches: number;
+  /** tla → { wins, draws, losses } across the recorded meetings. */
+  records: Record<string, { wins: number; draws: number; losses: number }>;
+  /** A few most-recent meetings, newest first. */
+  recent: WcH2HMeeting[];
+}
+
 /**
  * Apply finished scores from the feed to any match that doesn't already have a
  * result, so results fill in automatically (no manual organiser entry needed).

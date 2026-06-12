@@ -24,6 +24,7 @@ import { useState } from 'react';
 import { useToast } from '../../components/Toast.js';
 import { useWorldCupStore } from '../../state/worldCupStore.js';
 import { Countdown } from './Countdown.js';
+import { useHeadToHead, type H2HState } from './h2h.js';
 import { MatchComments } from './MatchComments.js';
 import { ScoreStepper } from './ScoreStepper.js';
 import { useNow } from './useNow.js';
@@ -311,6 +312,7 @@ function FormDots({ form }: { form: Array<'W' | 'D' | 'L'> }) {
 function StatsView({ wc, match }: { wc: WorldCupState; match: WcMatch }) {
   const home = findTeam(wc, match.homeId);
   const away = findTeam(wc, match.awayId);
+  const h2h = useHeadToHead(home?.id, away?.id);
   if (!home || !away) {
     return <p className="muted small wc-tab-empty">Teams are decided once the bracket fills in.</p>;
   }
@@ -363,7 +365,54 @@ function StatsView({ wc, match }: { wc: WorldCupState; match: WcMatch }) {
           No group games played yet — form and records appear once the group is underway.
         </p>
       )}
-      <p className="muted small wc-h2h-note">⚔️ Head-to-head history is on the way.</p>
+      <H2HView state={h2h} home={home} away={away} />
+    </div>
+  );
+}
+
+/** Historical head-to-head between the two teams (from the results feed). */
+function H2HView({ state, home, away }: { state: H2HState; home: WcTeam; away: WcTeam }) {
+  if (state.loading) {
+    return <p className="muted small wc-h2h-note">Loading head-to-head…</p>;
+  }
+  const h2h = state.h2h;
+  if (!h2h || h2h.numberOfMatches === 0) {
+    return <p className="muted small wc-h2h-note">No recorded head-to-head meetings.</p>;
+  }
+  const homeRec = h2h.records[home.id] ?? { wins: 0, draws: 0, losses: 0 };
+  const homeWins = homeRec.wins;
+  const draws = homeRec.draws;
+  const awayWins = h2h.records[away.id]?.wins ?? homeRec.losses;
+  return (
+    <div className="wc-h2h">
+      <div className="wc-h2h-head">
+        ⚔️ Head-to-head · {h2h.numberOfMatches} meeting{h2h.numberOfMatches === 1 ? '' : 's'}
+      </div>
+      <div className="wc-h2h-tally">
+        <span className="wc-h2h-side">
+          <strong>{homeWins}</strong> <span aria-hidden>{home.flag}</span>
+        </span>
+        <span className="muted small">
+          {draws} draw{draws === 1 ? '' : 's'}
+        </span>
+        <span className="wc-h2h-side">
+          <span aria-hidden>{away.flag}</span> <strong>{awayWins}</strong>
+        </span>
+      </div>
+      {h2h.recent.length > 0 && (
+        <ul className="wc-h2h-list">
+          {h2h.recent.map((m, i) => (
+            <li key={i}>
+              <span className="muted">{m.date ? m.date.slice(0, 4) : ''}</span> {m.homeTla}{' '}
+              <strong>
+                {m.homeScore ?? '–'}–{m.awayScore ?? '–'}
+              </strong>{' '}
+              {m.awayTla}
+              {m.competition ? <span className="muted"> · {m.competition}</span> : null}
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

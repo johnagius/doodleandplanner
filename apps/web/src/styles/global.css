@@ -2317,6 +2317,50 @@ label.field {
   text-align: center;
   margin: 0;
 }
+
+/* Historical head-to-head */
+.wc-h2h {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  border-top: 1px dashed var(--border);
+  padding-top: 0.5rem;
+}
+.wc-h2h-head {
+  text-align: center;
+  font-weight: 800;
+  font-size: 0.74rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.wc-h2h-tally {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 0.5rem;
+}
+.wc-h2h-side {
+  font-size: 1.1rem;
+  font-variant-numeric: tabular-nums;
+}
+.wc-h2h-tally .wc-h2h-side:first-child {
+  text-align: right;
+}
+.wc-h2h-tally .wc-h2h-side:last-child {
+  text-align: left;
+}
+.wc-h2h-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.8rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
 .wc-cmp-table {
   width: 100%;
   border-collapse: collapse;

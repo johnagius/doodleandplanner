@@ -450,13 +450,19 @@ export function setPrediction(state: WorldCupState, input: SetPredictionInput): 
 /** Remove a predictor's pick for a match (e.g. an accidental entry). Allowed
  * even after kickoff — to fix a mistake — but not once the result is recorded.
  * Drops the pick together with any reactions on it (intended mistake-fix). */
+/** Remove a predictor's pick — only before kickoff. Once a match has started it
+ * is **locked forever**: no clearing (a single tap was wiping good picks during
+ * live games, with no way to re-add since predicting is also locked). */
 export function clearPrediction(
   state: WorldCupState,
   matchId: string,
   predictorId: string,
+  now: () => Date = () => new Date(),
 ): WorldCupState {
   const match = findMatch(state, matchId);
-  if (match?.result) throw new Error('This match is locked');
+  if (match && isMatchLocked(match, now())) {
+    throw new Error('This match has kicked off — picks are locked');
+  }
   return {
     ...state,
     predictions: state.predictions.filter(

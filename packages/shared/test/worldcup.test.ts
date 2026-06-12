@@ -188,17 +188,21 @@ describe('predictions', () => {
     expect(predictionFor(s, 'g-A-1', p.id)).toMatchObject({ home: 3, away: 2 });
   });
 
-  it('clears a pick (mistaken entry) until the result is in', () => {
+  it('clears a pick before kickoff, but never once the match has started', () => {
     let s = seed();
     const p = s.predictors[0]!;
     s = setPrediction(s, { matchId: 'g-A-1', predictorId: p.id, home: 0, away: 0, now: NOW });
     expect(predictionFor(s, 'g-A-1', p.id)).toBeTruthy();
-    s = clearPrediction(s, 'g-A-1', p.id);
+    // Before kickoff (NOW = 2026-06-01) a mistaken pick can be removed.
+    s = clearPrediction(s, 'g-A-1', p.id, NOW);
     expect(predictionFor(s, 'g-A-1', p.id)).toBeUndefined();
     // Clearing an absent pick is a harmless no-op.
-    expect(clearPrediction(s, 'g-A-1', p.id).predictions).toHaveLength(0);
-    // Once the score is recorded the pick is locked.
+    expect(clearPrediction(s, 'g-A-1', p.id, NOW).predictions).toHaveLength(0);
+    // Re-predict; once the match has kicked off the pick is locked forever.
     s = setPrediction(s, { matchId: 'g-A-1', predictorId: p.id, home: 1, away: 1, now: NOW });
+    const afterKickoff = () => new Date('2026-07-01T00:00:00Z');
+    expect(() => clearPrediction(s, 'g-A-1', p.id, afterKickoff)).toThrow(/kicked off/);
+    // And of course once a result is in.
     const played = setResult(s, { matchId: 'g-A-1', home: 1, away: 0 });
     expect(() => clearPrediction(played, 'g-A-1', p.id)).toThrow(/locked/);
   });

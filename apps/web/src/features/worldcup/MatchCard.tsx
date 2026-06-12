@@ -181,13 +181,17 @@ export function MatchCard({ matchId }: { matchId: string }) {
           {!result && myPick && (
             <div className="wc-clear-row">
               <span className="wc-saved">✓ Saved</span>
-              <button
-                type="button"
-                className="btn btn-sm btn-ghost wc-clear-pick"
-                onClick={clearPick}
-              >
-                ✕ Clear{locked ? ' (mistake)' : ' my pick'}
-              </button>
+              {locked ? (
+                <span className="muted small">🔒 Locked at kickoff</span>
+              ) : (
+                <button
+                  type="button"
+                  className="btn btn-sm btn-ghost wc-clear-pick"
+                  onClick={clearPick}
+                >
+                  ✕ Clear my pick
+                </button>
+              )}
             </div>
           )}
           {!result && canPredict && !myPick && (

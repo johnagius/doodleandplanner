@@ -1,5 +1,6 @@
 import {
   addPredictor,
+  adminSetPrediction,
   appendMessage,
   applyLiveResults,
   clearChampionPick,
@@ -74,6 +75,8 @@ interface WorldCupStore {
   admin: boolean;
   /** Live in-play status/score per board match id (from the football feed). */
   live: Record<string, WcLiveInfo>;
+  /** When the Worker last pulled the live feed (ISO), for a staleness read. */
+  liveFetchedAt: string | null;
   unsubscribe: (() => void) | null;
 
   load: () => Promise<void>;
@@ -87,6 +90,13 @@ interface WorldCupStore {
   unpredict: (matchId: string) => Promise<void>;
   enterResult: (matchId: string, home: number, away: number, advancesId?: string) => Promise<void>;
   clearMatchResult: (matchId: string) => Promise<void>;
+  /** Organiser-only: set/restore any predictor's pick (even after kickoff). */
+  adminSetPrediction: (
+    matchId: string,
+    predictorId: string,
+    home: number,
+    away: number,
+  ) => Promise<void>;
   addName: (name: string) => Promise<void>;
   renameName: (id: string, name: string) => Promise<void>;
   removeName: (id: string) => Promise<void>;
@@ -177,6 +187,7 @@ export const useWorldCupStore = create<WorldCupStore>((set, get) => {
     meId: readLocal(PREDICTOR_KEY),
     admin: readLocal(ADMIN_KEY) === '1',
     live: {},
+    liveFetchedAt: null,
     unsubscribe: null,
 
     async load() {
@@ -225,7 +236,7 @@ export const useWorldCupStore = create<WorldCupStore>((set, get) => {
       const current = get().state;
       const wc = current?.worldCup;
       if (!wc) return;
-      const scores = await fetchLiveScores();
+      const { scores, fetchedAt } = await fetchLiveScores();
       if (scores.length === 0) return;
 
       // Auto-fill any finished results that aren't on the board yet (only writes
@@ -252,7 +263,7 @@ export const useWorldCupStore = create<WorldCupStore>((set, get) => {
           };
         }
       }
-      set({ live });
+      set({ live, liveFetchedAt: fetchedAt });
     },
 
     selectPredictor(id) {
@@ -285,6 +296,12 @@ export const useWorldCupStore = create<WorldCupStore>((set, get) => {
 
     async clearMatchResult(matchId) {
       await apply((s) => withWorldCup(s, (wc) => clearResult(wc, matchId)));
+    },
+
+    async adminSetPrediction(matchId, predictorId, home, away) {
+      await apply((s) =>
+        withWorldCup(s, (wc) => adminSetPrediction(wc, { matchId, predictorId, home, away })),
+      );
     },
 
     async addName(name) {

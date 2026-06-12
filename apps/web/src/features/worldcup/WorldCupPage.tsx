@@ -50,7 +50,9 @@ export function WorldCupPage() {
     if (!isRealtimeBackend()) return;
     const tick = () => void useWorldCupStore.getState().syncLiveScores();
     tick();
-    const id = setInterval(tick, 90_000);
+    // Poll ~every 20s to follow live games; the Worker caches the feed for the
+    // same window, so many devices never exceed the 10 calls/min free limit.
+    const id = setInterval(tick, 20_000);
     return () => clearInterval(id);
   }, []);
 

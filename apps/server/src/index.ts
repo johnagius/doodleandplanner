@@ -9,10 +9,12 @@ import type { WcTeamH2H, WcLiveScore } from '@dap/shared';
 
 export { RoomDurableObject };
 
-// Short-lived cache so we never hit football-data.org more than ~once a minute
-// (the free tier allows 10 calls/min). Lives for the isolate's lifetime.
+// Short-lived cache so we poll football-data.org roughly every 20s — fresh
+// enough to follow a live game, comfortably under the free tier's 10 calls/min.
+// `at` is surfaced to clients as `fetchedAt` so they can show how stale the
+// score is (the feed gives no live minute).
 let scoresCache: { at: number; scores: WcLiveScore[] } | null = null;
-const SCORES_TTL_MS = 60_000;
+const SCORES_TTL_MS = 20_000;
 
 // Raw WC fixtures (kept to resolve a team-pair → match id for head-to-head) and
 // per-pair head-to-head results. H2H barely changes, so it's cached for longer.
@@ -69,10 +71,11 @@ async function worldCupH2H(
 
 async function worldCupScores(env: Env, cors: Record<string, string>): Promise<Response> {
   if (!env.FOOTBALL_DATA_TOKEN) {
-    return json({ scores: [], error: 'not-configured' }, { status: 503 }, cors);
+    return json({ scores: [], fetchedAt: null, error: 'not-configured' }, { status: 503 }, cors);
   }
+  const stamp = (at: number | undefined) => (at ? new Date(at).toISOString() : null);
   if (scoresCache && Date.now() - scoresCache.at < SCORES_TTL_MS) {
-    return json({ scores: scoresCache.scores }, {}, cors);
+    return json({ scores: scoresCache.scores, fetchedAt: stamp(scoresCache.at) }, {}, cors);
   }
   try {
     const res = await fetch('https://api.football-data.org/v4/competitions/WC/matches', {
@@ -80,13 +83,29 @@ async function worldCupScores(env: Env, cors: Record<string, string>): Promise<R
     });
     if (!res.ok) {
       // Serve stale data on a transient upstream error (e.g. rate limit).
-      return json({ scores: scoresCache?.scores ?? [], error: `upstream-${res.status}` }, {}, cors);
+      return json(
+        {
+          scores: scoresCache?.scores ?? [],
+          fetchedAt: stamp(scoresCache?.at),
+          error: `upstream-${res.status}`,
+        },
+        {},
+        cors,
+      );
     }
     const scores = mapWorldCupScores(await res.json());
     scoresCache = { at: Date.now(), scores };
-    return json({ scores }, {}, cors);
+    return json({ scores, fetchedAt: stamp(scoresCache.at) }, {}, cors);
   } catch {
-    return json({ scores: scoresCache?.scores ?? [], error: 'unavailable' }, {}, cors);
+    return json(
+      {
+        scores: scoresCache?.scores ?? [],
+        fetchedAt: stamp(scoresCache?.at),
+        error: 'unavailable',
+      },
+      {},
+      cors,
+    );
   }
 }
 

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   WC_POINTS,
   addPredictor,
+  adminSetPrediction,
   allGroupsComplete,
   applyLiveResults,
   badgesFor,
@@ -205,6 +206,43 @@ describe('predictions', () => {
     // And of course once a result is in.
     const played = setResult(s, { matchId: 'g-A-1', home: 1, away: 0 });
     expect(() => clearPrediction(played, 'g-A-1', p.id)).toThrow(/locked/);
+  });
+
+  it('lets the organiser restore a pick after kickoff', () => {
+    let s = seed();
+    const p = s.predictors[0]!;
+    const afterKickoff = () => new Date('2026-07-01T00:00:00Z');
+    // Normal predicting is locked once the match has started.
+    expect(() =>
+      setPrediction(s, {
+        matchId: 'g-A-1',
+        predictorId: p.id,
+        home: 1,
+        away: 0,
+        now: afterKickoff,
+      }),
+    ).toThrow(/locked/);
+    // But the organiser can set/restore a pick to fix a glitch.
+    s = adminSetPrediction(s, {
+      matchId: 'g-A-1',
+      predictorId: p.id,
+      home: 1,
+      away: 0,
+      now: afterKickoff,
+    });
+    expect(predictionFor(s, 'g-A-1', p.id)).toMatchObject({ home: 1, away: 0 });
+    // Upserts rather than duplicating.
+    s = adminSetPrediction(s, {
+      matchId: 'g-A-1',
+      predictorId: p.id,
+      home: 2,
+      away: 2,
+      now: afterKickoff,
+    });
+    expect(
+      s.predictions.filter((x) => x.matchId === 'g-A-1' && x.predictorId === p.id),
+    ).toHaveLength(1);
+    expect(predictionFor(s, 'g-A-1', p.id)).toMatchObject({ home: 2, away: 2 });
   });
 
   it('clamps silly goal inputs', () => {

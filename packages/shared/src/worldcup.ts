@@ -471,6 +471,32 @@ export function clearPrediction(
   };
 }
 
+/**
+ * Organiser-only: set or restore any predictor's pick, even after kickoff —
+ * for fixing a pick lost to a glitch or entered by mistake. Bypasses the
+ * normal kickoff lock (which still applies to everyone else).
+ */
+export function adminSetPrediction(
+  state: WorldCupState,
+  input: { matchId: string; predictorId: string; home: number; away: number; now?: () => Date },
+): WorldCupState {
+  const match = findMatch(state, input.matchId);
+  if (!match) throw new Error('Unknown match');
+  if (!findPredictor(state, input.predictorId)) throw new Error('Unknown predictor');
+  const now = (input.now ?? (() => new Date()))();
+  const others = state.predictions.filter(
+    (p) => !(p.matchId === input.matchId && p.predictorId === input.predictorId),
+  );
+  const prediction: WcPrediction = {
+    matchId: input.matchId,
+    predictorId: input.predictorId,
+    home: normalizeGoals(input.home),
+    away: normalizeGoals(input.away),
+    updatedAt: now.toISOString(),
+  };
+  return { ...state, predictions: [...others, prediction] };
+}
+
 function normalizeGoals(n: number): number {
   if (!Number.isFinite(n) || n < 0) return 0;
   return Math.min(99, Math.round(n));

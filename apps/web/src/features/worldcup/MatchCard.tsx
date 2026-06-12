@@ -43,11 +43,21 @@ const POINT_CLASS: Record<WcScoreCategory, string> = {
   miss: 'wc-pts-miss',
 };
 
+/** Wall-clock HH:MM:SS for "score as of …" (the feed gives no live minute). */
+function fmtClock(iso: string): string {
+  return new Date(iso).toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
+}
+
 export function MatchCard({ matchId }: { matchId: string }) {
   const wc = useWorldCupStore((s) => s.state?.worldCup) ?? null;
   const meId = useWorldCupStore((s) => s.meId);
   const admin = useWorldCupStore((s) => s.admin);
   const live = useWorldCupStore((s) => s.live[matchId]);
+  const liveFetchedAt = useWorldCupStore((s) => s.liveFetchedAt);
   const { predict, unpredict } = useWorldCupStore();
   const { show } = useToast();
   const now = useNow();
@@ -208,7 +218,10 @@ export function MatchCard({ matchId }: { matchId: string }) {
 
           <CrowdPulse wc={wc} match={match} />
           {isLive && live!.home != null && live!.away != null && (
-            <p className="muted small wc-live-caption">⚡ Live — points if it ends now</p>
+            <p className="muted small wc-live-caption">
+              ⚡ Live{liveFetchedAt ? ` · score as of ${fmtClock(liveFetchedAt)}` : ''} — points if
+              it ends now
+            </p>
           )}
           <PredictionsRow
             wc={wc}
@@ -224,6 +237,7 @@ export function MatchCard({ matchId }: { matchId: string }) {
           <MatchReactions wc={wc} match={match} meId={meId} />
           <MatchComments matchId={match.id} />
           {admin && <ResultEditor wc={wc} match={match} />}
+          {admin && <AdminFixPick wc={wc} match={match} />}
         </>
       )}
 
@@ -963,6 +977,54 @@ function ResultEditor({ wc, match }: { wc: WorldCupState; match: WcMatch }) {
             Clear
           </button>
         )}
+      </div>
+    </div>
+  );
+}
+
+/** Organiser-only: set or restore any predictor's pick, even after kickoff —
+ * for fixing one lost to a glitch (normal clears are blocked at kickoff). */
+function AdminFixPick({ wc, match }: { wc: WorldCupState; match: WcMatch }) {
+  const { adminSetPrediction } = useWorldCupStore();
+  const { show } = useToast();
+  const [pid, setPid] = useState('');
+  const [home, setHome] = useState(0);
+  const [away, setAway] = useState(0);
+
+  async function save() {
+    if (!pid) return;
+    try {
+      await adminSetPrediction(match.id, pid, home, away);
+      show('Pick restored ✓');
+      setPid('');
+    } catch (err) {
+      show(err instanceof Error ? err.message : 'Could not set pick');
+    }
+  }
+
+  return (
+    <div className="wc-result-editor">
+      <span className="wc-result-label">Fix a pick (organiser)</span>
+      <div className="wc-result-controls">
+        <select
+          className="select wc-advance"
+          value={pid}
+          onChange={(e) => setPid(e.target.value)}
+          aria-label="Predictor whose pick to fix"
+        >
+          <option value="">Whose pick…</option>
+          {wc.predictors.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+            </option>
+          ))}
+        </select>
+        <ScoreStepper value={home} onChange={setHome} label="Fix home goals" />
+        <span className="wc-dash">–</span>
+        <ScoreStepper value={away} onChange={setAway} label="Fix away goals" />
+        <button className="btn btn-sm btn-primary" onClick={save} disabled={!pid}>
+          Set pick
+        </button>
       </div>
     </div>
   );

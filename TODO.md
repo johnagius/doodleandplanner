@@ -65,7 +65,15 @@ A standalone `/world-cup` board (no login) for predicting the tournament.
       (≥1000 m) or heat (≥30 °C). Static reference data; shown before kickoff.
 - [x] **Live watch-along** — while a game is in play, the card shows each pick's
       provisional "if it ends now" points and a closest-pick 🎯 crown that swings
-      as goals go in (rides the existing live-score polling).
+      as goals go in (rides the existing live-score polling). The leaderboard
+      folds in live games too, and live cards show "score as of HH:MM:SS" (the
+      free feed has no live minute; Worker polls ~20s, clients share its cache).
+- [x] **Locked picks + organiser fix** — predictions lock forever at kickoff (no
+      mid-game clearing); the organiser can set/restore any pick to fix a glitch.
+- [x] **Player-card game** — top a match's points and win a random WC squad
+      player as a FIFA-style card (1,249 players, our own ratings/tiers, real
+      photos from Wikimedia where available, flag art otherwise). Collect them and
+      climb a "most cards" table. Fully derived from results — no stored state.
 - [ ] Stats tab: possession + shots for/against — API-Football's **free** plan is
       limited to seasons 2022–2024, so live-2026 stats need a **paid** plan.
 - [ ] Strategy layer: a per-matchday joker, knockout multipliers, outright bets.

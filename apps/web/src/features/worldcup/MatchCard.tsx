@@ -1,10 +1,13 @@
 import {
   WC_SCORE_LABEL,
   WC_STAGE_LABEL,
+  closestPredictors,
+  consensusScore,
   findTeam,
   isMatchLocked,
   isMatchReady,
   pendingPredictors,
+  predictionCount,
   scorePrediction,
   slotLabel,
   type WcMatch,
@@ -178,6 +181,8 @@ export function MatchCard({ matchId }: { matchId: string }) {
         </p>
       )}
 
+      <CrowdPulse wc={wc} match={match} />
+
       <PredictionsRow wc={wc} match={match} meId={meId} revealed={locked} />
 
       <MatchComments matchId={match.id} />
@@ -209,6 +214,43 @@ function TeamSide({
   );
 }
 
+/** A little "crowd" read-out: how many are in before kickoff (a count only, no
+ * picks revealed), and the most-popular scoreline once a result is in. */
+function CrowdPulse({ wc, match }: { wc: WorldCupState; match: WcMatch }) {
+  const count = predictionCount(wc, match.id);
+  if (count === 0) return null;
+
+  if (match.result) {
+    const consensus = consensusScore(wc, match.id);
+    if (!consensus) return null;
+    return (
+      <div className="wc-pulse">
+        <span className="wc-pulse-tag">Crowd pick</span>
+        <span className="wc-pulse-score">
+          {consensus.home}–{consensus.away}
+        </span>
+        <span className="muted small">
+          {consensus.count} of {count}
+        </span>
+      </div>
+    );
+  }
+
+  const total = wc.predictors.length;
+  return (
+    <div className="wc-pulse">
+      <span className="wc-pulse-tag">🔮 Crowd</span>
+      <span className="wc-pulse-meter" aria-hidden>
+        {'●'.repeat(count)}
+        {'○'.repeat(Math.max(0, total - count))}
+      </span>
+      <span className="muted small">
+        {count} of {total} predicted
+      </span>
+    </div>
+  );
+}
+
 function PredictionsRow({
   wc,
   match,
@@ -230,12 +272,15 @@ function PredictionsRow({
   // Until kickoff, hide everyone else's picks (no copying) — only your own shows.
   const shown = revealed ? picks : picks.filter((p) => p.predictorId === meId);
   const hidden = picks.length - shown.length;
+  // Closest pick(s) get a 🎯 crown once the match is resolved.
+  const crowned = match.result ? new Set(closestPredictors(wc, match.id)) : null;
 
   return (
     <div className="wc-picks">
       {shown.map((p) => {
         const name = wc.predictors.find((x) => x.id === p.predictorId)?.name ?? '?';
         const scored = match.result ? scorePrediction(p, match.result) : null;
+        const isClosest = crowned?.has(p.predictorId) ?? false;
         return (
           <span
             key={p.predictorId}
@@ -244,6 +289,11 @@ function PredictionsRow({
             }`}
             title={scored ? WC_SCORE_LABEL[scored.category] : 'Prediction'}
           >
+            {isClosest && (
+              <span className="wc-pick-crown" title="Closest pick" aria-label="Closest pick">
+                🎯
+              </span>
+            )}
             <span className="wc-pick-name">{name}</span>
             <span className="wc-pick-score">
               {p.home}–{p.away}

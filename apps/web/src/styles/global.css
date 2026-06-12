@@ -2421,6 +2421,32 @@ label.field {
 .wc-pick-pts {
   font-weight: 800;
 }
+.wc-pick-crown {
+  font-size: 0.85em;
+}
+
+/* Crowd pulse: participation before kickoff, consensus pick after */
+.wc-pulse {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+  font-size: 0.78rem;
+}
+.wc-pulse-tag {
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+}
+.wc-pulse-score {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.wc-pulse-meter {
+  letter-spacing: 0.1em;
+  color: var(--primary);
+}
 
 /* Per-match comments (hot-zone banter) */
 .wc-comments {

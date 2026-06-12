@@ -223,6 +223,52 @@ describe('WorldCupPage', () => {
     });
   });
 
+  it('shows the crowd pulse count without revealing picks before kickoff', async () => {
+    const user = userEvent.setup();
+    await seedControlledBoard([
+      {
+        matchId: 'g-A-1',
+        predictorId: 'p2',
+        home: 2,
+        away: 1,
+        updatedAt: new Date().toISOString(),
+      },
+    ]);
+    const { container } = renderPage();
+
+    await screen.findByRole('heading', { name: /World Cup 2026 Predictions/ });
+    const dialog = await screen.findByRole('dialog');
+    await user.click(within(dialog).getByRole('button', { name: 'John' }));
+    await user.click(screen.getByRole('button', { name: 'Yes, this is me' }));
+
+    // The pulse reports participation (1 of 2) but never Daniel's scoreline.
+    expect(await screen.findByText(/1 of 2 predicted/)).toBeInTheDocument();
+    const picks = container.querySelector('.wc-picks')?.textContent ?? '';
+    expect(picks).not.toContain('2–1');
+    expect(picks).not.toContain('Daniel');
+  });
+
+  it('crowns the closest pick once the result is in', async () => {
+    const user = userEvent.setup();
+    await seedControlledBoard();
+    renderPage();
+
+    await screen.findByRole('heading', { name: /World Cup 2026 Predictions/ });
+    const dialog = await screen.findByRole('dialog');
+    await user.click(within(dialog).getByRole('button', { name: 'John' }));
+    await user.click(screen.getByRole('button', { name: 'Yes, this is me' }));
+    await user.click(await screen.findByRole('button', { name: 'Aland goals: one more' }));
+
+    // Enter the matching result; John's exact pick earns the 🎯 crown.
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    await user.click(screen.getByRole('button', { name: /Organiser/ }));
+    await user.click(await screen.findByRole('button', { name: 'Home result goals: one more' }));
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findByText('FT')).toBeInTheDocument();
+    expect(await screen.findByTitle('Closest pick')).toBeInTheDocument();
+  });
+
   it('posts a comment in the match card thread', async () => {
     const user = userEvent.setup();
     await seedControlledBoard();

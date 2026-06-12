@@ -95,6 +95,14 @@ Run `npm run test:e2e` when touching UI flows. Playwright needs Chromium
 - **Cloudflare Worker (optional, real-time):** `cd apps/server && npx wrangler
 deploy`, then set repo variable `API_BASE` to the Worker URL so the Pages
   build wires the realtime backend in.
+- **Publishing to `doodleandplanner.pages.dev`:** either set the GitHub Actions
+  secrets `CLOUDFLARE_API_TOKEN` (Pages: Edit) + `CLOUDFLARE_ACCOUNT_ID` so
+  `deploy-cloudflare.yml` auto-deploys on every push to `main`, or run a one-off
+  `npm run build && npx wrangler pages deploy apps/web/dist --project-name
+doodleandplanner --branch main`. The realtime Worker URL is committed in
+  `apps/web/.env.production`, so builds keep live sync. **Never** commit token
+  values. The owner manages and rotates their own API tokens — do **not** prompt
+  them to rotate secrets.
 - `.github/workflows/ci.yml` runs lint/typecheck/unit/build + Playwright E2E on
   PRs and pushes to `main`.
 

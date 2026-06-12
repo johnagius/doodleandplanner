@@ -2,11 +2,14 @@ import {
   WC_REACTIONS,
   WC_SCORE_LABEL,
   WC_STAGE_LABEL,
+  climateEdge,
   closestPredictors,
   closestToScore,
   consensusScore,
   fifaRankOf,
   findTeam,
+  teamClimate,
+  venueClimate,
   groupOutlook,
   groupStandings,
   isMatchLocked,
@@ -369,6 +372,7 @@ function StatsView({ wc, match }: { wc: WorldCupState; match: WcMatch }) {
           higher in the world ranking
         </div>
       )}
+      <ClimateView match={match} home={home} away={away} />
       <table className="wc-cmp-table">
         <tbody>
           <CmpRow label="FIFA ranking" h={rankOf(home)} a={rankOf(away)} />
@@ -465,6 +469,63 @@ function H2HView({ state, home, away }: { state: H2HState; home: WcTeam; away: W
             </li>
           ))}
         </ul>
+      )}
+    </div>
+  );
+}
+
+/** Altitude & climate read for a fixture — who's built for the venue's altitude
+ * and heat. All static data, so it's shown pre-game (no kickoff needed). */
+function ClimateView({ match, home, away }: { match: WcMatch; home: WcTeam; away: WcTeam }) {
+  const hc = teamClimate(home.id);
+  const ac = teamClimate(away.id);
+  if (!hc || !ac) return null;
+  const venue = venueClimate(match.venue);
+  const edge = climateEdge(hc, ac, venue);
+  const m = (n: number) => `${n.toLocaleString()} m`;
+  return (
+    <div className="wc-climate">
+      <div className="wc-climate-head">🏔️ Altitude &amp; climate</div>
+      {venue && (
+        <div className="wc-climate-venue">
+          📍 {match.venue} · {m(venue.altitude)} · ~{venue.tempC}°C on match day
+        </div>
+      )}
+      <table className="wc-cmp-table">
+        <tbody>
+          <CmpRow
+            label="Home altitude"
+            h={`${m(hc.altitude)}${hc.altitude > ac.altitude ? ' ⬆️' : ''}`}
+            a={`${m(ac.altitude)}${ac.altitude > hc.altitude ? ' ⬆️' : ''}`}
+          />
+          <CmpRow
+            label="Home climate"
+            h={`${hc.tempC}°C${hc.tempC > ac.tempC ? ' ⬆️' : ''}`}
+            a={`${ac.tempC}°C${ac.tempC > hc.tempC ? ' ⬆️' : ''}`}
+          />
+        </tbody>
+      </table>
+      {edge.altitude || edge.heat ? (
+        <div className="wc-climate-edge">
+          {edge.altitude && (
+            <div>
+              🏔️ <strong>{(edge.altitude === 'home' ? home : away).name}</strong> is built for the
+              altitude here.
+            </div>
+          )}
+          {edge.heat && (
+            <div>
+              🔥 <strong>{(edge.heat === 'home' ? home : away).name}</strong> is more used to this
+              heat.
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="muted small wc-climate-note">
+          {venue
+            ? 'Mild conditions here — altitude and heat shouldn’t be decisive.'
+            : 'Venue conditions to be confirmed.'}
+        </div>
       )}
     </div>
   );

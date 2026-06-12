@@ -1455,6 +1455,131 @@ export function fifaRankOf(teamId: string | undefined): number | undefined {
   return teamId ? FIFA_RANKS[teamId] : undefined;
 }
 
+export interface WcClimate {
+  /** Elevation in metres. */
+  altitude: number;
+  /** Representative temperature in °C — a nation's home climate, or a venue's
+   * typical June/July match-day conditions. */
+  tempC: number;
+}
+
+/**
+ * Each nation's representative home altitude + typical climate (by team code).
+ * 2026 is hosted across sea-level heat (Houston, Miami) and serious altitude
+ * (Mexico City 2,240 m), so a side used to thin air or fierce heat carries a
+ * real edge. Static reference data — approximate, but the comparison is the fun.
+ */
+export const TEAM_CLIMATE: Record<string, WcClimate> = {
+  MEX: { altitude: 2240, tempC: 17 },
+  RSA: { altitude: 1753, tempC: 16 },
+  KOR: { altitude: 38, tempC: 13 },
+  CZE: { altitude: 200, tempC: 9 },
+  CAN: { altitude: 76, tempC: 9 },
+  BIH: { altitude: 500, tempC: 11 },
+  QAT: { altitude: 10, tempC: 28 },
+  SUI: { altitude: 540, tempC: 9 },
+  BRA: { altitude: 1100, tempC: 22 },
+  MAR: { altitude: 75, tempC: 18 },
+  HAI: { altitude: 30, tempC: 27 },
+  SCO: { altitude: 30, tempC: 9 },
+  USA: { altitude: 100, tempC: 16 },
+  PAR: { altitude: 130, tempC: 23 },
+  AUS: { altitude: 19, tempC: 18 },
+  TUR: { altitude: 938, tempC: 12 },
+  GER: { altitude: 34, tempC: 10 },
+  CUW: { altitude: 8, tempC: 28 },
+  CIV: { altitude: 18, tempC: 27 },
+  ECU: { altitude: 2850, tempC: 14 },
+  NED: { altitude: 0, tempC: 10 },
+  JPN: { altitude: 40, tempC: 16 },
+  SWE: { altitude: 28, tempC: 7 },
+  TUN: { altitude: 10, tempC: 19 },
+  BEL: { altitude: 13, tempC: 10 },
+  EGY: { altitude: 23, tempC: 22 },
+  IRN: { altitude: 1200, tempC: 17 },
+  NZL: { altitude: 26, tempC: 15 },
+  ESP: { altitude: 667, tempC: 15 },
+  CPV: { altitude: 30, tempC: 24 },
+  KSA: { altitude: 612, tempC: 26 },
+  URU: { altitude: 43, tempC: 17 },
+  FRA: { altitude: 35, tempC: 12 },
+  SEN: { altitude: 22, tempC: 25 },
+  IRQ: { altitude: 34, tempC: 23 },
+  NOR: { altitude: 23, tempC: 6 },
+  ARG: { altitude: 25, tempC: 17 },
+  ALG: { altitude: 24, tempC: 18 },
+  AUT: { altitude: 151, tempC: 10 },
+  JOR: { altitude: 757, tempC: 18 },
+  POR: { altitude: 2, tempC: 17 },
+  COD: { altitude: 240, tempC: 25 },
+  UZB: { altitude: 455, tempC: 14 },
+  COL: { altitude: 2640, tempC: 14 },
+  ENG: { altitude: 11, tempC: 11 },
+  CRO: { altitude: 122, tempC: 11 },
+  GHA: { altitude: 61, tempC: 27 },
+  PAN: { altitude: 2, tempC: 28 },
+};
+
+/** Each 2026 host venue's altitude + representative June/July match temperature. */
+export const VENUE_CLIMATE: Record<string, WcClimate> = {
+  Atlanta: { altitude: 320, tempC: 31 },
+  'Bay Area': { altitude: 5, tempC: 24 },
+  Boston: { altitude: 43, tempC: 27 },
+  Dallas: { altitude: 165, tempC: 35 },
+  Guadalajara: { altitude: 1566, tempC: 27 },
+  Houston: { altitude: 15, tempC: 34 },
+  'Kansas City': { altitude: 270, tempC: 31 },
+  'Los Angeles': { altitude: 30, tempC: 28 },
+  'Mexico City': { altitude: 2240, tempC: 23 },
+  Miami: { altitude: 2, tempC: 32 },
+  Monterrey: { altitude: 540, tempC: 35 },
+  'New York New Jersey': { altitude: 7, tempC: 29 },
+  Philadelphia: { altitude: 12, tempC: 30 },
+  Seattle: { altitude: 53, tempC: 24 },
+  Toronto: { altitude: 76, tempC: 26 },
+  Vancouver: { altitude: 4, tempC: 22 },
+};
+
+export function teamClimate(teamId: string | undefined): WcClimate | undefined {
+  return teamId ? TEAM_CLIMATE[teamId] : undefined;
+}
+export function venueClimate(venue: string | undefined): WcClimate | undefined {
+  return venue ? VENUE_CLIMATE[venue] : undefined;
+}
+
+export interface WcClimateEdge {
+  /** 'home' | 'away' | null — better suited to the altitude at this venue. */
+  altitude: 'home' | 'away' | null;
+  /** 'home' | 'away' | null — better suited to the heat at this venue. */
+  heat: 'home' | 'away' | null;
+}
+
+/**
+ * Who's better acclimatised to a venue's conditions: a high venue (≥1000 m)
+ * favours the side used to more altitude; a hot venue (≥30 °C) favours the
+ * hotter-climate side. Null on an axis the venue doesn't really stress.
+ */
+export function climateEdge(
+  home: WcClimate | undefined,
+  away: WcClimate | undefined,
+  venue: WcClimate | undefined,
+): WcClimateEdge {
+  const edge: WcClimateEdge = { altitude: null, heat: null };
+  if (!home || !away || !venue) return edge;
+  // Only a side genuinely used to altitude (home ≥1000 m) earns the edge at a
+  // high venue — being marginally higher than a lowland rival doesn't count.
+  if (venue.altitude >= 1000) {
+    if (home.altitude >= 1000 && home.altitude > away.altitude) edge.altitude = 'home';
+    else if (away.altitude >= 1000 && away.altitude > home.altitude) edge.altitude = 'away';
+  }
+  // Likewise heat: a genuinely warm-climate side (home ≥22 °C) at a hot venue.
+  if (venue.tempC >= 30) {
+    if (home.tempC >= 22 && home.tempC > away.tempC) edge.heat = 'home';
+    else if (away.tempC >= 22 && away.tempC > home.tempC) edge.heat = 'away';
+  }
+  return edge;
+}
+
 /**
  * The real 2026 World Cup field from the final draw (5 December 2025): 48 teams,
  * four to a group, in their drawn order. The short code doubles as the team id.

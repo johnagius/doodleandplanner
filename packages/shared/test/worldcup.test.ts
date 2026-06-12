@@ -8,6 +8,9 @@ import {
   championBonusFor,
   championTeam,
   clearChampionPick,
+  climateEdge,
+  teamClimate,
+  venueClimate,
   clearPrediction,
   clearResult,
   closestPredictors,
@@ -728,6 +731,37 @@ describe('fifa ranking', () => {
     expect(fifaRankOf('BRA')).toBe(6);
     expect(fifaRankOf('AUS')).toBeUndefined();
     expect(fifaRankOf(undefined)).toBeUndefined();
+  });
+});
+
+describe('altitude & climate', () => {
+  it('looks up nation and venue climate', () => {
+    expect(teamClimate('ECU')!.altitude).toBeGreaterThan(2000); // Quito
+    expect(teamClimate('MEX')!.altitude).toBeGreaterThan(2000);
+    expect(venueClimate('Mexico City')!.altitude).toBeGreaterThan(2000);
+    expect(venueClimate('Houston')!.tempC).toBeGreaterThanOrEqual(30);
+    expect(teamClimate('XXX')).toBeUndefined();
+    expect(venueClimate(undefined)).toBeUndefined();
+  });
+
+  it('awards altitude/heat edges only where the venue stresses them', () => {
+    const mountain = { altitude: 2640, tempC: 14 };
+    const lowland = { altitude: 20, tempC: 12 };
+    const desert = { altitude: 600, tempC: 28 };
+    const cold = { altitude: 20, tempC: 8 };
+    const high = venueClimate('Mexico City')!; // 2240 m
+    const hot = venueClimate('Monterrey')!; // 35 °C
+    const mild = venueClimate('Vancouver')!; // low + ~22 °C
+
+    // High venue → the side used to altitude.
+    expect(climateEdge(mountain, lowland, high).altitude).toBe('home');
+    expect(climateEdge(lowland, mountain, high).altitude).toBe('away');
+    // Hot venue → the hotter-climate side.
+    expect(climateEdge(desert, cold, hot).heat).toBe('home');
+    // Mild venue → neither axis is decisive.
+    expect(climateEdge(mountain, desert, mild)).toEqual({ altitude: null, heat: null });
+    // Two lowland sides at a high venue → nobody is "built for altitude".
+    expect(climateEdge(lowland, { altitude: 200, tempC: 9 }, high).altitude).toBeNull();
   });
 });
 

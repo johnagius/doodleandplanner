@@ -2326,6 +2326,41 @@ label.field {
   color: var(--primary-dark);
 }
 
+/* Altitude & climate comparison */
+.wc-climate {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  border-top: 1px dashed var(--border);
+  padding-top: 0.55rem;
+}
+.wc-climate-head {
+  text-align: center;
+  font-weight: 800;
+  font-size: 0.74rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.wc-climate-venue {
+  text-align: center;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+.wc-climate-edge {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  text-align: center;
+  font-size: 0.82rem;
+  background: color-mix(in srgb, var(--warn) 12%, transparent);
+  border-radius: 8px;
+  padding: 0.35rem 0.5rem;
+}
+.wc-climate-note {
+  text-align: center;
+}
+
 /* Historical head-to-head */
 .wc-h2h {
   display: flex;

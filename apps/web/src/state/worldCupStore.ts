@@ -87,10 +87,11 @@ interface WorldCupStore {
   renameName: (id: string, name: string) => Promise<void>;
   removeName: (id: string) => Promise<void>;
 
-  // Banter (squad chat) — stored in RoomState.messages, authored by the predictor.
-  postBanter: (text: string) => Promise<void>;
-  reactBanter: (messageId: string, emoji: string) => Promise<void>;
-  deleteBanter: (messageId: string) => Promise<void>;
+  // Per-match comments — stored in RoomState.messages (tagged with matchId),
+  // authored by the predictor.
+  postComment: (matchId: string, text: string) => Promise<void>;
+  reactComment: (messageId: string, emoji: string) => Promise<void>;
+  deleteComment: (messageId: string) => Promise<void>;
 }
 
 /** Apply a pure update to the embedded WorldCupState. */
@@ -294,18 +295,18 @@ export const useWorldCupStore = create<WorldCupStore>((set, get) => {
       if (get().meId === id) get().selectPredictor(null);
     },
 
-    async postBanter(text) {
+    async postComment(matchId, text) {
       const me = requireMe();
       await apply((s) => ({
         ...s,
         messages: appendMessage(
           s.messages ?? [],
-          createMessage({ roomId: s.room.id, authorId: me, text }),
+          createMessage({ roomId: s.room.id, authorId: me, text, matchId }),
         ),
       }));
     },
 
-    async reactBanter(messageId, emoji) {
+    async reactComment(messageId, emoji) {
       const me = requireMe();
       await apply((s) => ({
         ...s,
@@ -313,7 +314,7 @@ export const useWorldCupStore = create<WorldCupStore>((set, get) => {
       }));
     },
 
-    async deleteBanter(messageId) {
+    async deleteComment(messageId) {
       const me = requireMe();
       await apply((s) => ({ ...s, messages: deleteMessage(s.messages ?? [], messageId, me) }));
     },

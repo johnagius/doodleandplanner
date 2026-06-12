@@ -29,8 +29,8 @@ test.describe('@smoke World Cup', () => {
     await page.getByRole('tab', { name: /Bracket/ }).click();
     await expect(page.getByText('Round of 32').first()).toBeVisible();
 
-    // Banter tab opens the squad chat.
-    await page.getByRole('tab', { name: /Banter/ }).click();
-    await expect(page.getByLabel('Banter message')).toBeVisible();
+    // Banter now lives in the hot zone: each fixture card has a comment thread.
+    await page.getByRole('tab', { name: /Fixtures/ }).click();
+    await expect(page.getByRole('button', { name: /Comment/ }).first()).toBeVisible();
   });
 });

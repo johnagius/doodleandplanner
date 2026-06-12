@@ -11,7 +11,6 @@ import { Link } from 'react-router-dom';
 import { isRealtimeBackend } from '../../lib/storage/index.js';
 import { useTitleAlert } from '../../lib/useTitleAlert.js';
 import { useWorldCupStore } from '../../state/worldCupStore.js';
-import { BanterPanel } from './BanterPanel.js';
 import { BracketView } from './BracketView.js';
 import { GroupTables } from './GroupTables.js';
 import { IdentityModal } from './IdentityModal.js';
@@ -21,17 +20,14 @@ import { PredictorBar } from './PredictorBar.js';
 import { ScoringLegend } from './ScoringLegend.js';
 import { formatDayLong } from './wcFormat.js';
 
-type Tab = 'fixtures' | 'groups' | 'bracket' | 'leaderboard' | 'banter';
+type Tab = 'fixtures' | 'groups' | 'bracket' | 'leaderboard';
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'fixtures', label: 'Fixtures', icon: '📅' },
   { id: 'groups', label: 'Groups', icon: '🔢' },
   { id: 'bracket', label: 'Bracket', icon: '🏟️' },
   { id: 'leaderboard', label: 'Leaderboard', icon: '🏆' },
-  { id: 'banter', label: 'Banter', icon: '💬' },
 ];
-
-const BANTER_READ_KEY = 'dap:wc:banterRead';
 
 export function WorldCupPage() {
   const { load, leave, setAdmin } = useWorldCupStore();
@@ -59,21 +55,10 @@ export function WorldCupPage() {
   }, []);
 
   const wc = state?.worldCup ?? null;
-  const messages = state?.messages ?? [];
 
   // Tab-title reminder for matches I haven't picked that kick off soon.
   const lockingCount = wc && meId ? lockingSoon(wc, meId, new Date()).length : 0;
   useTitleAlert(lockingCount, 'World Cup 2026 Predictions');
-
-  // Mark banter read whenever the tab is open (or new messages land there).
-  useEffect(() => {
-    if (tab !== 'banter' || messages.length === 0) return;
-    try {
-      localStorage.setItem(BANTER_READ_KEY, messages[messages.length - 1]!.createdAt);
-    } catch {
-      /* storage unavailable — fine */
-    }
-  }, [tab, messages]);
 
   if (loading && !wc) {
     return (
@@ -104,19 +89,6 @@ export function WorldCupPage() {
 
   const played = playedCount(wc);
   const total = wc.matches.length;
-
-  // Banter unread badge: messages since I last opened the tab, not my own.
-  let banterReadAt = '';
-  try {
-    banterReadAt = localStorage.getItem(BANTER_READ_KEY) ?? '';
-  } catch {
-    /* storage unavailable */
-  }
-  const unreadBanter =
-    tab === 'banter'
-      ? 0
-      : messages.filter((m) => m.authorId !== meId && m.createdAt > banterReadAt).length;
-  const badges: Partial<Record<Tab, number>> = { banter: unreadBanter };
 
   // How many matches I still need to pick (nudge chip).
   const pendingCount = meId ? pendingForMe(wc, meId, new Date()).length : 0;
@@ -216,11 +188,6 @@ export function WorldCupPage() {
           >
             <span className="tab-label">
               <span aria-hidden>{t.icon}</span> {t.label}
-              {(badges[t.id] ?? 0) > 0 && (
-                <span className="tab-badge" aria-label={`${badges[t.id]} unread`}>
-                  {badges[t.id]}
-                </span>
-              )}
             </span>
           </button>
         ))}
@@ -231,7 +198,6 @@ export function WorldCupPage() {
         {tab === 'groups' && <GroupTables wc={wc} />}
         {tab === 'bracket' && <BracketView wc={wc} />}
         {tab === 'leaderboard' && <Leaderboard wc={wc} />}
-        {tab === 'banter' && <BanterPanel />}
       </div>
     </div>
   );

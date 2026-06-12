@@ -223,7 +223,7 @@ describe('WorldCupPage', () => {
     });
   });
 
-  it('lets you post banter', async () => {
+  it('posts a comment in the match card thread', async () => {
     const user = userEvent.setup();
     await seedControlledBoard();
     renderPage();
@@ -232,8 +232,9 @@ describe('WorldCupPage', () => {
     await user.click(within(dialog).getByRole('button', { name: 'John' }));
     await user.click(screen.getByRole('button', { name: 'Yes, this is me' }));
 
-    await user.click(screen.getByRole('tab', { name: /Banter/ }));
-    await user.type(screen.getByLabelText('Banter message'), 'Come on England!');
+    // The thread is collapsed by default — open it, then post.
+    await user.click(await screen.findByRole('button', { name: /Comment/ }));
+    await user.type(screen.getByLabelText('Match comment'), 'Come on England!');
     await user.click(screen.getByRole('button', { name: 'Send' }));
 
     expect(await screen.findByText('Come on England!')).toBeInTheDocument();

@@ -16,6 +16,7 @@ import { useState } from 'react';
 import { useToast } from '../../components/Toast.js';
 import { useWorldCupStore } from '../../state/worldCupStore.js';
 import { Countdown } from './Countdown.js';
+import { MatchComments } from './MatchComments.js';
 import { ScoreStepper } from './ScoreStepper.js';
 import { useNow } from './useNow.js';
 import { formatKickoff } from './wcFormat.js';
@@ -178,6 +179,8 @@ export function MatchCard({ matchId }: { matchId: string }) {
       )}
 
       <PredictionsRow wc={wc} match={match} meId={meId} revealed={locked} />
+
+      <MatchComments matchId={match.id} />
 
       {admin && <ResultEditor wc={wc} match={match} />}
     </div>

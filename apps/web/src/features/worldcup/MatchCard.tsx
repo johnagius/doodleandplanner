@@ -343,6 +343,14 @@ function StatsView({ wc, match }: { wc: WorldCupState; match: WcMatch }) {
     const r = fifaRankOf(t.id);
     return r ? `#${r}` : '—';
   };
+  // A free pre-game read derived from the FIFA ranking, so even a not-yet-played
+  // team's card says something useful.
+  const hRank = fifaRankOf(home.id);
+  const aRank = fifaRankOf(away.id);
+  const fav =
+    hRank && aRank && hRank !== aRank
+      ? { team: hRank < aRank ? home : away, gap: Math.abs(hRank - aRank) }
+      : null;
 
   return (
     <div className="wc-statsview">
@@ -355,6 +363,12 @@ function StatsView({ wc, match }: { wc: WorldCupState; match: WcMatch }) {
           {away.flag}
         </span>
       </div>
+      {fav && (
+        <div className="wc-fav">
+          📈 <strong>{fav.team.name}</strong> favoured — {fav.gap} place{fav.gap === 1 ? '' : 's'}{' '}
+          higher in the world ranking
+        </div>
+      )}
       <table className="wc-cmp-table">
         <tbody>
           <CmpRow label="FIFA ranking" h={rankOf(home)} a={rankOf(away)} />

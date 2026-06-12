@@ -2317,6 +2317,14 @@ label.field {
   text-align: center;
   margin: 0;
 }
+.wc-fav {
+  text-align: center;
+  font-size: 0.82rem;
+  padding: 0.3rem 0.5rem;
+  border-radius: 8px;
+  background: var(--primary-soft);
+  color: var(--primary-dark);
+}
 
 /* Historical head-to-head */
 .wc-h2h {

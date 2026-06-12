@@ -5,6 +5,7 @@ import {
   closestPredictors,
   consensusScore,
   findTeam,
+  groupOutlook,
   groupStandings,
   isMatchLocked,
   isMatchReady,
@@ -13,6 +14,7 @@ import {
   scorePrediction,
   slotLabel,
   teamRecord,
+  type WcGroupOutlookRow,
   type WcMatch,
   type WcScoreCategory,
   type WcTeam,
@@ -388,11 +390,25 @@ function CmpRow({
   );
 }
 
-/** "Group" view: the live standings for this match's group (top 2 highlighted),
- * with the two teams playing here emphasised. Permutations layer on later. */
+const POS_LABEL = (n: number): string => ORDINALS[n] ?? `${n}th`;
+
+/** What each team's remaining games could still produce. */
+function outlookLabel(o: WcGroupOutlookRow): { icon: string; text: string; cls: string } {
+  if (o.guaranteedTop2) return { icon: '✅', text: 'Through', cls: 'wc-ol-through' };
+  if (o.bestPosition >= 4) return { icon: '❌', text: 'Eliminated', cls: 'wc-ol-out' };
+  if (!o.canFinishTop2) return { icon: '🟡', text: '3rd-place hopeful', cls: 'wc-ol-maybe' };
+  return { icon: '🎯', text: 'In the hunt', cls: 'wc-ol-live' };
+}
+
+/** "Group" view: the live standings for this match's group (top 2 highlighted,
+ * the two teams playing here emphasised), plus the permutations of what the
+ * remaining games can still produce. */
 function GroupView({ wc, group, match }: { wc: WorldCupState; group: string; match: WcMatch }) {
   const rows = groupStandings(wc, group);
   const here = new Set([match.homeId, match.awayId].filter(Boolean));
+  const outlook = groupOutlook(wc, group);
+  const started = rows.some((r) => r.played > 0);
+  const decided = outlook.length > 0 && outlook.every((o) => o.decided);
   return (
     <div className="wc-groupview">
       <div className="wc-statsview-head">
@@ -437,7 +453,34 @@ function GroupView({ wc, group, match }: { wc: WorldCupState; group: string; mat
           })}
         </tbody>
       </table>
-      <p className="muted small">Top 2 advance; the best third-placed teams also go through.</p>
+      {started && !decided ? (
+        <div className="wc-outlook">
+          <div className="wc-outlook-title">🔮 What can still happen</div>
+          {rows.map((r) => {
+            const o = outlook.find((x) => x.teamId === r.teamId);
+            if (!o) return null;
+            const t = findTeam(wc, r.teamId);
+            const lab = outlookLabel(o);
+            const range =
+              o.bestPosition === o.worstPosition
+                ? POS_LABEL(o.bestPosition)
+                : `${POS_LABEL(o.bestPosition)}–${POS_LABEL(o.worstPosition)}`;
+            return (
+              <div key={r.teamId} className="wc-outlook-row">
+                <span className="wc-outlook-team">
+                  <span aria-hidden>{t?.flag}</span> {t?.name ?? r.teamId}
+                </span>
+                <span className={`wc-outlook-tag ${lab.cls}`}>
+                  {lab.icon} {lab.text}
+                </span>
+                <span className="muted small wc-outlook-range">can finish {range}</span>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <p className="muted small">Top 2 advance; the best third-placed teams also go through.</p>
+      )}
     </div>
   );
 }

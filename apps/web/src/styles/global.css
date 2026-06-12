@@ -2402,6 +2402,63 @@ label.field {
   color: var(--primary-dark);
 }
 
+/* Group permutations: what the remaining games can still produce */
+.wc-outlook {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  border-top: 1px dashed var(--border);
+  padding-top: 0.5rem;
+}
+.wc-outlook-title {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.wc-outlook-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.3rem 0.5rem;
+  font-size: 0.8rem;
+}
+.wc-outlook-team {
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.wc-outlook-tag {
+  justify-self: end;
+  font-weight: 700;
+  font-size: 0.74rem;
+  padding: 0.05rem 0.45rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.wc-outlook-range {
+  grid-column: 1 / -1;
+  margin-top: -0.15rem;
+}
+.wc-ol-through {
+  background: color-mix(in srgb, var(--success) 18%, transparent);
+  color: var(--success);
+}
+.wc-ol-out {
+  background: color-mix(in srgb, var(--danger) 16%, transparent);
+  color: var(--danger);
+}
+.wc-ol-maybe {
+  background: color-mix(in srgb, var(--warn) 20%, transparent);
+  color: var(--warn);
+}
+.wc-ol-live {
+  background: var(--primary-soft);
+  color: var(--primary-dark);
+}
+
 .wc-fixture {
   display: grid;
   /* minmax(0, 1fr) lets the side columns shrink below the team name's intrinsic

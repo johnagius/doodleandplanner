@@ -1156,6 +1156,94 @@ export function teamRecord(state: WorldCupState, teamId: string | undefined): Wc
   };
 }
 
+export interface WcGroupOutlookRow {
+  teamId: string;
+  /** Lowest (best) final position still reachable. */
+  bestPosition: number;
+  /** Highest (worst) final position still possible. */
+  worstPosition: number;
+  /** Guaranteed a top-2 (automatic qualification) spot in every scenario. */
+  guaranteedTop2: boolean;
+  /** A top-2 finish is still mathematically possible. */
+  canFinishTop2: boolean;
+  /** True once every group game is played (positions are final). */
+  decided: boolean;
+}
+
+/**
+ * "What can still happen" for a group: enumerate every win/draw/loss outcome of
+ * the remaining games and report each team's reachable finishing range, plus
+ * whether they're already through or can still make the top two.
+ *
+ * Ranking here is points-only — goal-difference tie-breaks depend on exact
+ * scorelines we can't enumerate — so tied teams contribute to BOTH a team's
+ * best and worst possible position (an honest range rather than false certainty).
+ */
+export function groupOutlook(state: WorldCupState, group: string): WcGroupOutlookRow[] {
+  const teams = state.teams.filter((t) => t.group === group).map((t) => t.id);
+  if (teams.length === 0) return [];
+
+  const basePts = new Map<string, number>(teams.map((id) => [id, 0]));
+  const remaining: Array<[string, string]> = [];
+  for (const m of state.matches) {
+    if (m.stage !== 'group' || m.group !== group || !m.homeId || !m.awayId) continue;
+    if (m.result) {
+      const { home, away } = m.result;
+      if (home > away) basePts.set(m.homeId, (basePts.get(m.homeId) ?? 0) + 3);
+      else if (away > home) basePts.set(m.awayId, (basePts.get(m.awayId) ?? 0) + 3);
+      else {
+        basePts.set(m.homeId, (basePts.get(m.homeId) ?? 0) + 1);
+        basePts.set(m.awayId, (basePts.get(m.awayId) ?? 0) + 1);
+      }
+    } else {
+      remaining.push([m.homeId, m.awayId]);
+    }
+  }
+
+  const n = remaining.length;
+  const best = new Map<string, number>(teams.map((id) => [id, teams.length]));
+  const worst = new Map<string, number>(teams.map((id) => [id, 1]));
+  const total = 3 ** n; // each remaining game: home win / draw / away win
+  for (let scenario = 0; scenario < total; scenario++) {
+    const pts = new Map(basePts);
+    let code = scenario;
+    for (let i = 0; i < n; i++) {
+      const outcome = code % 3;
+      code = Math.floor(code / 3);
+      const [h, a] = remaining[i]!;
+      if (outcome === 0) pts.set(h, (pts.get(h) ?? 0) + 3);
+      else if (outcome === 1) {
+        pts.set(h, (pts.get(h) ?? 0) + 1);
+        pts.set(a, (pts.get(a) ?? 0) + 1);
+      } else pts.set(a, (pts.get(a) ?? 0) + 3);
+    }
+    for (const id of teams) {
+      const p = pts.get(id)!;
+      let above = 0;
+      let atOrAbove = 0;
+      for (const o of teams) {
+        if (o === id) continue;
+        const op = pts.get(o)!;
+        if (op > p) {
+          above++;
+          atOrAbove++;
+        } else if (op === p) atOrAbove++;
+      }
+      if (above + 1 < best.get(id)!) best.set(id, above + 1);
+      if (atOrAbove + 1 > worst.get(id)!) worst.set(id, atOrAbove + 1);
+    }
+  }
+
+  return teams.map((id) => ({
+    teamId: id,
+    bestPosition: best.get(id)!,
+    worstPosition: worst.get(id)!,
+    guaranteedTop2: worst.get(id)! <= 2,
+    canFinishTop2: best.get(id)! <= 2,
+    decided: n === 0,
+  }));
+}
+
 // --- Seeding ---------------------------------------------------------------
 
 const GROUP_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];

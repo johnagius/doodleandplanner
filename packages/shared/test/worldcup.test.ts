@@ -25,6 +25,7 @@ import {
   defaultDay,
   findMatch,
   groupComplete,
+  groupOutlook,
   groupStandings,
   isMatchLocked,
   isMatchReady,
@@ -629,6 +630,71 @@ describe('team context', () => {
     const thirdId = seedOrder(fresh, 'A')[2]!;
     expect(teamRecord(s, thirdId)!.position).toBe(3);
     expect(teamRecord(s, undefined)).toBeNull();
+  });
+});
+
+describe('group outlook (permutations)', () => {
+  it('is wide open before any game and exact once decided', () => {
+    const fresh = seed();
+    const open = groupOutlook(fresh, 'A');
+    expect(open).toHaveLength(4);
+    // Anyone can still finish anywhere; nobody is through or out yet.
+    expect(open.every((r) => r.bestPosition === 1 && r.worstPosition === 4)).toBe(true);
+    expect(open.every((r) => r.canFinishTop2 && !r.guaranteedTop2 && !r.decided)).toBe(true);
+
+    const done = groupOutlook(playAllGroups(fresh), 'A');
+    expect(done.every((r) => r.decided)).toBe(true);
+    expect(done.filter((r) => r.guaranteedTop2)).toHaveLength(2);
+    const winner = seedOrder(fresh, 'A')[0]!; // MEX tops the group
+    const last = seedOrder(fresh, 'A')[3]!; // CZE props it up
+    expect(done.find((r) => r.teamId === winner)).toMatchObject({
+      bestPosition: 1,
+      worstPosition: 1,
+      guaranteedTop2: true,
+    });
+    expect(done.find((r) => r.teamId === last)).toMatchObject({
+      bestPosition: 4,
+      worstPosition: 4,
+      canFinishTop2: false,
+    });
+  });
+
+  it('narrows the range as a game is played', () => {
+    const state: WorldCupState = {
+      season: '2026',
+      title: 't',
+      teams: [
+        { id: 'X', name: 'X', flag: '', group: 'Z' },
+        { id: 'Y', name: 'Y', flag: '', group: 'Z' },
+      ],
+      matches: [
+        {
+          id: 'z1',
+          stage: 'group',
+          group: 'Z',
+          matchday: 1,
+          order: 0,
+          kickoff: '2026-06-11T00:00:00Z',
+          homeId: 'X',
+          awayId: 'Y',
+        },
+      ],
+      predictors: [],
+      predictions: [],
+      createdAt: '2026-01-01T00:00:00Z',
+    };
+    expect(groupOutlook(state, 'Z').find((r) => r.teamId === 'X')).toMatchObject({
+      bestPosition: 1,
+      worstPosition: 2,
+      decided: false,
+    });
+    const played = setResult(state, { matchId: 'z1', home: 1, away: 0 });
+    expect(groupOutlook(played, 'Z').find((r) => r.teamId === 'X')).toMatchObject({
+      bestPosition: 1,
+      worstPosition: 1,
+      guaranteedTop2: true,
+      decided: true,
+    });
   });
 });
 

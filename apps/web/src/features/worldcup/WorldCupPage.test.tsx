@@ -368,6 +368,25 @@ describe('WorldCupPage', () => {
     expect(await screen.findByText('Group A')).toBeInTheDocument();
   });
 
+  it('lets you predict the tournament winner on the bracket tab', async () => {
+    const user = userEvent.setup();
+    await seedControlledBoard();
+    const { container } = renderPage();
+    await screen.findByRole('heading', { name: /World Cup 2026 Predictions/ });
+    const dialog = await screen.findByRole('dialog');
+    await user.click(within(dialog).getByRole('button', { name: 'John' }));
+    await user.click(screen.getByRole('button', { name: 'Yes, this is me' }));
+
+    await user.click(screen.getByRole('tab', { name: /Bracket/ }));
+    await user.selectOptions(await screen.findByLabelText('Your winner:'), 'AAA');
+
+    await waitFor(() => {
+      const chip = container.querySelector('.wc-champion-chip');
+      expect(chip?.textContent).toContain('John');
+      expect(chip?.textContent).toContain('Aland');
+    });
+  });
+
   it('posts a comment in the match card thread', async () => {
     const user = userEvent.setup();
     await seedControlledBoard();

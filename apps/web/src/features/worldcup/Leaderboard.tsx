@@ -121,6 +121,7 @@ export function Leaderboard({ wc }: { wc: WorldCupState }) {
                 <span className="wc-leader-stats muted small">
                   <FormDots form={playerForm(wc, r.predictorId)} />
                   {r.exact} exact · {r.correctResults} right · {r.scored} picks
+                  {r.bonus > 0 && <span className="wc-leader-bonus"> · 🏆 +{r.bonus}</span>}
                 </span>
                 <span className="wc-leader-bar" aria-hidden>
                   <span style={{ width: `${topScore ? (r.points / topScore) * 100 : 0}%` }} />

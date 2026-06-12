@@ -110,6 +110,9 @@ export interface WorldCupState {
   /** Quick "no prediction needed" emoji reactions on a match: matchId → emoji →
    * predictor ids. Older boards omit this. */
   matchReactions?: Record<string, Record<string, string[]>>;
+  /** Each predictor's pick for the tournament winner: predictorId → team id.
+   * Locks at the first knockout kickoff. Older boards omit this. */
+  championPicks?: Record<string, string>;
   createdAt: ISODateTime;
 }
 
@@ -761,6 +764,8 @@ export interface WcLeaderRow {
   exact: number;
   /** Correct winner/draw (any of exact / margin / outcome). */
   correctResults: number;
+  /** Champion-pick bonus already banked, and included in `points`. */
+  bonus: number;
 }
 
 /**
@@ -776,7 +781,15 @@ export function leaderboard(
   const rows = new Map<string, WcLeaderRow>(
     state.predictors.map((p) => [
       p.id,
-      { predictorId: p.id, name: p.name, points: 0, scored: 0, exact: 0, correctResults: 0 },
+      {
+        predictorId: p.id,
+        name: p.name,
+        points: 0,
+        scored: 0,
+        exact: 0,
+        correctResults: 0,
+        bonus: 0,
+      },
     ]),
   );
   for (const match of state.matches) {
@@ -794,6 +807,15 @@ export function leaderboard(
         row.correctResults++;
       }
     }
+  }
+  // Fold in the champion-pick bonus (computed from the live bracket; it shifts
+  // both the current and "previous" tables equally, so rank movement is unchanged).
+  for (const p of state.predictors) {
+    const pick = state.championPicks?.[p.id];
+    const row = rows.get(p.id);
+    if (!pick || !row) continue;
+    row.bonus = championBonusFor(state, pick);
+    row.points += row.bonus;
   }
   return [...rows.values()].sort(
     (a, b) => b.points - a.points || b.exact - a.exact || a.name.localeCompare(b.name),
@@ -1009,6 +1031,91 @@ export function lockingSoon(
 /** How many matches now have a result (for progress UI). */
 export function playedCount(state: WorldCupState): number {
   return state.matches.filter((m) => !!m.result).length;
+}
+
+// --- Champion pick (predict the winner) ------------------------------------
+
+/** Bonus points for a champion pick, scaled by how far that team gets. */
+export const WC_CHAMP_POINTS = {
+  champion: 30,
+  runnerUp: 12,
+  semi: 6,
+  quarter: 3,
+} as const;
+
+/** The deepest knockout stage a team is a participant of, or null (groups). */
+function deepestKnockoutStage(state: WorldCupState, teamId: string): WcStage | null {
+  let best: WcStage | null = null;
+  for (const m of state.matches) {
+    if (m.stage === 'group') continue;
+    if (m.homeId !== teamId && m.awayId !== teamId) continue;
+    if (!best || STAGE_ORDER[m.stage] > STAGE_ORDER[best]) best = m.stage;
+  }
+  return best;
+}
+
+/**
+ * Points earned so far by predicting `teamId` as champion, by their run:
+ * reaching the quarters/semis banks a little, a finalist more, the winner most.
+ * Updates live as the bracket fills in.
+ */
+export function championBonusFor(state: WorldCupState, teamId: string): number {
+  const deepest = deepestKnockoutStage(state, teamId);
+  if (!deepest) return 0;
+  if (deepest === 'final') {
+    const final = state.matches.find((m) => m.stage === 'final');
+    if (final?.result) {
+      return winnerOf(final) === teamId ? WC_CHAMP_POINTS.champion : WC_CHAMP_POINTS.runnerUp;
+    }
+    return WC_CHAMP_POINTS.runnerUp; // a finalist banks at least runner-up
+  }
+  // The third-place play-off means a team lost in the semis — still a semi run.
+  if (deepest === 'sf' || deepest === 'third') return WC_CHAMP_POINTS.semi;
+  if (deepest === 'qf') return WC_CHAMP_POINTS.quarter;
+  return 0;
+}
+
+/** The actual tournament winner (final result), once decided. */
+export function championTeam(state: WorldCupState): string | undefined {
+  const final = state.matches.find((m) => m.stage === 'final');
+  return final?.result ? winnerOf(final) : undefined;
+}
+
+/** When champion picks lock: the earliest knockout kickoff. Null pre-bracket. */
+export function championDeadline(state: WorldCupState): ISODateTime | null {
+  let earliest: string | null = null;
+  for (const m of state.matches) {
+    if (m.stage === 'group') continue;
+    if (earliest === null || toMs(m.kickoff) < toMs(earliest)) earliest = m.kickoff;
+  }
+  return earliest;
+}
+
+/** True once the knockouts have begun — champion picks can no longer change. */
+export function isChampionLocked(state: WorldCupState, now: Date = new Date()): boolean {
+  const dl = championDeadline(state);
+  return !!dl && now.getTime() >= toMs(dl);
+}
+
+/** Set (or change) a predictor's champion pick, until the knockouts start. */
+export function setChampionPick(
+  state: WorldCupState,
+  predictorId: string,
+  teamId: string,
+  now: () => Date = () => new Date(),
+): WorldCupState {
+  if (!findPredictor(state, predictorId)) throw new Error('Unknown predictor');
+  if (!findTeam(state, teamId)) throw new Error('Unknown team');
+  if (isChampionLocked(state, now())) throw new Error('Champion picks are locked');
+  return { ...state, championPicks: { ...(state.championPicks ?? {}), [predictorId]: teamId } };
+}
+
+/** Remove a predictor's champion pick (allowed until the knockouts start). */
+export function clearChampionPick(state: WorldCupState, predictorId: string): WorldCupState {
+  if (!state.championPicks?.[predictorId]) return state;
+  const next = { ...state.championPicks };
+  delete next[predictorId];
+  return { ...state, championPicks: next };
 }
 
 // --- Engagement: reactions, crowd pulse, team form -------------------------

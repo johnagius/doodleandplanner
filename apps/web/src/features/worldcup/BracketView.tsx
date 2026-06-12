@@ -8,6 +8,7 @@ import {
   type WcStage,
   type WorldCupState,
 } from '@dap/shared';
+import { ChampionPicker } from './ChampionPicker.js';
 
 const ROUNDS: WcStage[] = ['r32', 'r16', 'qf', 'sf', 'final'];
 
@@ -18,6 +19,7 @@ export function BracketView({ wc }: { wc: WorldCupState }) {
 
   return (
     <div className="stack">
+      <ChampionPicker wc={wc} />
       {!hasKnockout && (
         <p className="muted small">
           The bracket fills in automatically once group results are entered — the group winners,

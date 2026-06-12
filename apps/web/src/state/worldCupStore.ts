@@ -2,12 +2,14 @@ import {
   addPredictor,
   appendMessage,
   applyLiveResults,
+  clearChampionPick,
   clearPrediction,
   clearResult,
   createMessage,
   deleteMessage,
   removePredictor,
   renamePredictor,
+  setChampionPick,
   setPrediction,
   setResult,
   toggleMatchReaction,
@@ -99,6 +101,10 @@ interface WorldCupStore {
   reactMatch: (matchId: string, emoji: string) => Promise<void>;
   /** React to another predictor's revealed pick. */
   reactPick: (matchId: string, predictorId: string, emoji: string) => Promise<void>;
+
+  /** Pick (or change) the team you think wins the tournament. */
+  pickChampion: (teamId: string) => Promise<void>;
+  clearChampion: () => Promise<void>;
 }
 
 /** Apply a pure update to the embedded WorldCupState. */
@@ -336,6 +342,16 @@ export const useWorldCupStore = create<WorldCupStore>((set, get) => {
       await apply((s) =>
         withWorldCup(s, (wc) => togglePickReaction(wc, matchId, predictorId, emoji, me)),
       );
+    },
+
+    async pickChampion(teamId) {
+      const me = requireMe();
+      await apply((s) => withWorldCup(s, (wc) => setChampionPick(wc, me, teamId)));
+    },
+
+    async clearChampion() {
+      const me = requireMe();
+      await apply((s) => withWorldCup(s, (wc) => clearChampionPick(wc, me)));
     },
   };
 });

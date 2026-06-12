@@ -2843,6 +2843,61 @@ label.field {
   padding: 0.35rem 0.5rem;
 }
 
+/* Champion pick (predict the winner) */
+.wc-champion {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.wc-champion-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.wc-champion-title {
+  font-weight: 800;
+  font-size: 1.05rem;
+}
+.wc-champion-select {
+  flex: 1;
+  min-width: 12rem;
+  max-width: 22rem;
+}
+.wc-champion-picks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.wc-champion-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  font-size: 0.82rem;
+}
+.wc-champion-chip.is-me {
+  box-shadow: 0 0 0 2px var(--primary-soft);
+}
+.wc-champion-chip.is-won {
+  border-color: var(--success);
+  background: color-mix(in srgb, var(--success) 14%, transparent);
+}
+.wc-champion-name {
+  font-weight: 800;
+}
+.wc-champion-team {
+  color: var(--muted);
+}
+.wc-champion-pts {
+  font-weight: 800;
+  color: var(--success);
+}
+
 /* Group tables */
 .wc-groups-grid {
   display: grid;

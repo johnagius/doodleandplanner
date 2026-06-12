@@ -5,10 +5,15 @@ import {
   allGroupsComplete,
   applyLiveResults,
   badgesFor,
+  championBonusFor,
+  championTeam,
+  clearChampionPick,
   clearPrediction,
   clearResult,
   closestPredictors,
   consensusScore,
+  isChampionLocked,
+  setChampionPick,
   dayChampion,
   headToHead,
   latestResultDay,
@@ -695,6 +700,71 @@ describe('group outlook (permutations)', () => {
       guaranteedTop2: true,
       decided: true,
     });
+  });
+});
+
+describe('champion pick (predict the winner)', () => {
+  function withKo(stage: string, result?: { home: number; away: number }): WorldCupState {
+    return {
+      season: '2026',
+      title: 't',
+      teams: [
+        { id: 'BRA', name: 'Brazil', flag: '', group: 'A' },
+        { id: 'OPP', name: 'Opp', flag: '', group: 'B' },
+      ],
+      matches: [
+        {
+          id: `${stage}-1`,
+          stage: stage as WorldCupState['matches'][number]['stage'],
+          order: 0,
+          kickoff: '2026-07-01T00:00:00Z',
+          homeId: 'BRA',
+          awayId: 'OPP',
+          result,
+        },
+      ],
+      predictors: [{ id: 'p1', name: 'A' }],
+      predictions: [],
+      createdAt: '2026-01-01T00:00:00Z',
+    };
+  }
+
+  it('scores a champion pick by how far the team runs', () => {
+    expect(championBonusFor(withKo('r16'), 'BRA')).toBe(0);
+    expect(championBonusFor(withKo('qf'), 'BRA')).toBe(3);
+    expect(championBonusFor(withKo('sf'), 'BRA')).toBe(6);
+    expect(championBonusFor(withKo('final'), 'BRA')).toBe(12); // finalist, not yet played
+    expect(championBonusFor(withKo('final', { home: 2, away: 0 }), 'BRA')).toBe(30); // won it
+    expect(championBonusFor(withKo('final', { home: 0, away: 2 }), 'BRA')).toBe(12); // lost it
+    expect(championTeam(withKo('final', { home: 2, away: 0 }))).toBe('BRA');
+  });
+
+  it('folds the bonus into the leaderboard total', () => {
+    const s = withKo('final', { home: 1, away: 0 });
+    const lb = leaderboard({ ...s, championPicks: { p1: 'BRA' } });
+    expect(lb[0]).toMatchObject({ predictorId: 'p1', bonus: 30, points: 30 });
+  });
+
+  it('sets, changes and clears a pick until the knockouts start', () => {
+    let s = seed();
+    const p = s.predictors[0]!;
+    const before = () => new Date('2026-06-01T00:00:00Z');
+    s = setChampionPick(s, p.id, 'BRA', before);
+    expect(s.championPicks![p.id]).toBe('BRA');
+    s = setChampionPick(s, p.id, 'ARG', before); // change
+    expect(s.championPicks![p.id]).toBe('ARG');
+    s = clearChampionPick(s, p.id);
+    expect(s.championPicks![p.id]).toBeUndefined();
+    expect(() => setChampionPick(s, p.id, 'XYZ', before)).toThrow(/team/i);
+  });
+
+  it('locks once the knockouts kick off', () => {
+    const s = seed();
+    expect(isChampionLocked(s, new Date('2026-06-01T00:00:00Z'))).toBe(false);
+    expect(isChampionLocked(s, new Date('2026-07-15T00:00:00Z'))).toBe(true);
+    expect(() =>
+      setChampionPick(s, s.predictors[0]!.id, 'BRA', () => new Date('2026-07-15')),
+    ).toThrow(/locked/);
   });
 });
 

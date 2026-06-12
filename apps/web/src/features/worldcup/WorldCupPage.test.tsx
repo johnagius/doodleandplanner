@@ -1,5 +1,5 @@
 import { createRoom, emptyRoomState, type WorldCupState } from '@dap/shared';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -366,6 +366,67 @@ describe('WorldCupPage', () => {
     // Group view shows this group's standings table.
     await user.click(screen.getByRole('tab', { name: 'Group' }));
     expect(await screen.findByText('Group A')).toBeInTheDocument();
+  });
+
+  it('shows provisional "if it ends now" points while a match is live', async () => {
+    const user = userEvent.setup();
+    const past = new Date(Date.now() - 3_600_000).toISOString();
+    const wc: WorldCupState = {
+      season: '2026',
+      title: 'Test Cup',
+      version: 9999,
+      teams: [
+        { id: 'AAA', name: 'Aland', flag: '🅰️', group: 'A' },
+        { id: 'BBB', name: 'Bland', flag: '🅱️', group: 'A' },
+      ],
+      matches: [
+        {
+          id: 'g-A-1',
+          stage: 'group',
+          group: 'A',
+          matchday: 1,
+          order: 0,
+          kickoff: past,
+          homeId: 'AAA',
+          awayId: 'BBB',
+        },
+      ],
+      predictors: [
+        { id: 'p1', name: 'John' },
+        { id: 'p2', name: 'Daniel' },
+      ],
+      predictions: [
+        { matchId: 'g-A-1', predictorId: 'p1', home: 1, away: 0, updatedAt: past },
+        { matchId: 'g-A-1', predictorId: 'p2', home: 2, away: 2, updatedAt: past },
+      ],
+      createdAt: new Date().toISOString(),
+    };
+    const { room } = await createRoom({
+      name: 'World Cup',
+      ownerName: 'Predictions',
+      slug: WORLD_CUP_SLUG,
+    });
+    await getRepository().createRoom({ ...emptyRoomState(room), worldCup: wc });
+
+    const { container } = renderPage();
+    await screen.findByRole('heading', { name: /World Cup 2026 Predictions/ });
+    const dialog = await screen.findByRole('dialog');
+    await user.click(within(dialog).getByRole('button', { name: 'John' }));
+    await user.click(screen.getByRole('button', { name: 'Yes, this is me' }));
+
+    // Simulate the live feed: g-A-1 in play at 1-0.
+    act(() => {
+      useWorldCupStore.setState({
+        live: { 'g-A-1': { status: 'IN_PLAY', minute: 30, home: 1, away: 0 } },
+      });
+    });
+
+    expect(await screen.findByText(/points if it ends now/i)).toBeInTheDocument();
+    // John's 1-0 is spot on → provisional +5 and the live crown.
+    await waitFor(() => {
+      expect(container.querySelector('.wc-picks')?.textContent).toContain('+5');
+    });
+    expect(screen.getByTitle('Closest right now')).toBeInTheDocument();
   });
 
   it('lets you predict the tournament winner on the bracket tab', async () => {

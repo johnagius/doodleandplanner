@@ -11,6 +11,7 @@ import {
   clearPrediction,
   clearResult,
   closestPredictors,
+  closestToScore,
   consensusScore,
   fifaRankOf,
   isChampionLocked,
@@ -598,6 +599,17 @@ describe('crowd pulse', () => {
     // A clear favourite wins outright.
     s = setPrediction(s, { matchId: 'g-A-1', predictorId: c.id, home: 2, away: 0, now: NOW });
     expect(consensusScore(s, 'g-A-1')).toEqual({ home: 2, away: 0, count: 3 });
+  });
+
+  it('finds the closest pick against any (live) score', () => {
+    let s = seed();
+    const [a, b] = s.predictors as [(typeof s.predictors)[0], (typeof s.predictors)[0]];
+    s = setPrediction(s, { matchId: 'g-A-1', predictorId: a.id, home: 1, away: 0, now: NOW });
+    s = setPrediction(s, { matchId: 'g-A-1', predictorId: b.id, home: 3, away: 0, now: NOW });
+    // Live 1-0 → a is spot on; b only has the right winner.
+    expect(closestToScore(s, 'g-A-1', 1, 0)).toEqual([a.id]);
+    // A 0-5 turnaround → both miss by miles, nobody is "closest".
+    expect(closestToScore(s, 'g-A-1', 0, 5)).toEqual([]);
   });
 
   it('crowns the closest predictor(s), and nobody on a whole-squad miss', () => {

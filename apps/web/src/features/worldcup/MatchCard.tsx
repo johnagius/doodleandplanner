@@ -3,6 +3,7 @@ import {
   WC_SCORE_LABEL,
   WC_STAGE_LABEL,
   closestPredictors,
+  closestToScore,
   consensusScore,
   fifaRankOf,
   findTeam,
@@ -199,7 +200,20 @@ export function MatchCard({ matchId }: { matchId: string }) {
           )}
 
           <CrowdPulse wc={wc} match={match} />
-          <PredictionsRow wc={wc} match={match} meId={meId} revealed={locked} />
+          {isLive && live!.home != null && live!.away != null && (
+            <p className="muted small wc-live-caption">⚡ Live — points if it ends now</p>
+          )}
+          <PredictionsRow
+            wc={wc}
+            match={match}
+            meId={meId}
+            revealed={locked}
+            liveScore={
+              isLive && live!.home != null && live!.away != null
+                ? { home: live!.home, away: live!.away }
+                : undefined
+            }
+          />
           <MatchReactions wc={wc} match={match} meId={meId} />
           <MatchComments matchId={match.id} />
           {admin && <ResultEditor wc={wc} match={match} />}
@@ -650,12 +664,15 @@ function PredictionsRow({
   match,
   meId,
   revealed,
+  liveScore,
 }: {
   wc: WorldCupState;
   match: WcMatch;
   meId: string | null;
   /** Whether everyone's picks are shown (true once the match has kicked off). */
   revealed: boolean;
+  /** Current in-play score, for provisional "if it ends now" points + crown. */
+  liveScore?: { home: number; away: number };
 }) {
   const picks = wc.predictions.filter((p) => p.matchId === match.id);
   if (picks.length === 0) return null;
@@ -666,8 +683,12 @@ function PredictionsRow({
   // Until kickoff, hide everyone else's picks (no copying) — only your own shows.
   const shown = revealed ? picks : picks.filter((p) => p.predictorId === meId);
   const hidden = picks.length - shown.length;
-  // Closest pick(s) get a 🎯 crown once the match is resolved.
-  const crowned = match.result ? new Set(closestPredictors(wc, match.id)) : null;
+  // Closest pick(s) get a 🎯 crown once resolved — or provisionally while live.
+  const crowned = match.result
+    ? new Set(closestPredictors(wc, match.id))
+    : liveScore
+      ? new Set(closestToScore(wc, match.id, liveScore.home, liveScore.away))
+      : null;
 
   return (
     <div className="wc-picks">
@@ -679,6 +700,7 @@ function PredictionsRow({
           pick={p}
           meId={meId}
           crowned={crowned?.has(p.predictorId) ?? false}
+          liveScore={liveScore}
           // You can react to a revealed pick that isn't your own.
           canReact={revealed && !!meId && p.predictorId !== meId}
         />
@@ -701,6 +723,7 @@ function PickChip({
   meId,
   crowned,
   canReact,
+  liveScore,
 }: {
   wc: WorldCupState;
   match: WcMatch;
@@ -708,23 +731,40 @@ function PickChip({
   meId: string | null;
   crowned: boolean;
   canReact: boolean;
+  liveScore?: { home: number; away: number };
 }) {
   const { reactPick } = useWorldCupStore();
   const [picker, setPicker] = useState(false);
   const name = wc.predictors.find((x) => x.id === pick.predictorId)?.name ?? '?';
-  const scored = match.result ? scorePrediction(pick, match.result) : null;
+  // Provisional points while a game is in play; real points once it's finished.
+  const provisional = !match.result && !!liveScore;
+  const scored = match.result
+    ? scorePrediction(pick, match.result)
+    : liveScore
+      ? scorePrediction(pick, liveScore)
+      : null;
   const reactions = Object.entries(pick.reactions ?? {});
 
   return (
     <span className="wc-pick">
       <span
-        className={`wc-pick-chip ${scored ? POINT_CLASS[scored.category] : ''} ${
-          pick.predictorId === meId ? 'is-me' : ''
-        }`}
-        title={scored ? WC_SCORE_LABEL[scored.category] : 'Prediction'}
+        className={`wc-pick-chip ${scored && !provisional ? POINT_CLASS[scored.category] : ''} ${
+          provisional ? 'is-provisional' : ''
+        } ${pick.predictorId === meId ? 'is-me' : ''}`}
+        title={
+          provisional
+            ? `If it ends now: ${scored ? WC_SCORE_LABEL[scored.category] : 'no points'}`
+            : scored
+              ? WC_SCORE_LABEL[scored.category]
+              : 'Prediction'
+        }
       >
         {crowned && (
-          <span className="wc-pick-crown" title="Closest pick" aria-label="Closest pick">
+          <span
+            className="wc-pick-crown"
+            title={provisional ? 'Closest right now' : 'Closest pick'}
+            aria-label={provisional ? 'Closest right now' : 'Closest pick'}
+          >
             🎯
           </span>
         )}
@@ -732,7 +772,9 @@ function PickChip({
         <span className="wc-pick-score">
           {pick.home}–{pick.away}
         </span>
-        {scored && <span className="wc-pick-pts">+{scored.points}</span>}
+        {scored && (scored.points > 0 || !provisional) && (
+          <span className="wc-pick-pts">+{scored.points}</span>
+        )}
       </span>
 
       {(reactions.length > 0 || canReact) && (

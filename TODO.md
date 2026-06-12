@@ -61,10 +61,11 @@ A standalone `/world-cup` board (no login) for predicting the tournament.
       (quarters 3 · semis 6 · finalist 12 · champion 30), folded into the table.
 - [x] **Richer team stats** — the Stats tab now shows FIFA ranking, goals
       for/against per game and clean sheets (all from the results we already have).
-- [ ] Stats tab: possession + shots for/against (needs a stats provider beyond
-      football-data.org's free tier — e.g. API-Football).
-- [ ] Live watch-along: a card that goes live as goals go in (provisional
-      leaderboard, reaction storm, closest-pick spotlight).
+- [x] **Live watch-along** — while a game is in play, the card shows each pick's
+      provisional "if it ends now" points and a closest-pick 🎯 crown that swings
+      as goals go in (rides the existing live-score polling).
+- [ ] Stats tab: possession + shots for/against — API-Football's **free** plan is
+      limited to seasons 2022–2024, so live-2026 stats need a **paid** plan.
 - [ ] Strategy layer: a per-matchday joker, knockout multipliers, outright bets.
 - [ ] Live match minute (needs a paid football-data tier) and a share card.
 - [ ] Let the organiser edit fixtures/teams (currently a fixed 2026 seed).

@@ -1215,19 +1215,33 @@ export function consensusScore(
  * for a 🎯 crown. Empty before a result, and empty when the best anyone managed
  * is zero (no crown for a whole-squad miss).
  */
-export function closestPredictors(state: WorldCupState, matchId: string): string[] {
-  const match = findMatch(state, matchId);
-  if (!match?.result) return [];
+/**
+ * Predictor ids who'd score the most against a given scoreline (with ≥1 point) —
+ * works for a final result OR a live, in-progress score, so it powers both the
+ * after-the-whistle crown and the "closest right now" live spotlight.
+ */
+export function closestToScore(
+  state: WorldCupState,
+  matchId: string,
+  home: number,
+  away: number,
+): string[] {
   let bestPts = 0;
   const scores: Array<{ id: string; pts: number }> = [];
   for (const p of state.predictions) {
     if (p.matchId !== matchId) continue;
-    const pts = scorePrediction(p, match.result).points;
+    const pts = scorePrediction(p, { home, away }).points;
     scores.push({ id: p.predictorId, pts });
     if (pts > bestPts) bestPts = pts;
   }
   if (bestPts <= 0) return [];
   return scores.filter((s) => s.pts === bestPts).map((s) => s.id);
+}
+
+export function closestPredictors(state: WorldCupState, matchId: string): string[] {
+  const match = findMatch(state, matchId);
+  if (!match?.result) return [];
+  return closestToScore(state, matchId, match.result.home, match.result.away);
 }
 
 export interface WcTeamRecord {

@@ -2734,6 +2734,19 @@ label.field {
 .wc-pick-crown {
   font-size: 0.85em;
 }
+.wc-live-caption {
+  margin: 0;
+  font-weight: 800;
+  color: var(--warn);
+  letter-spacing: 0.01em;
+}
+.wc-pick-chip.is-provisional {
+  border-color: var(--warn);
+  background: color-mix(in srgb, var(--warn) 13%, var(--surface-2));
+}
+.wc-pick-chip.is-provisional .wc-pick-pts {
+  color: var(--warn);
+}
 
 /* Crowd pulse: participation before kickoff, consensus pick after */
 .wc-pulse {

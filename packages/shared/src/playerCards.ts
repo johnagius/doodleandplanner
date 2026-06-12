@@ -77,30 +77,46 @@ export interface WcWonCard {
   player: WcSquadPlayer;
 }
 
+export interface WcCardAward extends WcWonCard {
+  predictorId: string;
+}
+
 /**
- * Cards a predictor has won: one for every resolved match where they (jointly)
- * scored the most points — skill to top the match, luck on which player drops.
- * **No duplicates** — a player already in the collection is skipped to the next
- * free one. Processed in a stable match order so the draw is deterministic and
- * earlier cards never change as later ones are won.
+ * Every card awarded across the whole game, each a **globally unique** player —
+ * no player ever drops twice, even across different collectors (ties on a match
+ * each get their own distinct card). Processed in a stable match-then-predictor
+ * order so it's deterministic on every device and earlier cards never shift as
+ * later ones are won. The 1,249-player pool comfortably covers every award.
  */
-export function cardsWonBy(state: WorldCupState, predictorId: string): WcWonCard[] {
-  const won = state.matches
-    .filter((m) => !!m.result && closestPredictors(state, m.id).includes(predictorId))
-    .sort((a, b) => a.order - b.order);
+export function allCardAwards(state: WorldCupState): WcCardAward[] {
+  const order = new Map(state.predictors.map((p, i) => [p.id, i]));
+  const matches = state.matches.filter((m) => !!m.result).sort((a, b) => a.order - b.order);
   const taken = new Set<number>();
-  const out: WcWonCard[] = [];
-  for (const m of won) {
-    let idx = hash(m.id + '|' + predictorId) % WC_SQUADS.length;
-    let guard = 0;
-    while (taken.has(WC_SQUADS[idx]!.id) && guard++ < WC_SQUADS.length) {
-      idx = (idx + 1) % WC_SQUADS.length;
+  const out: WcCardAward[] = [];
+  for (const m of matches) {
+    // Each joint top scorer wins a card; stable order = predictor list order.
+    const winners = [...closestPredictors(state, m.id)].sort(
+      (x, y) => (order.get(x) ?? 99) - (order.get(y) ?? 99),
+    );
+    for (const predictorId of winners) {
+      let idx = hash(m.id + '|' + predictorId) % WC_SQUADS.length;
+      let guard = 0;
+      while (taken.has(WC_SQUADS[idx]!.id) && guard++ < WC_SQUADS.length) {
+        idx = (idx + 1) % WC_SQUADS.length;
+      }
+      const player = WC_SQUADS[idx]!;
+      taken.add(player.id);
+      out.push({ matchId: m.id, predictorId, player });
     }
-    const player = WC_SQUADS[idx]!;
-    taken.add(player.id);
-    out.push({ matchId: m.id, player });
   }
   return out;
+}
+
+/** A predictor's collection — their share of {@link allCardAwards}. */
+export function cardsWonBy(state: WorldCupState, predictorId: string): WcWonCard[] {
+  return allCardAwards(state)
+    .filter((a) => a.predictorId === predictorId)
+    .map((a) => ({ matchId: a.matchId, player: a.player }));
 }
 
 export interface WcCardLeaderRow {
@@ -111,7 +127,10 @@ export interface WcCardLeaderRow {
 
 /** Card-count standings, most cards first. */
 export function cardLeaderboard(state: WorldCupState): WcCardLeaderRow[] {
+  const counts = new Map<string, number>();
+  for (const a of allCardAwards(state))
+    counts.set(a.predictorId, (counts.get(a.predictorId) ?? 0) + 1);
   return state.predictors
-    .map((p) => ({ predictorId: p.id, name: p.name, cards: cardsWonBy(state, p.id).length }))
+    .map((p) => ({ predictorId: p.id, name: p.name, cards: counts.get(p.id) ?? 0 }))
     .sort((a, b) => b.cards - a.cards || a.name.localeCompare(b.name));
 }

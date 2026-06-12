@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { cardDraw, cardLeaderboard, cardsWonBy, playerCard } from '../src/playerCards.js';
+import {
+  allCardAwards,
+  cardDraw,
+  cardLeaderboard,
+  cardsWonBy,
+  playerCard,
+} from '../src/playerCards.js';
 import { WC_SQUADS } from '../src/squads.js';
 import { seedWorldCup, setPrediction, setResult, type WorldCupState } from '../src/worldcup.js';
 
@@ -75,5 +81,34 @@ describe('cardsWonBy + cardLeaderboard', () => {
     const cards = cardsWonBy(s, john.id);
     expect(cards).toHaveLength(40);
     expect(new Set(cards.map((c) => c.player.id)).size).toBe(40); // all distinct
+  });
+
+  it('gives a globally-unique card to every joint winner of one match', () => {
+    let s = seedWorldCup(NOW);
+    // All four default predictors nail the same scoreline → four joint top scorers.
+    for (const p of s.predictors) {
+      s = setPrediction(s, { matchId: 'g-A-1', predictorId: p.id, home: 1, away: 0, now: NOW });
+    }
+    s = setResult(s, { matchId: 'g-A-1', home: 1, away: 0 });
+
+    const awards = allCardAwards(s).filter((a) => a.matchId === 'g-A-1');
+    expect(awards).toHaveLength(s.predictors.length); // a card each, not just one
+    expect(new Set(awards.map((a) => a.player.id)).size).toBe(s.predictors.length); // all distinct
+  });
+
+  it('never repeats a player across the whole game, even with everyone tying every match', () => {
+    let s = seedWorldCup(NOW);
+    // Worst case for uniqueness: everyone predicts 2-0, every group game ends 2-0,
+    // so all four predictors jointly top all 72 group matches (288 cards in play).
+    for (const m of s.matches.filter((x) => x.stage === 'group')) {
+      for (const p of s.predictors) {
+        s = setPrediction(s, { matchId: m.id, predictorId: p.id, home: 2, away: 0, now: NOW });
+      }
+      s = setResult(s, { matchId: m.id, home: 2, away: 0 });
+    }
+    const awards = allCardAwards(s);
+    expect(awards).toHaveLength(72 * s.predictors.length); // 288 awards
+    // Every single one a distinct player — the 1,249 pool covers it with room to spare.
+    expect(new Set(awards.map((a) => a.player.id)).size).toBe(awards.length);
   });
 });

@@ -72,8 +72,11 @@ A standalone `/world-cup` board (no login) for predicting the tournament.
       mid-game clearing); the organiser can set/restore any pick to fix a glitch.
 - [x] **Player-card game** — top a match's points and win a random WC squad
       player as a FIFA-style card (1,249 players, our own ratings/tiers, real
-      photos from Wikimedia where available, flag art otherwise). Collect them and
-      climb a "most cards" table. Fully derived from results — no stored state.
+      photos from Wikimedia where available, flag art otherwise). Every awarded
+      card is **globally unique** — joint top scorers on a match each get their
+      own distinct player, and no player is ever drawn twice across the whole
+      tournament (the 1,249 pool dwarfs the ~104-game card count). Collect them
+      and climb a "most cards" table. Fully derived from results — no stored state.
 - [ ] Stats tab: possession + shots for/against — API-Football's **free** plan is
       limited to seasons 2022–2024, so live-2026 stats need a **paid** plan.
 - [ ] Strategy layer: a per-matchday joker, knockout multipliers, outright bets.

@@ -5,6 +5,7 @@ import {
   closestPredictors,
   consensusScore,
   findTeam,
+  groupStandings,
   isMatchLocked,
   isMatchReady,
   pendingPredictors,
@@ -42,6 +43,7 @@ export function MatchCard({ matchId }: { matchId: string }) {
   const { predict, unpredict } = useWorldCupStore();
   const { show } = useToast();
   const now = useNow();
+  const [view, setView] = useState<CardView>('match');
 
   if (!wc) return null;
   const match = wc.matches.find((m) => m.id === matchId);
@@ -86,6 +88,7 @@ export function MatchCard({ matchId }: { matchId: string }) {
     match.stage === 'group'
       ? `Group ${match.group} · MD${match.matchday}`
       : WC_STAGE_LABEL[match.stage];
+  const isGroup = match.stage === 'group' && !!match.group;
 
   return (
     <div className={`card wc-match ${result ? 'is-final' : ''}`}>
@@ -108,6 +111,8 @@ export function MatchCard({ matchId }: { matchId: string }) {
         )}
       </div>
 
+      <CardViewTabs view={view} onChange={setView} showGroup={isGroup} />
+
       <div className="wc-fixture">
         <TeamSide wc={wc} team={home} placeholder={slotLabel(wc, match.homeId, match.homeSource)} />
 
@@ -124,7 +129,7 @@ export function MatchCard({ matchId }: { matchId: string }) {
               <span className="wc-dash">–</span>
               <span>{live!.away}</span>
             </div>
-          ) : canPredict ? (
+          ) : canPredict && view === 'match' ? (
             <div className="wc-pick-steppers">
               <ScoreStepper
                 value={myPick?.home ?? 0}
@@ -138,7 +143,7 @@ export function MatchCard({ matchId }: { matchId: string }) {
                 label={`${away?.name ?? 'Away'} goals`}
               />
             </div>
-          ) : myPick ? (
+          ) : myPick && view === 'match' ? (
             <div className="wc-scoreline muted" aria-label="Your locked pick">
               <span>{myPick.home}</span>
               <span className="wc-dash">–</span>
@@ -163,35 +168,81 @@ export function MatchCard({ matchId }: { matchId: string }) {
         </div>
       )}
 
-      {!result && myPick && (
-        <div className="wc-clear-row">
-          <span className="wc-saved">✓ Saved</span>
-          <button type="button" className="btn btn-sm btn-ghost wc-clear-pick" onClick={clearPick}>
-            ✕ Clear{locked ? ' (mistake)' : ' my pick'}
-          </button>
-        </div>
+      {view === 'match' && (
+        <>
+          {!result && myPick && (
+            <div className="wc-clear-row">
+              <span className="wc-saved">✓ Saved</span>
+              <button
+                type="button"
+                className="btn btn-sm btn-ghost wc-clear-pick"
+                onClick={clearPick}
+              >
+                ✕ Clear{locked ? ' (mistake)' : ' my pick'}
+              </button>
+            </div>
+          )}
+          {!result && canPredict && !myPick && (
+            <p className="muted small wc-hint">Tap +/− to predict — it saves automatically.</p>
+          )}
+          {!result && !meId && ready && !locked && (
+            <p className="muted small wc-hint">Pick your name above to predict this match.</p>
+          )}
+          {stillToPick.length > 0 && stillToPick.length < wc.predictors.length && (
+            <p className="muted small wc-hint">
+              ⏳ Still to pick: {stillToPick.map((p) => p.name).join(', ')}
+            </p>
+          )}
+
+          <CrowdPulse wc={wc} match={match} />
+          <PredictionsRow wc={wc} match={match} meId={meId} revealed={locked} />
+          <MatchReactions wc={wc} match={match} meId={meId} />
+          <MatchComments matchId={match.id} />
+          {admin && <ResultEditor wc={wc} match={match} />}
+        </>
       )}
-      {!result && canPredict && !myPick && (
-        <p className="muted small wc-hint">Tap +/− to predict — it saves automatically.</p>
-      )}
-      {!result && !meId && ready && !locked && (
-        <p className="muted small wc-hint">Pick your name above to predict this match.</p>
-      )}
-      {stillToPick.length > 0 && stillToPick.length < wc.predictors.length && (
-        <p className="muted small wc-hint">
-          ⏳ Still to pick: {stillToPick.map((p) => p.name).join(', ')}
-        </p>
-      )}
 
-      <CrowdPulse wc={wc} match={match} />
+      {view === 'stats' && <StatsView wc={wc} match={match} />}
+      {view === 'group' && isGroup && <GroupView wc={wc} group={match.group!} match={match} />}
+    </div>
+  );
+}
 
-      <PredictionsRow wc={wc} match={match} meId={meId} revealed={locked} />
+type CardView = 'match' | 'stats' | 'group';
 
-      <MatchReactions wc={wc} match={match} meId={meId} />
+const CARD_VIEWS: { id: CardView; icon: string; label: string }[] = [
+  { id: 'match', icon: '⚽', label: 'Match' },
+  { id: 'stats', icon: '📊', label: 'Stats' },
+  { id: 'group', icon: '🔢', label: 'Group' },
+];
 
-      <MatchComments matchId={match.id} />
-
-      {admin && <ResultEditor wc={wc} match={match} />}
+/** The three little tabs in the card's top-right that switch its lower panel. */
+function CardViewTabs({
+  view,
+  onChange,
+  showGroup,
+}: {
+  view: CardView;
+  onChange: (v: CardView) => void;
+  showGroup: boolean;
+}) {
+  const views = showGroup ? CARD_VIEWS : CARD_VIEWS.filter((v) => v.id !== 'group');
+  return (
+    <div className="wc-card-tabs" role="tablist" aria-label="Card view">
+      {views.map((v) => (
+        <button
+          key={v.id}
+          type="button"
+          role="tab"
+          aria-selected={view === v.id}
+          className={`wc-card-tab ${view === v.id ? 'active' : ''}`}
+          onClick={() => onChange(v.id)}
+          title={v.label}
+          aria-label={v.label}
+        >
+          <span aria-hidden>{v.icon}</span>
+        </button>
+      ))}
     </div>
   );
 }
@@ -234,14 +285,160 @@ function TeamContext({ wc, teamId }: { wc: WorldCupState; teamId: string }) {
       <span className="wc-team-pos" title={`Group ${record.group}`}>
         {ORDINALS[record.position] ?? `${record.position}th`}
       </span>
-      <span className="wc-form" aria-label={`Recent form ${record.form.join(' ')}`}>
-        {record.form.slice(0, 5).map((r, i) => (
-          <span key={i} className={`wc-form-dot wc-form-${r}`} aria-hidden>
-            {r}
-          </span>
-        ))}
-      </span>
+      <FormDots form={record.form} />
     </span>
+  );
+}
+
+/** Coloured W/D/L pills for a team's recent results (most-recent-first). */
+function FormDots({ form }: { form: Array<'W' | 'D' | 'L'> }) {
+  if (form.length === 0) return <span className="muted small">—</span>;
+  return (
+    <span className="wc-form" aria-label={`Recent form ${form.join(' ')}`}>
+      {form.slice(0, 5).map((r, i) => (
+        <span key={i} className={`wc-form-dot wc-form-${r}`} aria-hidden>
+          {r}
+        </span>
+      ))}
+    </span>
+  );
+}
+
+/** "Stats" view: the two teams' tournament form & record, side by side.
+ * (Historical head-to-head is layered on in a later pass.) */
+function StatsView({ wc, match }: { wc: WorldCupState; match: WcMatch }) {
+  const home = findTeam(wc, match.homeId);
+  const away = findTeam(wc, match.awayId);
+  if (!home || !away) {
+    return <p className="muted small wc-tab-empty">Teams are decided once the bracket fills in.</p>;
+  }
+  const hr = teamRecord(wc, home.id);
+  const ar = teamRecord(wc, away.id);
+  const anyPlayed = (hr?.played ?? 0) + (ar?.played ?? 0) > 0;
+
+  const pos = (r: typeof hr) => (r?.position ? (ORDINALS[r.position] ?? `${r.position}th`) : '—');
+  const wdl = (r: typeof hr) => (r ? `${r.won}–${r.drawn}–${r.lost}` : '—');
+  const goals = (r: typeof hr) => (r ? `${r.goalsFor}–${r.goalsAgainst}` : '—');
+
+  return (
+    <div className="wc-statsview">
+      <div className="wc-statsview-head">
+        <span className="wc-flag" aria-hidden>
+          {home.flag}
+        </span>
+        <span className="wc-statsview-title">Form &amp; record</span>
+        <span className="wc-flag" aria-hidden>
+          {away.flag}
+        </span>
+      </div>
+      {anyPlayed ? (
+        <table className="wc-cmp-table">
+          <tbody>
+            <CmpRow
+              label={`Group ${hr?.group ?? away?.group ?? ''} position`}
+              h={pos(hr)}
+              a={pos(ar)}
+            />
+            <CmpRow label="Played" h={`${hr?.played ?? 0}`} a={`${ar?.played ?? 0}`} />
+            <CmpRow label="W–D–L" h={wdl(hr)} a={wdl(ar)} />
+            <CmpRow label="Goals (F–A)" h={goals(hr)} a={goals(ar)} />
+            <CmpRow label="Points" h={`${hr?.points ?? 0}`} a={`${ar?.points ?? 0}`} strong />
+            <tr>
+              <td className="wc-cmp-h">
+                <FormDots form={hr?.form ?? []} />
+              </td>
+              <th scope="row" className="wc-cmp-label">
+                Form
+              </th>
+              <td className="wc-cmp-a">
+                <FormDots form={ar?.form ?? []} />
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      ) : (
+        <p className="muted small wc-tab-empty">
+          No group games played yet — form and records appear once the group is underway.
+        </p>
+      )}
+      <p className="muted small wc-h2h-note">⚔️ Head-to-head history is on the way.</p>
+    </div>
+  );
+}
+
+function CmpRow({
+  label,
+  h,
+  a,
+  strong,
+}: {
+  label: string;
+  h: string;
+  a: string;
+  strong?: boolean;
+}) {
+  return (
+    <tr className={strong ? 'wc-cmp-strong' : ''}>
+      <td className="wc-cmp-h">{h}</td>
+      <th scope="row" className="wc-cmp-label">
+        {label}
+      </th>
+      <td className="wc-cmp-a">{a}</td>
+    </tr>
+  );
+}
+
+/** "Group" view: the live standings for this match's group (top 2 highlighted),
+ * with the two teams playing here emphasised. Permutations layer on later. */
+function GroupView({ wc, group, match }: { wc: WorldCupState; group: string; match: WcMatch }) {
+  const rows = groupStandings(wc, group);
+  const here = new Set([match.homeId, match.awayId].filter(Boolean));
+  return (
+    <div className="wc-groupview">
+      <div className="wc-statsview-head">
+        <span className="wc-statsview-title">Group {group}</span>
+      </div>
+      <table className="wc-mini-table">
+        <thead>
+          <tr>
+            <th aria-label="Position">#</th>
+            <th className="wc-mini-team">Team</th>
+            <th>P</th>
+            <th>W</th>
+            <th>D</th>
+            <th>L</th>
+            <th>GD</th>
+            <th>Pts</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, i) => {
+            const t = findTeam(wc, r.teamId);
+            return (
+              <tr
+                key={r.teamId}
+                className={`${i < 2 ? 'wc-qual' : ''} ${here.has(r.teamId) ? 'wc-here' : ''}`}
+              >
+                <td>{i + 1}</td>
+                <td className="wc-mini-team">
+                  <span aria-hidden>{t?.flag}</span> {t?.name ?? r.teamId}
+                </td>
+                <td>{r.played}</td>
+                <td>{r.won}</td>
+                <td>{r.drawn}</td>
+                <td>{r.lost}</td>
+                <td>
+                  {r.goalDiff > 0 ? '+' : ''}
+                  {r.goalDiff}
+                </td>
+                <td className="wc-mini-pts">{r.points}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      <p className="muted small">Top 2 advance; the best third-placed teams also go through.</p>
+    </div>
   );
 }
 

@@ -351,6 +351,23 @@ describe('WorldCupPage', () => {
     expect(container.querySelector('.wc-form-L')).not.toBeNull();
   });
 
+  it('switches a card between Match, Stats and Group views', async () => {
+    const user = userEvent.setup();
+    await seedControlledBoard();
+    renderPage();
+    await screen.findByRole('heading', { name: /World Cup 2026 Predictions/ });
+    await screen.findByRole('dialog');
+    await user.keyboard('{Escape}');
+
+    // Stats view shows the form & record panel.
+    await user.click(await screen.findByRole('tab', { name: 'Stats' }));
+    expect(await screen.findByText(/Form & record/)).toBeInTheDocument();
+
+    // Group view shows this group's standings table.
+    await user.click(screen.getByRole('tab', { name: 'Group' }));
+    expect(await screen.findByText('Group A')).toBeInTheDocument();
+  });
+
   it('posts a comment in the match card thread', async () => {
     const user = userEvent.setup();
     await seedControlledBoard();

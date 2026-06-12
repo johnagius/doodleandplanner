@@ -622,6 +622,8 @@ describe('team context', () => {
     const s = playAllGroups(fresh);
     const top = teamRecord(s, winnerId)!;
     expect(top).toMatchObject({ group: 'A', position: 1, played: 3, won: 3, lost: 0 });
+    // Won all three 2-0 → goals, diff and points all follow.
+    expect(top).toMatchObject({ goalsFor: 6, goalsAgainst: 0, goalDiff: 6, points: 9 });
     expect(top.form).toEqual(['W', 'W', 'W']);
 
     const thirdId = seedOrder(fresh, 'A')[2]!;

@@ -1110,6 +1110,10 @@ export interface WcTeamRecord {
   won: number;
   drawn: number;
   lost: number;
+  goalsFor: number;
+  goalsAgainst: number;
+  goalDiff: number;
+  points: number;
   /** Recent group results, most-recent-first. */
   form: Array<'W' | 'D' | 'L'>;
 }
@@ -1144,6 +1148,10 @@ export function teamRecord(state: WorldCupState, teamId: string | undefined): Wc
     won: row.won,
     drawn: row.drawn,
     lost: row.lost,
+    goalsFor: row.goalsFor,
+    goalsAgainst: row.goalsAgainst,
+    goalDiff: row.goalDiff,
+    points: row.points,
     form,
   };
 }

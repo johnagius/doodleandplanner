@@ -43,8 +43,13 @@ A standalone `/world-cup` board (no login) for predicting the tournament.
       reveal (no copying).
 - [x] **Leaderboard glow-up** — rank movement, day champion, recent form, badges
       and head-to-head player comparisons.
-- [x] **Banter & nudges** — a squad chat with emoji reactions, "still to predict"
-      prompts and a tab-title reminder before matches lock.
+- [x] **Banter in the hot zone** — per-match comment threads with emoji reactions
+      (the standalone Banter tab is gone), plus "still to predict" prompts and a
+      tab-title reminder before matches lock.
+- [x] **Engagement on every card** — a crowd pulse ("N of M predicted", then the
+      consensus scoreline + a 🎯 closest-pick crown), quick match reactions
+      (🔥😱🎉💩), reacting to mates' revealed picks, and team context (group
+      position + recent W/D/L form).
 - [ ] Strategy layer: a per-matchday joker, knockout multipliers, outright bets.
 - [ ] Live match minute (needs a paid football-data tier) and a share card.
 - [ ] Let the organiser edit fixtures/teams (currently a fixed 2026 seed).

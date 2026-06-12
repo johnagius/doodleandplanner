@@ -36,10 +36,14 @@ get.
   (football-data.org) so no one has to enter them. Group standings compute
   automatically and, once the groups finish, the **knockout bracket populates
   itself** (Round of 32 → final). The **leaderboard** shows rank movement, the
-  day's top scorer, recent form, badges and head-to-head comparisons; there's a
-  **squad chat** with emoji reactions and gentle "still to predict" reminders.
-  Everyone shares one board through the realtime Worker (with a graceful local
-  fallback). A first-run "Who are you?" prompt remembers you on the device.
+  day's top scorer, recent form, badges and head-to-head comparisons. Every match
+  card is a little hub: a **crowd pulse** (how many have predicted, then the
+  consensus scoreline and a 🎯 closest-pick crown), **quick reactions**
+  (🔥😱🎉💩), **per-match banter** with emoji reactions, reactions to friends'
+  revealed picks, and each team's **group position and recent form**. Gentle
+  "still to predict" nudges keep everyone on track. Everyone shares one board
+  through the realtime Worker (with a graceful local fallback). A first-run "Who
+  are you?" prompt remembers you on the device.
 - **Party games** — a **Games** lobby with live, turn-based **Tic-Tac-Toe**,
   **Connect Four**, **Reversi**, **Battleship** and **Dots & Boxes (2–4
   players)** that sync across devices in real time, with a "your move" badge,

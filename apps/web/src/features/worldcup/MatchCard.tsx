@@ -11,6 +11,7 @@ import {
   predictionCount,
   scorePrediction,
   slotLabel,
+  teamRecord,
   type WcMatch,
   type WcScoreCategory,
   type WcTeam,
@@ -196,6 +197,7 @@ export function MatchCard({ matchId }: { matchId: string }) {
 }
 
 function TeamSide({
+  wc,
   team,
   placeholder,
   align,
@@ -210,10 +212,36 @@ function TeamSide({
       <span className="wc-flag" aria-hidden>
         {team ? team.flag : '⚽'}
       </span>
-      <span className={`wc-team-name ${team ? '' : 'muted'}`}>
-        {team ? team.name : placeholder}
+      <span className="wc-team-info">
+        <span className={`wc-team-name ${team ? '' : 'muted'}`}>
+          {team ? team.name : placeholder}
+        </span>
+        {team && <TeamContext wc={wc} teamId={team.id} />}
       </span>
     </div>
+  );
+}
+
+const ORDINALS = ['', '1st', '2nd', '3rd', '4th'];
+
+/** Group position + recent W/D/L form for a team, from played results only.
+ * Renders nothing until the team has actually played in the group. */
+function TeamContext({ wc, teamId }: { wc: WorldCupState; teamId: string }) {
+  const record = teamRecord(wc, teamId);
+  if (!record || record.played === 0 || record.position == null) return null;
+  return (
+    <span className="wc-team-context">
+      <span className="wc-team-pos" title={`Group ${record.group}`}>
+        {ORDINALS[record.position] ?? `${record.position}th`}
+      </span>
+      <span className="wc-form" aria-label={`Recent form ${record.form.join(' ')}`}>
+        {record.form.slice(0, 5).map((r, i) => (
+          <span key={i} className={`wc-form-dot wc-form-${r}`} aria-hidden>
+            {r}
+          </span>
+        ))}
+      </span>
+    </span>
   );
 }
 

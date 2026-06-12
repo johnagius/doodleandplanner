@@ -325,6 +325,32 @@ describe('WorldCupPage', () => {
     expect(fire.textContent).not.toContain('1');
   });
 
+  it('shows team position and form once games are played', async () => {
+    const user = userEvent.setup();
+    await seedControlledBoard();
+    const { container } = renderPage();
+
+    await screen.findByRole('heading', { name: /World Cup 2026 Predictions/ });
+    await screen.findByRole('dialog');
+    await user.keyboard('{Escape}'); // browse without picking a name
+
+    // No context before any game is played.
+    expect(container.querySelector('.wc-team-context')).toBeNull();
+
+    // Organiser enters Aland 1–0 Bland.
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    await user.click(screen.getByRole('button', { name: /Organiser/ }));
+    await user.click(await screen.findByRole('button', { name: 'Home result goals: one more' }));
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await screen.findByText('FT');
+
+    // Aland tops the mini-group with a win; Bland sits second.
+    await waitFor(() => expect(screen.getByText('1st')).toBeInTheDocument());
+    expect(screen.getByText('2nd')).toBeInTheDocument();
+    expect(container.querySelector('.wc-form-W')).not.toBeNull();
+    expect(container.querySelector('.wc-form-L')).not.toBeNull();
+  });
+
   it('posts a comment in the match card thread', async () => {
     const user = userEvent.setup();
     await seedControlledBoard();

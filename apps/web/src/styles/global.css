@@ -2275,11 +2275,55 @@ label.field {
   line-height: 1;
   flex: none;
 }
+.wc-team-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+.wc-team-right .wc-team-info {
+  align-items: flex-end;
+}
 .wc-team-name {
   font-weight: 700;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.wc-team-context {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.wc-team-pos {
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+}
+.wc-form {
+  display: inline-flex;
+  gap: 0.15rem;
+}
+.wc-form-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 0.95rem;
+  height: 0.95rem;
+  border-radius: 50%;
+  font-size: 0.58rem;
+  font-weight: 800;
+  color: #fff;
+}
+.wc-form-W {
+  background: var(--success);
+}
+.wc-form-D {
+  background: var(--warn);
+}
+.wc-form-L {
+  background: var(--danger);
 }
 .wc-centre {
   display: grid;

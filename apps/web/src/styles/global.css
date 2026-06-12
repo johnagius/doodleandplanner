@@ -2448,6 +2448,41 @@ label.field {
   color: var(--primary);
 }
 
+/* Quick match reactions (no prediction needed) */
+.wc-reactions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+}
+.wc-reaction {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  font-size: 0.9rem;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    transform 0.08s ease,
+    border-color 0.12s ease;
+}
+.wc-reaction:hover {
+  transform: scale(1.08);
+}
+.wc-reaction.mine {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px var(--primary-soft);
+}
+.wc-reaction-count {
+  font-size: 0.74rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
 /* Per-match comments (hot-zone banter) */
 .wc-comments {
   border-top: 1px solid var(--border);

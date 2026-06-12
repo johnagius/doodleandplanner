@@ -10,6 +10,7 @@ import {
   renamePredictor,
   setPrediction,
   setResult,
+  toggleMatchReaction,
   toggleReaction,
   type RoomState,
   type WorldCupState,
@@ -92,6 +93,9 @@ interface WorldCupStore {
   postComment: (matchId: string, text: string) => Promise<void>;
   reactComment: (messageId: string, emoji: string) => Promise<void>;
   deleteComment: (messageId: string) => Promise<void>;
+
+  /** Quick, prediction-free emoji reaction on a match. */
+  reactMatch: (matchId: string, emoji: string) => Promise<void>;
 }
 
 /** Apply a pure update to the embedded WorldCupState. */
@@ -317,6 +321,11 @@ export const useWorldCupStore = create<WorldCupStore>((set, get) => {
     async deleteComment(messageId) {
       const me = requireMe();
       await apply((s) => ({ ...s, messages: deleteMessage(s.messages ?? [], messageId, me) }));
+    },
+
+    async reactMatch(matchId, emoji) {
+      const me = requireMe();
+      await apply((s) => withWorldCup(s, (wc) => toggleMatchReaction(wc, matchId, emoji, me)));
     },
   };
 });

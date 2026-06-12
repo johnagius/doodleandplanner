@@ -1,4 +1,5 @@
 import {
+  WC_REACTIONS,
   WC_SCORE_LABEL,
   WC_STAGE_LABEL,
   closestPredictors,
@@ -185,6 +186,8 @@ export function MatchCard({ matchId }: { matchId: string }) {
 
       <PredictionsRow wc={wc} match={match} meId={meId} revealed={locked} />
 
+      <MatchReactions wc={wc} match={match} meId={meId} />
+
       <MatchComments matchId={match.id} />
 
       {admin && <ResultEditor wc={wc} match={match} />}
@@ -247,6 +250,55 @@ function CrowdPulse({ wc, match }: { wc: WorldCupState; match: WcMatch }) {
       <span className="muted small">
         {count} of {total} predicted
       </span>
+    </div>
+  );
+}
+
+/** Quick, prediction-free emoji reactions on a match (🔥😱🎉💩). */
+function MatchReactions({
+  wc,
+  match,
+  meId,
+}: {
+  wc: WorldCupState;
+  match: WcMatch;
+  meId: string | null;
+}) {
+  const { reactMatch } = useWorldCupStore();
+  const { show } = useToast();
+  const tally = wc.matchReactions?.[match.id] ?? {};
+
+  async function react(emoji: string) {
+    if (!meId) {
+      show('Pick your name above to react');
+      return;
+    }
+    try {
+      await reactMatch(match.id, emoji);
+    } catch (err) {
+      show(err instanceof Error ? err.message : 'Could not react');
+    }
+  }
+
+  return (
+    <div className="wc-reactions">
+      {WC_REACTIONS.map((emoji) => {
+        const who = tally[emoji] ?? [];
+        const mine = !!meId && who.includes(meId);
+        return (
+          <button
+            key={emoji}
+            type="button"
+            className={`wc-reaction ${mine ? 'mine' : ''}`}
+            onClick={() => void react(emoji)}
+            aria-pressed={mine}
+            aria-label={`React ${emoji}`}
+          >
+            <span aria-hidden>{emoji}</span>
+            {who.length > 0 && <span className="wc-reaction-count">{who.length}</span>}
+          </button>
+        );
+      })}
     </div>
   );
 }

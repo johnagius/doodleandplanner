@@ -269,6 +269,26 @@ describe('WorldCupPage', () => {
     expect(await screen.findByTitle('Closest pick')).toBeInTheDocument();
   });
 
+  it('toggles a quick match reaction on the card', async () => {
+    const user = userEvent.setup();
+    await seedControlledBoard();
+    renderPage();
+
+    await screen.findByRole('heading', { name: /World Cup 2026 Predictions/ });
+    const dialog = await screen.findByRole('dialog');
+    await user.click(within(dialog).getByRole('button', { name: 'John' }));
+    await user.click(screen.getByRole('button', { name: 'Yes, this is me' }));
+
+    const fire = await screen.findByRole('button', { name: 'React 🔥' });
+    await user.click(fire);
+    await waitFor(() => expect(fire).toHaveAttribute('aria-pressed', 'true'));
+    expect(fire.textContent).toContain('1');
+
+    await user.click(fire);
+    await waitFor(() => expect(fire).toHaveAttribute('aria-pressed', 'false'));
+    expect(fire.textContent).not.toContain('1');
+  });
+
   it('posts a comment in the match card thread', async () => {
     const user = userEvent.setup();
     await seedControlledBoard();

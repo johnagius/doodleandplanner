@@ -61,6 +61,8 @@ A standalone `/world-cup` board (no login) for predicting the tournament.
       (quarters 3 · semis 6 · finalist 12 · champion 30), folded into the table.
 - [x] **Richer team stats** — the Stats tab now shows FIFA ranking, goals
       for/against per game and clean sheets (all from the results we already have).
+- [x] **Altitude & climate** — pre-game read comparing each nation's home altitude + climate against the host venue, flagging who's acclimatised to the altitude
+      (≥1000 m) or heat (≥30 °C). Static reference data; shown before kickoff.
 - [x] **Live watch-along** — while a game is in play, the card shows each pick's
       provisional "if it ends now" points and a closest-pick 🎯 crown that swings
       as goals go in (rides the existing live-score polling).

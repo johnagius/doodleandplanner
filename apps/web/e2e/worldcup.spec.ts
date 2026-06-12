@@ -28,5 +28,9 @@ test.describe('@smoke World Cup', () => {
     // The knockout bracket is present (auto-populates as results come in).
     await page.getByRole('tab', { name: /Bracket/ }).click();
     await expect(page.getByText('Round of 32').first()).toBeVisible();
+
+    // Banter tab opens the squad chat.
+    await page.getByRole('tab', { name: /Banter/ }).click();
+    await expect(page.getByLabel('Banter message')).toBeVisible();
   });
 });

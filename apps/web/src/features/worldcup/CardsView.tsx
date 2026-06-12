@@ -25,7 +25,7 @@ export function CardsView({ wc }: { wc: WorldCupState }) {
       <div className="card stack">
         <div className="row spread">
           <h3 style={{ margin: 0 }}>🃏 Card collectors</h3>
-          <span className="muted small">Top a match's points → win a random player</span>
+          <span className="muted small">Top a match's points → a random player (never a dupe)</span>
         </div>
         {anyCards ? (
           <ol className="wc-cards-board">

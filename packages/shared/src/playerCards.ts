@@ -80,14 +80,25 @@ export interface WcWonCard {
 /**
  * Cards a predictor has won: one for every resolved match where they (jointly)
  * scored the most points — skill to top the match, luck on which player drops.
+ * **No duplicates** — a player already in the collection is skipped to the next
+ * free one. Processed in a stable match order so the draw is deterministic and
+ * earlier cards never change as later ones are won.
  */
 export function cardsWonBy(state: WorldCupState, predictorId: string): WcWonCard[] {
+  const won = state.matches
+    .filter((m) => !!m.result && closestPredictors(state, m.id).includes(predictorId))
+    .sort((a, b) => a.order - b.order);
+  const taken = new Set<number>();
   const out: WcWonCard[] = [];
-  for (const m of state.matches) {
-    if (!m.result) continue;
-    if (closestPredictors(state, m.id).includes(predictorId)) {
-      out.push({ matchId: m.id, player: cardDraw(m.id, predictorId) });
+  for (const m of won) {
+    let idx = hash(m.id + '|' + predictorId) % WC_SQUADS.length;
+    let guard = 0;
+    while (taken.has(WC_SQUADS[idx]!.id) && guard++ < WC_SQUADS.length) {
+      idx = (idx + 1) % WC_SQUADS.length;
     }
+    const player = WC_SQUADS[idx]!;
+    taken.add(player.id);
+    out.push({ matchId: m.id, player });
   }
   return out;
 }

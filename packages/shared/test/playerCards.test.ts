@@ -63,4 +63,17 @@ describe('cardsWonBy + cardLeaderboard', () => {
     expect(cardsWonBy(s, a.id)).toHaveLength(1);
     expect(cardsWonBy(s, b.id)).toHaveLength(1);
   });
+
+  it('never pulls the same player twice in a collection', () => {
+    let s = seedWorldCup(NOW);
+    const john = s.predictors[0]!;
+    // John tops the first 40 group matches (predicts 2-0, result 2-0).
+    for (const m of s.matches.filter((x) => x.stage === 'group').slice(0, 40)) {
+      s = setPrediction(s, { matchId: m.id, predictorId: john.id, home: 2, away: 0, now: NOW });
+      s = setResult(s, { matchId: m.id, home: 2, away: 0 });
+    }
+    const cards = cardsWonBy(s, john.id);
+    expect(cards).toHaveLength(40);
+    expect(new Set(cards.map((c) => c.player.id)).size).toBe(40); // all distinct
+  });
 });

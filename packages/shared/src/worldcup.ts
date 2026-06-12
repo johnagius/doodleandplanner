@@ -687,8 +687,16 @@ export interface WcLeaderRow {
   correctResults: number;
 }
 
-/** Per-predictor totals, best first. */
-export function leaderboard(state: WorldCupState): WcLeaderRow[] {
+/**
+ * Per-predictor totals, best first. With `resultedBefore` (a Malta day key) only
+ * results from matches *before* that day count — used to compute prior standings
+ * for rank movement.
+ */
+export function leaderboard(
+  state: WorldCupState,
+  opts?: { resultedBefore?: string },
+): WcLeaderRow[] {
+  const before = opts?.resultedBefore;
   const rows = new Map<string, WcLeaderRow>(
     state.predictors.map((p) => [
       p.id,
@@ -697,6 +705,7 @@ export function leaderboard(state: WorldCupState): WcLeaderRow[] {
   );
   for (const match of state.matches) {
     if (!match.result) continue;
+    if (before && matchDateKey(match) >= before) continue;
     for (const pred of state.predictions) {
       if (pred.matchId !== match.id) continue;
       const row = rows.get(pred.predictorId);
@@ -713,6 +722,170 @@ export function leaderboard(state: WorldCupState): WcLeaderRow[] {
   return [...rows.values()].sort(
     (a, b) => b.points - a.points || b.exact - a.exact || a.name.localeCompare(b.name),
   );
+}
+
+/** The Malta day of the most recently-resulted match, or null if none played. */
+export function latestResultDay(state: WorldCupState): string | null {
+  let day: string | null = null;
+  for (const m of state.matches) {
+    if (!m.result) continue;
+    const d = matchDateKey(m);
+    if (day === null || d > day) day = d;
+  }
+  return day;
+}
+
+export interface WcLeaderRowMoved extends WcLeaderRow {
+  /** 1-based position. */
+  rank: number;
+  /** Places climbed since before the latest result day (+ up, − down, 0 same). */
+  movement: number;
+}
+
+/** Leaderboard with rank + movement since the last day's results landed. */
+export function leaderboardWithMovement(state: WorldCupState): WcLeaderRowMoved[] {
+  const current = leaderboard(state);
+  const lastDay = latestResultDay(state);
+  const prev = lastDay ? leaderboard(state, { resultedBefore: lastDay }) : current;
+  const hasPrev = !!lastDay && prev.some((r) => r.scored > 0);
+  const prevRank = new Map(prev.map((r, i) => [r.predictorId, i + 1]));
+  return current.map((r, i) => {
+    const rank = i + 1;
+    const movement = hasPrev ? (prevRank.get(r.predictorId) ?? rank) - rank : 0;
+    return { ...r, rank, movement };
+  });
+}
+
+/** Points each predictor scored on a single Malta day, best first. */
+export function dayPoints(
+  state: WorldCupState,
+  dayKey: string,
+): Array<{ predictorId: string; name: string; points: number }> {
+  const pts = new Map(state.predictors.map((p) => [p.id, 0]));
+  for (const m of state.matches) {
+    if (!m.result || matchDateKey(m) !== dayKey) continue;
+    for (const pred of state.predictions) {
+      if (pred.matchId !== m.id) continue;
+      const cur = pts.get(pred.predictorId);
+      if (cur === undefined) continue;
+      pts.set(pred.predictorId, cur + scorePrediction(pred, m.result).points);
+    }
+  }
+  return state.predictors
+    .map((p) => ({ predictorId: p.id, name: p.name, points: pts.get(p.id) ?? 0 }))
+    .sort((a, b) => b.points - a.points || a.name.localeCompare(b.name));
+}
+
+/** Top scorer of the most recent result day (null until someone scores). */
+export function dayChampion(
+  state: WorldCupState,
+): { day: string; name: string; points: number } | null {
+  const day = latestResultDay(state);
+  if (!day) return null;
+  const top = dayPoints(state, day)[0];
+  if (!top || top.points === 0) return null;
+  return { day, name: top.name, points: top.points };
+}
+
+/** Score categories of a predictor's last `n` scored picks, most recent first. */
+export function playerForm(state: WorldCupState, predictorId: string, n = 5): WcScoreCategory[] {
+  const scored: Array<{ kickoff: string; order: number; cat: WcScoreCategory }> = [];
+  for (const m of state.matches) {
+    if (!m.result) continue;
+    const pred = state.predictions.find((p) => p.matchId === m.id && p.predictorId === predictorId);
+    if (!pred) continue;
+    scored.push({
+      kickoff: m.kickoff,
+      order: m.order,
+      cat: scorePrediction(pred, m.result).category,
+    });
+  }
+  scored.sort((a, b) => toMs(b.kickoff) - toMs(a.kickoff) || b.order - a.order);
+  return scored.slice(0, n).map((s) => s.cat);
+}
+
+export interface WcPlayerStats {
+  points: number;
+  scored: number;
+  exact: number;
+  correctResults: number;
+  best?: { matchId: string; points: number };
+  worst?: { matchId: string; points: number };
+}
+
+/** A predictor's tally plus their best and worst scored picks. */
+export function playerStats(state: WorldCupState, predictorId: string): WcPlayerStats {
+  const s: WcPlayerStats = { points: 0, scored: 0, exact: 0, correctResults: 0 };
+  for (const m of state.matches) {
+    if (!m.result) continue;
+    const pred = state.predictions.find((p) => p.matchId === m.id && p.predictorId === predictorId);
+    if (!pred) continue;
+    const { points, category } = scorePrediction(pred, m.result);
+    s.points += points;
+    s.scored++;
+    if (category === 'exact') s.exact++;
+    if (category === 'exact' || category === 'goalDiff' || category === 'outcome')
+      s.correctResults++;
+    if (!s.best || points > s.best.points) s.best = { matchId: m.id, points };
+    if (!s.worst || points < s.worst.points) s.worst = { matchId: m.id, points };
+  }
+  return s;
+}
+
+export interface WcBadge {
+  id: string;
+  emoji: string;
+  label: string;
+}
+
+/** Fun, deterministic achievements a predictor has earned so far. */
+export function badgesFor(state: WorldCupState, predictorId: string): WcBadge[] {
+  const s = playerStats(state, predictorId);
+  const badges: WcBadge[] = [];
+  if (s.exact >= 5) badges.push({ id: 'oracle', emoji: '🔮', label: 'Oracle — 5+ exact scores' });
+  else if (s.exact >= 3)
+    badges.push({ id: 'eagle-eye', emoji: '🎯', label: 'Eagle eye — 3+ exact scores' });
+  if (s.points >= 50) badges.push({ id: 'centurion', emoji: '💯', label: '50+ points' });
+  const form = playerForm(state, predictorId, 3);
+  if (
+    form.length === 3 &&
+    form.every((c) => c === 'exact' || c === 'goalDiff' || c === 'outcome')
+  ) {
+    badges.push({ id: 'on-form', emoji: '🔥', label: 'On fire — last 3 results right' });
+  }
+  const resulted = state.matches.filter((m) => m.result);
+  const allIn =
+    resulted.length >= 3 &&
+    resulted.every((m) =>
+      state.predictions.some((p) => p.matchId === m.id && p.predictorId === predictorId),
+    );
+  if (allIn) badges.push({ id: 'all-in', emoji: '🎟️', label: 'All in — predicted every match' });
+  return badges;
+}
+
+export interface WcHeadToHead {
+  rows: Array<{ matchId: string; aPoints: number; bPoints: number }>;
+  aTotal: number;
+  bTotal: number;
+}
+
+/** Compare two predictors across every resolved match either of them predicted. */
+export function headToHead(state: WorldCupState, aId: string, bId: string): WcHeadToHead {
+  const rows: WcHeadToHead['rows'] = [];
+  let aTotal = 0;
+  let bTotal = 0;
+  for (const m of state.matches) {
+    if (!m.result) continue;
+    const pa = state.predictions.find((p) => p.matchId === m.id && p.predictorId === aId);
+    const pb = state.predictions.find((p) => p.matchId === m.id && p.predictorId === bId);
+    if (!pa && !pb) continue;
+    const aPoints = pa ? scorePrediction(pa, m.result).points : 0;
+    const bPoints = pb ? scorePrediction(pb, m.result).points : 0;
+    aTotal += aPoints;
+    bTotal += bPoints;
+    rows.push({ matchId: m.id, aPoints, bPoints });
+  }
+  return { rows, aTotal, bTotal };
 }
 
 /** How many matches now have a result (for progress UI). */

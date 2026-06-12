@@ -4,8 +4,15 @@ import {
   addPredictor,
   allGroupsComplete,
   applyLiveResults,
+  badgesFor,
   clearPrediction,
   clearResult,
+  dayChampion,
+  headToHead,
+  latestResultDay,
+  leaderboardWithMovement,
+  playerForm,
+  playerStats,
   defaultDay,
   findMatch,
   groupComplete,
@@ -353,6 +360,72 @@ describe('predictors', () => {
     const s = seed();
     expect(() => addPredictor(s, '  ')).toThrow(/required/);
     expect(() => addPredictor(s, 'john')).toThrow(/already/i);
+  });
+});
+
+describe('leaderboard stats', () => {
+  /** Day 1: John nails g-A-1 (2-0), Daniel way off (0-0). */
+  function afterDay1() {
+    let s = seed();
+    const [john, daniel] = s.predictors as [(typeof s.predictors)[0], (typeof s.predictors)[0]];
+    s = setPrediction(s, { matchId: 'g-A-1', predictorId: john.id, home: 2, away: 0, now: NOW });
+    s = setPrediction(s, { matchId: 'g-A-1', predictorId: daniel.id, home: 0, away: 0, now: NOW });
+    s = setResult(s, { matchId: 'g-A-1', home: 2, away: 0 });
+    return { s, john, daniel };
+  }
+
+  it('finds the day champion and rank movement', () => {
+    const day1 = afterDay1();
+    let s = day1.s;
+    const { john, daniel } = day1;
+    expect(latestResultDay(s)).toBe('2026-06-11');
+    expect(dayChampion(s)).toMatchObject({ day: '2026-06-11', name: 'John', points: 5 });
+    let lb = leaderboardWithMovement(s);
+    expect(lb[0]!.predictorId).toBe(john.id);
+    expect(lb.every((r) => r.movement === 0)).toBe(true); // nothing to move from yet
+
+    // Day 2 (g-A-2, next Malta day): Daniel exact 1-1, John misses → Daniel overtakes.
+    s = setPrediction(s, { matchId: 'g-A-2', predictorId: daniel.id, home: 1, away: 1, now: NOW });
+    s = setPrediction(s, { matchId: 'g-A-2', predictorId: john.id, home: 4, away: 0, now: NOW });
+    s = setResult(s, { matchId: 'g-A-2', home: 1, away: 1 });
+    lb = leaderboardWithMovement(s);
+    expect(lb[0]!.name).toBe('Daniel'); // 1 + 5 = 6 vs John 5 + 0 = 5
+    expect(lb.find((r) => r.name === 'Daniel')!.movement).toBe(1); // climbed one
+    expect(lb.find((r) => r.name === 'John')!.movement).toBe(-1);
+    expect(dayChampion(s)).toMatchObject({ name: 'Daniel', points: 5 });
+  });
+
+  it('computes form, best/worst stats and badges', () => {
+    const { s, john } = afterDay1();
+    expect(playerForm(s, john.id)).toEqual(['exact']);
+    expect(playerStats(s, john.id)).toMatchObject({
+      points: 5,
+      scored: 1,
+      exact: 1,
+      correctResults: 1,
+      best: { matchId: 'g-A-1', points: 5 },
+    });
+    expect(badgesFor(s, john.id)).toEqual([]); // not enough yet
+
+    // Three exact hits → eagle-eye + on-form + all-in.
+    let t = seed();
+    const j = t.predictors[0]!;
+    for (const id of ['g-A-1', 'g-A-2', 'g-A-3']) {
+      t = setPrediction(t, { matchId: id, predictorId: j.id, home: 2, away: 0, now: NOW });
+      t = setResult(t, { matchId: id, home: 2, away: 0 });
+    }
+    const ids = badgesFor(t, j.id).map((b) => b.id);
+    expect(ids).toContain('eagle-eye');
+    expect(ids).toContain('on-form');
+    expect(ids).toContain('all-in');
+    expect(playerForm(t, j.id, 3)).toEqual(['exact', 'exact', 'exact']);
+  });
+
+  it('compares two predictors head-to-head', () => {
+    const { s, john, daniel } = afterDay1();
+    const h2h = headToHead(s, john.id, daniel.id);
+    expect(h2h.rows).toHaveLength(1);
+    expect(h2h).toMatchObject({ aTotal: 5, bTotal: 1 });
   });
 });
 

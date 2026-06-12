@@ -50,6 +50,12 @@ A standalone `/world-cup` board (no login) for predicting the tournament.
       consensus scoreline + a 🎯 closest-pick crown), quick match reactions
       (🔥😱🎉💩), reacting to mates' revealed picks, and team context (group
       position + recent W/D/L form).
+- [x] **Three-view match cards** — a top-right switcher: **Match** (predictions +
+      banter + reactions), **Stats** (the two teams' form & record side-by-side +
+      **historical head-to-head** via a Worker proxy to football-data.org), and
+      **Group** (live standings + **qualification permutations**: enumerating the
+      remaining games to show each team's reachable finish — through / in the hunt
+      / 3rd-place hopeful / out).
 - [ ] Strategy layer: a per-matchday joker, knockout multipliers, outright bets.
 - [ ] Live match minute (needs a paid football-data tier) and a share card.
 - [ ] Let the organiser edit fixtures/teams (currently a fixed 2026 seed).

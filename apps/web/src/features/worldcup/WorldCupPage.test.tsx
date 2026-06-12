@@ -15,7 +15,7 @@ import { WORLD_CUP_SLUG } from './worldCupRoom.js';
 import { WorldCupPage } from './WorldCupPage.js';
 
 /** A tiny, controlled board with one always-in-the-future, ready group match. */
-async function seedControlledBoard(): Promise<void> {
+async function seedControlledBoard(predictions: WorldCupState['predictions'] = []): Promise<void> {
   const future = new Date(Date.now() + 10 * 86_400_000).toISOString();
   const wc: WorldCupState = {
     season: '2026',
@@ -41,7 +41,7 @@ async function seedControlledBoard(): Promise<void> {
       { id: 'p1', name: 'John' },
       { id: 'p2', name: 'Daniel' },
     ],
-    predictions: [],
+    predictions,
     createdAt: new Date().toISOString(),
   };
   const { room } = await createRoom({
@@ -185,5 +185,41 @@ describe('WorldCupPage', () => {
     const leader = container.querySelector('.wc-leader-row')!;
     expect(within(leader as HTMLElement).getByText('John')).toBeInTheDocument();
     expect(leader.querySelector('.wc-leader-pts')?.textContent).toBe('5');
+  });
+
+  it("hides others' picks until kickoff, then reveals them", async () => {
+    const user = userEvent.setup();
+    await seedControlledBoard([
+      {
+        matchId: 'g-A-1',
+        predictorId: 'p2',
+        home: 2,
+        away: 1,
+        updatedAt: new Date().toISOString(),
+      },
+    ]);
+    const { container } = renderPage();
+
+    await screen.findByRole('heading', { name: /World Cup 2026 Predictions/ });
+    const dialog = await screen.findByRole('dialog');
+    await user.click(within(dialog).getByRole('button', { name: 'John' }));
+    await user.click(screen.getByRole('button', { name: 'Yes, this is me' }));
+
+    // Before kickoff: Daniel's pick is hidden behind a summary.
+    await waitFor(() => {
+      const picks = container.querySelector('.wc-picks');
+      expect(picks?.textContent).toMatch(/hidden until kickoff/i);
+      expect(picks?.textContent).not.toContain('Daniel');
+    });
+
+    // Entering the result locks the match → everyone's picks reveal.
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    await user.click(screen.getByRole('button', { name: /Organiser/ }));
+    await user.click(await screen.findByRole('button', { name: 'Home result goals: one more' }));
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => {
+      expect(container.querySelector('.wc-picks')?.textContent).toContain('Daniel');
+    });
   });
 });

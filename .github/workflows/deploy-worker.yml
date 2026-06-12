@@ -1,10 +1,9 @@
 name: Deploy Worker (API)
 
 # Deploys the realtime sync Worker (doodleandplanner-api) so the live boards
-# actually share state across devices — without it the app falls back to a
-# local-only board per device. Requires the same repo secrets as the Pages
-# deploy: CLOUDFLARE_API_TOKEN (with Workers Scripts: Edit) and
-# CLOUDFLARE_ACCOUNT_ID.
+# actually share state across devices. Runs only once the Cloudflare secrets are
+# set — CLOUDFLARE_API_TOKEN (with Workers Scripts: Edit) and CLOUDFLARE_ACCOUNT_ID —
+# and otherwise skips cleanly (no failed run / email).
 
 on:
   push:
@@ -20,14 +19,20 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    env:
+      HAS_CF: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - if: env.HAS_CF == 'true'
+        uses: actions/checkout@v4
+      - if: env.HAS_CF == 'true'
+        uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
           cache: npm
-      - run: npm ci
+      - if: env.HAS_CF == 'true'
+        run: npm ci
       - name: Deploy Worker
+        if: env.HAS_CF == 'true'
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}

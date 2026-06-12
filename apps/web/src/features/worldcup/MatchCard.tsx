@@ -168,7 +168,7 @@ export function MatchCard({ matchId }: { matchId: string }) {
         <p className="muted small wc-hint">Pick your name above to predict this match.</p>
       )}
 
-      <PredictionsRow wc={wc} match={match} meId={meId} />
+      <PredictionsRow wc={wc} match={match} meId={meId} revealed={locked} />
 
       {admin && <ResultEditor wc={wc} match={match} />}
     </div>
@@ -201,10 +201,13 @@ function PredictionsRow({
   wc,
   match,
   meId,
+  revealed,
 }: {
   wc: WorldCupState;
   match: WcMatch;
   meId: string | null;
+  /** Whether everyone's picks are shown (true once the match has kicked off). */
+  revealed: boolean;
 }) {
   const picks = wc.predictions.filter((p) => p.matchId === match.id);
   if (picks.length === 0) return null;
@@ -212,9 +215,13 @@ function PredictionsRow({
   const order = new Map(wc.predictors.map((p, i) => [p.id, i]));
   picks.sort((a, b) => (order.get(a.predictorId) ?? 99) - (order.get(b.predictorId) ?? 99));
 
+  // Until kickoff, hide everyone else's picks (no copying) — only your own shows.
+  const shown = revealed ? picks : picks.filter((p) => p.predictorId === meId);
+  const hidden = picks.length - shown.length;
+
   return (
     <div className="wc-picks">
-      {picks.map((p) => {
+      {shown.map((p) => {
         const name = wc.predictors.find((x) => x.id === p.predictorId)?.name ?? '?';
         const scored = match.result ? scorePrediction(p, match.result) : null;
         return (
@@ -233,6 +240,11 @@ function PredictionsRow({
           </span>
         );
       })}
+      {hidden > 0 && (
+        <span className="wc-pick-chip wc-pick-hidden" title="Everyone’s picks reveal at kickoff">
+          🔒 {hidden} more · hidden until kickoff
+        </span>
+      )}
     </div>
   );
 }

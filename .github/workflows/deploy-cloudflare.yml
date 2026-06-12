@@ -1,9 +1,9 @@
 name: Deploy to Cloudflare Pages
 
 # Publishes the web app to the Cloudflare Pages project (doodleandplanner.pages.dev)
-# on every push to main, so the live site never lags behind the repo. Requires two
-# repository secrets: CLOUDFLARE_API_TOKEN (with "Cloudflare Pages: Edit") and
-# CLOUDFLARE_ACCOUNT_ID.
+# on every push to main. It only runs once the two repository secrets are set —
+# CLOUDFLARE_API_TOKEN (with "Cloudflare Pages: Edit") and CLOUDFLARE_ACCOUNT_ID —
+# and otherwise skips cleanly (no failed run / email).
 
 on:
   push:
@@ -15,15 +15,24 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    # Boolean string ("true"/"false") — never exposes the secret value. Every step
+    # is gated on it, so the job is a no-op (green) until the secret exists.
+    env:
+      HAS_CF: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - if: env.HAS_CF == 'true'
+        uses: actions/checkout@v4
+      - if: env.HAS_CF == 'true'
+        uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
           cache: npm
-      - run: npm ci
-      - run: npm run build
+      - if: env.HAS_CF == 'true'
+        run: npm ci
+      - if: env.HAS_CF == 'true'
+        run: npm run build
       - name: Publish to Cloudflare Pages
+        if: env.HAS_CF == 'true'
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}

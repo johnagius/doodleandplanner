@@ -2407,6 +2407,11 @@ label.field {
 .wc-pick-chip.is-me {
   box-shadow: 0 0 0 2px var(--primary-soft);
 }
+.wc-pick-hidden {
+  background: var(--surface-2);
+  color: var(--muted);
+  font-style: italic;
+}
 .wc-pick-name {
   font-weight: 700;
 }

@@ -28,6 +28,13 @@ describe('createMessage', () => {
     expect(msg.photoId).toBe('photo_1');
     expect(msg.text).toBe('');
   });
+
+  it('carries a matchId for per-match banter when given', () => {
+    const tagged = createMessage({ roomId: 'r', authorId: 'm', text: 'goal!', matchId: 'g-A-1' });
+    expect(tagged.matchId).toBe('g-A-1');
+    const general = createMessage({ roomId: 'r', authorId: 'm', text: 'hi' });
+    expect(general.matchId).toBeUndefined();
+  });
 });
 
 describe('appendMessage', () => {

@@ -84,6 +84,9 @@ export interface WcPrediction {
   home: number;
   away: number;
   updatedAt: ISODateTime;
+  /** Emoji reactions from other predictors to this (revealed) pick: emoji →
+   * reactor predictor ids. Only added once the match has kicked off. */
+  reactions?: Record<string, string[]>;
 }
 
 /** A person making predictions (no login — just a name). */
@@ -104,6 +107,9 @@ export interface WorldCupState {
   matches: WcMatch[];
   predictors: WcPredictor[];
   predictions: WcPrediction[];
+  /** Quick "no prediction needed" emoji reactions on a match: matchId → emoji →
+   * predictor ids. Older boards omit this. */
+  matchReactions?: Record<string, Record<string, string[]>>;
   createdAt: ISODateTime;
 }
 
@@ -347,12 +353,55 @@ export function renamePredictor(
   };
 }
 
-/** Remove a predictor and all their predictions. */
+/** Strip a member id from an emoji→ids reaction map, dropping emptied keys.
+ * Returns undefined when nothing remains, so callers can omit the field. */
+function withoutReactor(
+  reactions: Record<string, string[]> | undefined,
+  memberId: string,
+): Record<string, string[]> | undefined {
+  if (!reactions) return undefined;
+  const next: Record<string, string[]> = {};
+  for (const [emoji, ids] of Object.entries(reactions)) {
+    const kept = ids.filter((id) => id !== memberId);
+    if (kept.length) next[emoji] = kept;
+  }
+  return Object.keys(next).length ? next : undefined;
+}
+
+/** Scrub a member id from every match's reaction tally, dropping emptied entries. */
+function scrubMatchReactions(
+  matchReactions: Record<string, Record<string, string[]>> | undefined,
+  memberId: string,
+): Record<string, Record<string, string[]>> | undefined {
+  if (!matchReactions) return undefined;
+  const next: Record<string, Record<string, string[]>> = {};
+  for (const [matchId, byEmoji] of Object.entries(matchReactions)) {
+    const cleaned = withoutReactor(byEmoji, memberId);
+    if (cleaned) next[matchId] = cleaned;
+  }
+  return next;
+}
+
+/** Remove a predictor and all their predictions, and scrub any reactions they
+ * left on other people's picks or on matches, so no ghost counts linger. */
 export function removePredictor(state: WorldCupState, predictorId: string): WorldCupState {
+  const predictions = state.predictions
+    .filter((p) => p.predictorId !== predictorId)
+    .map((p) => {
+      if (!p.reactions || !Object.values(p.reactions).some((ids) => ids.includes(predictorId))) {
+        return p;
+      }
+      const reactions = withoutReactor(p.reactions, predictorId);
+      const next: WcPrediction = { ...p };
+      if (reactions) next.reactions = reactions;
+      else delete next.reactions;
+      return next;
+    });
   return {
     ...state,
     predictors: state.predictors.filter((p) => p.id !== predictorId),
-    predictions: state.predictions.filter((p) => p.predictorId !== predictorId),
+    predictions,
+    matchReactions: scrubMatchReactions(state.matchReactions, predictorId),
   };
 }
 
@@ -366,7 +415,12 @@ export interface SetPredictionInput {
   now?: () => Date;
 }
 
-/** Cast or update a prediction. Throws if the match is locked or not ready. */
+/** Cast or update a prediction. Throws if the match is locked or not ready.
+ *
+ * Note: this deliberately rebuilds the prediction object from scratch (no spread
+ * of any prior pick). That's safe because pick `reactions` are only ever added
+ * after kickoff, when this function is already locked out — so the two windows
+ * never overlap. Don't relax the lock without also preserving `reactions`. */
 export function setPrediction(state: WorldCupState, input: SetPredictionInput): WorldCupState {
   const match = findMatch(state, input.matchId);
   if (!match) throw new Error('Unknown match');
@@ -391,7 +445,8 @@ export function setPrediction(state: WorldCupState, input: SetPredictionInput): 
 }
 
 /** Remove a predictor's pick for a match (e.g. an accidental entry). Allowed
- * even after kickoff — to fix a mistake — but not once the result is recorded. */
+ * even after kickoff — to fix a mistake — but not once the result is recorded.
+ * Drops the pick together with any reactions on it (intended mistake-fix). */
 export function clearPrediction(
   state: WorldCupState,
   matchId: string,
@@ -933,6 +988,164 @@ export function lockingSoon(
 /** How many matches now have a result (for progress UI). */
 export function playedCount(state: WorldCupState): number {
   return state.matches.filter((m) => !!m.result).length;
+}
+
+// --- Engagement: reactions, crowd pulse, team form -------------------------
+
+/** Curated emoji for quick match reactions and reacting to mates' picks. */
+export const WC_REACTIONS = ['🔥', '😱', '🎉', '💩'] as const;
+
+/** Toggle a quick, prediction-free reaction on a match. Immutable: adds the
+ * predictor to that emoji's tally, or removes them if already there. */
+export function toggleMatchReaction(
+  state: WorldCupState,
+  matchId: string,
+  emoji: string,
+  predictorId: string,
+): WorldCupState {
+  const all = { ...(state.matchReactions ?? {}) };
+  const forMatch = { ...(all[matchId] ?? {}) };
+  const reactors = forMatch[emoji] ?? [];
+  if (reactors.includes(predictorId)) {
+    const next = reactors.filter((id) => id !== predictorId);
+    if (next.length) forMatch[emoji] = next;
+    else delete forMatch[emoji];
+  } else {
+    forMatch[emoji] = [...reactors, predictorId];
+  }
+  if (Object.keys(forMatch).length) all[matchId] = forMatch;
+  else delete all[matchId];
+  return { ...state, matchReactions: all };
+}
+
+/** Toggle a reaction on a specific (revealed) prediction. Immutable; a no-op
+ * (returns the same state) when no such prediction exists. */
+export function togglePickReaction(
+  state: WorldCupState,
+  matchId: string,
+  predictorId: string,
+  emoji: string,
+  reactorId: string,
+): WorldCupState {
+  const idx = state.predictions.findIndex(
+    (p) => p.matchId === matchId && p.predictorId === predictorId,
+  );
+  if (idx === -1) return state;
+  const target = state.predictions[idx]!;
+  const reactions = { ...(target.reactions ?? {}) };
+  const reactors = reactions[emoji] ?? [];
+  if (reactors.includes(reactorId)) {
+    const next = reactors.filter((id) => id !== reactorId);
+    if (next.length) reactions[emoji] = next;
+    else delete reactions[emoji];
+  } else {
+    reactions[emoji] = [...reactors, reactorId];
+  }
+  const updated: WcPrediction = { ...target };
+  if (Object.keys(reactions).length) updated.reactions = reactions;
+  else delete updated.reactions;
+  const predictions = [...state.predictions];
+  predictions[idx] = updated;
+  return { ...state, predictions };
+}
+
+/** How many predictors have picked a match (a count only — reveals no picks). */
+export function predictionCount(state: WorldCupState, matchId: string): number {
+  return state.predictions.filter((p) => p.matchId === matchId).length;
+}
+
+/**
+ * The most-popular predicted scoreline for a match, with how many chose it.
+ * Ties break to the lowest home goals, then the lowest away goals, so the
+ * answer is deterministic. Null when nobody has predicted. (Callers only show
+ * this after kickoff, so it never leaks picks early.)
+ */
+export function consensusScore(
+  state: WorldCupState,
+  matchId: string,
+): { home: number; away: number; count: number } | null {
+  const tally = new Map<string, number>();
+  for (const p of state.predictions) {
+    if (p.matchId !== matchId) continue;
+    const key = `${p.home}-${p.away}`;
+    tally.set(key, (tally.get(key) ?? 0) + 1);
+  }
+  let best: { home: number; away: number; count: number } | null = null;
+  for (const [key, count] of tally) {
+    const [home, away] = key.split('-').map(Number) as [number, number];
+    const better =
+      !best ||
+      count > best.count ||
+      (count === best.count && (home < best.home || (home === best.home && away < best.away)));
+    if (better) best = { home, away, count };
+  }
+  return best;
+}
+
+/**
+ * Predictor ids who scored the most on a resolved match — the closest picks,
+ * for a 🎯 crown. Empty before a result, and empty when the best anyone managed
+ * is zero (no crown for a whole-squad miss).
+ */
+export function closestPredictors(state: WorldCupState, matchId: string): string[] {
+  const match = findMatch(state, matchId);
+  if (!match?.result) return [];
+  let bestPts = 0;
+  const scores: Array<{ id: string; pts: number }> = [];
+  for (const p of state.predictions) {
+    if (p.matchId !== matchId) continue;
+    const pts = scorePrediction(p, match.result).points;
+    scores.push({ id: p.predictorId, pts });
+    if (pts > bestPts) bestPts = pts;
+  }
+  if (bestPts <= 0) return [];
+  return scores.filter((s) => s.pts === bestPts).map((s) => s.id);
+}
+
+export interface WcTeamRecord {
+  group: string;
+  /** 1-based position in the group table; null until a game has been played. */
+  position: number | null;
+  played: number;
+  won: number;
+  drawn: number;
+  lost: number;
+  /** Recent group results, most-recent-first. */
+  form: Array<'W' | 'D' | 'L'>;
+}
+
+/** A team's group standing + recent form, derived from played group results
+ * (no extra data source). Null for an unknown/unresolved team slot. */
+export function teamRecord(state: WorldCupState, teamId: string | undefined): WcTeamRecord | null {
+  const team = findTeam(state, teamId);
+  if (!team) return null;
+  const table = groupStandings(state, team.group);
+  const row = table.find((r) => r.teamId === team.id);
+  if (!row) return null;
+  const games = state.matches
+    .filter(
+      (m) =>
+        m.stage === 'group' &&
+        m.group === team.group &&
+        !!m.result &&
+        (m.homeId === team.id || m.awayId === team.id),
+    )
+    .sort((a, b) => toMs(b.kickoff) - toMs(a.kickoff) || b.order - a.order);
+  const form: Array<'W' | 'D' | 'L'> = games.map((m) => {
+    const isHome = m.homeId === team.id;
+    const gf = isHome ? m.result!.home : m.result!.away;
+    const ga = isHome ? m.result!.away : m.result!.home;
+    return gf > ga ? 'W' : gf < ga ? 'L' : 'D';
+  });
+  return {
+    group: team.group,
+    position: row.played > 0 ? table.indexOf(row) + 1 : null,
+    played: row.played,
+    won: row.won,
+    drawn: row.drawn,
+    lost: row.lost,
+    form,
+  };
 }
 
 // --- Seeding ---------------------------------------------------------------

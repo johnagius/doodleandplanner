@@ -7,6 +7,8 @@ import {
   badgesFor,
   clearPrediction,
   clearResult,
+  closestPredictors,
+  consensusScore,
   dayChampion,
   headToHead,
   latestResultDay,
@@ -16,6 +18,10 @@ import {
   pendingPredictors,
   playerForm,
   playerStats,
+  predictionCount,
+  teamRecord,
+  toggleMatchReaction,
+  togglePickReaction,
   defaultDay,
   findMatch,
   groupComplete,
@@ -510,5 +516,133 @@ describe('calendar + labels', () => {
     expect(isMatchLocked(findMatch(s, 'g-A-1')!, late)).toBe(true); // after kickoff
     s = setResult(s, { matchId: 'g-A-1', home: 1, away: 1 });
     expect(isMatchLocked(findMatch(s, 'g-A-1')!, early)).toBe(true); // result locks regardless
+  });
+});
+
+describe('match reactions', () => {
+  it('adds, then removes a match reaction for the same predictor (immutably)', () => {
+    const s = seed();
+    const added = toggleMatchReaction(s, 'g-A-1', '🔥', 'p1');
+    expect(added).not.toBe(s);
+    expect(added.matchReactions!['g-A-1']).toEqual({ '🔥': ['p1'] });
+    expect(s.matchReactions).toBeUndefined(); // original untouched
+
+    const removed = toggleMatchReaction(added, 'g-A-1', '🔥', 'p1');
+    expect(removed.matchReactions!['g-A-1']).toBeUndefined(); // emptied match dropped
+  });
+
+  it('accumulates distinct predictors under one emoji', () => {
+    let s = toggleMatchReaction(seed(), 'g-A-1', '🎉', 'p1');
+    s = toggleMatchReaction(s, 'g-A-1', '🎉', 'p2');
+    expect(s.matchReactions!['g-A-1']!['🎉']).toEqual(['p1', 'p2']);
+  });
+});
+
+describe('pick reactions', () => {
+  it('toggles a reaction on the right prediction only, immutably', () => {
+    let s = seed();
+    const [john, daniel] = s.predictors as [(typeof s.predictors)[0], (typeof s.predictors)[0]];
+    s = setPrediction(s, { matchId: 'g-A-1', predictorId: john.id, home: 2, away: 0, now: NOW });
+    s = setPrediction(s, { matchId: 'g-A-2', predictorId: john.id, home: 1, away: 1, now: NOW });
+
+    const reacted = togglePickReaction(s, 'g-A-1', john.id, '🔥', daniel.id);
+    expect(reacted).not.toBe(s);
+    const onA1 = reacted.predictions.find(
+      (p) => p.matchId === 'g-A-1' && p.predictorId === john.id,
+    );
+    const onA2 = reacted.predictions.find(
+      (p) => p.matchId === 'g-A-2' && p.predictorId === john.id,
+    );
+    expect(onA1!.reactions).toEqual({ '🔥': [daniel.id] });
+    expect(onA2!.reactions).toBeUndefined(); // other pick untouched
+
+    const off = togglePickReaction(reacted, 'g-A-1', john.id, '🔥', daniel.id);
+    expect(
+      off.predictions.find((p) => p.matchId === 'g-A-1' && p.predictorId === john.id)!.reactions,
+    ).toBeUndefined();
+  });
+
+  it('is a no-op when the prediction does not exist', () => {
+    const s = seed();
+    expect(togglePickReaction(s, 'g-A-1', s.predictors[0]!.id, '🔥', s.predictors[1]!.id)).toBe(s);
+  });
+});
+
+describe('crowd pulse', () => {
+  it('counts predictions and finds the consensus scoreline', () => {
+    let s = seed();
+    const [a, b, c, d] = s.predictors as [
+      (typeof s.predictors)[0],
+      (typeof s.predictors)[0],
+      (typeof s.predictors)[0],
+      (typeof s.predictors)[0],
+    ];
+    expect(predictionCount(s, 'g-A-1')).toBe(0);
+    expect(consensusScore(s, 'g-A-1')).toBeNull();
+
+    // Two pick 2-0, two pick 1-1 → a tie; tie-break favours the lower scoreline.
+    s = setPrediction(s, { matchId: 'g-A-1', predictorId: a.id, home: 2, away: 0, now: NOW });
+    s = setPrediction(s, { matchId: 'g-A-1', predictorId: b.id, home: 2, away: 0, now: NOW });
+    s = setPrediction(s, { matchId: 'g-A-1', predictorId: c.id, home: 1, away: 1, now: NOW });
+    s = setPrediction(s, { matchId: 'g-A-1', predictorId: d.id, home: 1, away: 1, now: NOW });
+    expect(predictionCount(s, 'g-A-1')).toBe(4);
+    expect(consensusScore(s, 'g-A-1')).toEqual({ home: 1, away: 1, count: 2 });
+
+    // A clear favourite wins outright.
+    s = setPrediction(s, { matchId: 'g-A-1', predictorId: c.id, home: 2, away: 0, now: NOW });
+    expect(consensusScore(s, 'g-A-1')).toEqual({ home: 2, away: 0, count: 3 });
+  });
+
+  it('crowns the closest predictor(s), and nobody on a whole-squad miss', () => {
+    let s = seed();
+    const [a, b] = s.predictors as [(typeof s.predictors)[0], (typeof s.predictors)[0]];
+    s = setPrediction(s, { matchId: 'g-A-1', predictorId: a.id, home: 2, away: 0, now: NOW });
+    s = setPrediction(s, { matchId: 'g-A-1', predictorId: b.id, home: 2, away: 0, now: NOW });
+    expect(closestPredictors(s, 'g-A-1')).toEqual([]); // no result yet
+
+    s = setResult(s, { matchId: 'g-A-1', home: 2, away: 0 });
+    expect(closestPredictors(s, 'g-A-1').sort()).toEqual([a.id, b.id].sort()); // both exact
+
+    // A scoreline nobody got within scoring range of → no crown.
+    let miss = seed();
+    const m = miss.predictors[0]!;
+    miss = setPrediction(miss, { matchId: 'g-A-1', predictorId: m.id, home: 0, away: 5, now: NOW });
+    miss = setResult(miss, { matchId: 'g-A-1', home: 5, away: 0 });
+    expect(closestPredictors(miss, 'g-A-1')).toEqual([]);
+  });
+});
+
+describe('team context', () => {
+  it('has no position before any game and reports position + form after', () => {
+    const fresh = seed();
+    const winnerId = seedOrder(fresh, 'A')[0]!; // MEX tops Group A in playAllGroups
+    // A known team pre-play: a record with no position yet (UI hides it).
+    expect(teamRecord(fresh, winnerId)).toMatchObject({ position: null, played: 0, form: [] });
+
+    const s = playAllGroups(fresh);
+    const top = teamRecord(s, winnerId)!;
+    expect(top).toMatchObject({ group: 'A', position: 1, played: 3, won: 3, lost: 0 });
+    expect(top.form).toEqual(['W', 'W', 'W']);
+
+    const thirdId = seedOrder(fresh, 'A')[2]!;
+    expect(teamRecord(s, thirdId)!.position).toBe(3);
+    expect(teamRecord(s, undefined)).toBeNull();
+  });
+});
+
+describe('removePredictor scrubbing', () => {
+  it('removes the predictor and scrubs their reactions everywhere', () => {
+    let s = seed();
+    const [john, daniel] = s.predictors as [(typeof s.predictors)[0], (typeof s.predictors)[0]];
+    s = setPrediction(s, { matchId: 'g-A-1', predictorId: john.id, home: 1, away: 0, now: NOW });
+    // Daniel reacts to John's pick and to the match itself, then leaves.
+    s = togglePickReaction(s, 'g-A-1', john.id, '🔥', daniel.id);
+    s = toggleMatchReaction(s, 'g-A-1', '😱', daniel.id);
+
+    s = removePredictor(s, daniel.id);
+    expect(s.predictors.some((p) => p.id === daniel.id)).toBe(false);
+    const johnsPick = s.predictions.find((p) => p.predictorId === john.id)!;
+    expect(johnsPick.reactions).toBeUndefined(); // Daniel's reaction scrubbed
+    expect(s.matchReactions!['g-A-1']).toBeUndefined(); // emptied tally dropped
   });
 });

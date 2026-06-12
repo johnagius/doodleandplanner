@@ -276,6 +276,9 @@ export interface Message {
   text: string;
   /** Optional attached photo (id into the room's photos / photo store). */
   photoId?: string;
+  /** Optional World Cup match this comment belongs to (per-match banter). When
+   * absent the message is a general room message. */
+  matchId?: string;
   /** Emoji reactions: emoji → member ids who reacted. Older messages omit this. */
   reactions?: Record<string, string[]>;
   /** Set when the message was edited after posting. */

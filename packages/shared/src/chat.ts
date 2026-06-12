@@ -11,6 +11,8 @@ export interface CreateMessageInput {
   text: string;
   /** Optional attached photo id. */
   photoId?: string;
+  /** Optional World Cup match id, for per-match banter threads. */
+  matchId?: string;
   now?: () => Date;
 }
 
@@ -24,6 +26,7 @@ export function createMessage(input: CreateMessageInput): Message {
     authorId: input.authorId,
     text,
     photoId: input.photoId,
+    matchId: input.matchId,
     createdAt: (input.now ?? (() => new Date()))().toISOString(),
   };
 }

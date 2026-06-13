@@ -105,6 +105,48 @@ describe('WorldCupPage', () => {
     expect(await screen.findByText(/No results yet/)).toBeInTheDocument();
   });
 
+  it('repeats the day flip at the foot of the fixtures list', async () => {
+    const user = userEvent.setup();
+    // A two-day board so the flip genuinely moves between days.
+    const d1 = new Date(Date.now() + 10 * 86_400_000).toISOString();
+    const d2 = new Date(Date.now() + 12 * 86_400_000).toISOString();
+    const wc: WorldCupState = {
+      season: '2026',
+      title: 'Test Cup',
+      version: 9999,
+      teams: [
+        { id: 'AAA', name: 'Aland', flag: '🅰️', group: 'A' },
+        { id: 'BBB', name: 'Bland', flag: '🅱️', group: 'A' },
+      ],
+      matches: [
+        { id: 'g-A-1', stage: 'group', group: 'A', matchday: 1, order: 0, kickoff: d1, homeId: 'AAA', awayId: 'BBB' }, // prettier-ignore
+        { id: 'g-A-2', stage: 'group', group: 'A', matchday: 2, order: 1, kickoff: d2, homeId: 'BBB', awayId: 'AAA' }, // prettier-ignore
+      ],
+      predictors: [{ id: 'p1', name: 'John' }],
+      predictions: [],
+      createdAt: new Date().toISOString(),
+    };
+    const { room } = await createRoom({
+      name: 'World Cup',
+      ownerName: 'Predictions',
+      slug: WORLD_CUP_SLUG,
+    });
+    await getRepository().createRoom({ ...emptyRoomState(room), worldCup: wc });
+
+    renderPage();
+    await screen.findByRole('heading', { name: /World Cup 2026 Predictions/ });
+    await user.keyboard('{Escape}'); // dismiss first-run prompt; Fixtures is the default tab
+
+    // The flip renders twice now — top and foot of the list — both on day 1.
+    const nextButtons = await screen.findAllByRole('button', { name: 'Next day' });
+    expect(nextButtons).toHaveLength(2);
+    expect(screen.getAllByText(/Day 1 of 2/)).toHaveLength(2);
+
+    // Flipping from the foot control advances the day exactly like the top one.
+    await user.click(nextButtons[1]!);
+    await waitFor(() => expect(screen.getAllByText(/Day 2 of 2/)).toHaveLength(2));
+  });
+
   it('falls back to a local board when the backend is unreachable', async () => {
     // A "remote" repo that fails like a CORS-blocked / offline fetch.
     const broken: Repository = {

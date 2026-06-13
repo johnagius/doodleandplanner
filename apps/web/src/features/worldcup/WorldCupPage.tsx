@@ -6,7 +6,7 @@ import {
   playedCount,
   tournamentDays,
 } from '@dap/shared';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { isRealtimeBackend } from '../../lib/storage/index.js';
 import { useTitleAlert } from '../../lib/useTitleAlert.js';
@@ -214,6 +214,7 @@ function FixturesView() {
   // Land on the soonest day with an unplayed match the first time in. The match
   // calendar never changes, so initialising once is enough.
   const [day, setDay] = useState<string>(() => defaultDay(wc, new Date()));
+  const topRef = useRef<HTMLDivElement>(null);
 
   const index = days.indexOf(day);
   const matches = day ? matchesOn(wc, day) : [];
@@ -221,33 +222,23 @@ function FixturesView() {
     const next = days[index + delta];
     if (next) setDay(next);
   };
+  // The bottom flip changes the day and brings you back up to the new day's
+  // first match, so a long fixture list never leaves you stranded at the foot.
+  const goFromBottom = (delta: number) => {
+    go(delta);
+    topRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+  };
 
   return (
     <div className="stack">
-      <div className="wc-day-nav">
-        <button
-          className="btn btn-sm"
-          onClick={() => go(-1)}
-          disabled={index <= 0}
-          aria-label="Previous day"
-        >
-          ‹ Prev
-        </button>
-        <div className="wc-day-label">
-          <div className="wc-day-date">{formatDayLong(day)}</div>
-          <div className="muted small">
-            Day {index + 1} of {days.length} · {matches.length} match
-            {matches.length === 1 ? '' : 'es'} · 🇲🇹 Malta time
-          </div>
-        </div>
-        <button
-          className="btn btn-sm"
-          onClick={() => go(1)}
-          disabled={index >= days.length - 1}
-          aria-label="Next day"
-        >
-          Next ›
-        </button>
+      <div ref={topRef}>
+        <DayNav
+          day={day}
+          index={index}
+          dayCount={days.length}
+          matchCount={matches.length}
+          go={go}
+        />
       </div>
 
       <div className="row row-wrap" style={{ gap: '0.4rem', justifyContent: 'center' }}>
@@ -261,6 +252,60 @@ function FixturesView() {
           <MatchCard key={m.id} matchId={m.id} />
         ))}
       </div>
+
+      {/* Repeat the day flip at the foot so you can move to the next/previous
+          day without scrolling back up to the top control. */}
+      <DayNav
+        day={day}
+        index={index}
+        dayCount={days.length}
+        matchCount={matches.length}
+        go={goFromBottom}
+      />
+    </div>
+  );
+}
+
+/** The day flip: ‹ Prev · date + count · Next ›. Rendered at the top and the
+ * foot of the fixtures list so you can change day from either end. */
+function DayNav({
+  day,
+  index,
+  dayCount,
+  matchCount,
+  go,
+}: {
+  day: string;
+  index: number;
+  dayCount: number;
+  matchCount: number;
+  go: (delta: number) => void;
+}) {
+  return (
+    <div className="wc-day-nav">
+      <button
+        className="btn btn-sm"
+        onClick={() => go(-1)}
+        disabled={index <= 0}
+        aria-label="Previous day"
+      >
+        ‹ Prev
+      </button>
+      <div className="wc-day-label">
+        <div className="wc-day-date">{formatDayLong(day)}</div>
+        <div className="muted small">
+          Day {index + 1} of {dayCount} · {matchCount} match
+          {matchCount === 1 ? '' : 'es'} · 🇲🇹 Malta time
+        </div>
+      </div>
+      <button
+        className="btn btn-sm"
+        onClick={() => go(1)}
+        disabled={index >= dayCount - 1}
+        aria-label="Next day"
+      >
+        Next ›
+      </button>
     </div>
   );
 }

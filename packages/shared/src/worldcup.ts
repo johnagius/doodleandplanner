@@ -1138,6 +1138,67 @@ export function playerStats(state: WorldCupState, predictorId: string): WcPlayer
   return s;
 }
 
+export interface WcGameLogEntry {
+  matchId: string;
+  stage: WcStage;
+  /** Malta day key the match kicks off. */
+  day: string;
+  kickoff: ISODateTime;
+  order: number;
+  /** The scoreline this predictor picked. */
+  pred: { home: number; away: number };
+  /** The full-time result, or null while the match is unresolved. */
+  result: WcResult | null;
+  /** Points scored (0 until resolved). */
+  points: number;
+  /** Scoring category, or null until resolved. */
+  category: WcScoreCategory | null;
+}
+
+/**
+ * Every prediction a player made, chronological (kickoff then bracket order),
+ * each annotated with the result and points (result/category stay null until the
+ * match resolves). The per-game record behind the Performance view.
+ */
+export function playerGameLog(state: WorldCupState, predictorId: string): WcGameLogEntry[] {
+  const out: WcGameLogEntry[] = [];
+  for (const m of state.matches) {
+    const pred = state.predictions.find((p) => p.matchId === m.id && p.predictorId === predictorId);
+    if (!pred) continue;
+    const scored = m.result ? scorePrediction(pred, m.result) : null;
+    out.push({
+      matchId: m.id,
+      stage: m.stage,
+      day: matchDateKey(m),
+      kickoff: m.kickoff,
+      order: m.order,
+      pred: { home: pred.home, away: pred.away },
+      result: m.result ?? null,
+      points: scored?.points ?? 0,
+      category: scored?.category ?? null,
+    });
+  }
+  out.sort((a, b) => toMs(a.kickoff) - toMs(b.kickoff) || a.order - b.order);
+  return out;
+}
+
+export interface WcScoreBreakdown {
+  exact: number;
+  goalDiff: number;
+  outcome: number;
+  close: number;
+  miss: number;
+}
+
+/** A player's scored picks counted by category — their accuracy distribution. */
+export function playerBreakdown(state: WorldCupState, predictorId: string): WcScoreBreakdown {
+  const b: WcScoreBreakdown = { exact: 0, goalDiff: 0, outcome: 0, close: 0, miss: 0 };
+  for (const e of playerGameLog(state, predictorId)) {
+    if (e.category) b[e.category]++;
+  }
+  return b;
+}
+
 export interface WcBadge {
   id: string;
   emoji: string;

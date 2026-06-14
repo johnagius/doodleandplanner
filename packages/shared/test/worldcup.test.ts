@@ -27,7 +27,9 @@ import {
   lockingSoon,
   pendingForMe,
   pendingPredictors,
+  playerBreakdown,
   playerForm,
+  playerGameLog,
   playerStats,
   predictionCount,
   teamRecord,
@@ -550,6 +552,51 @@ describe('wcTimeline', () => {
     const day = wcTimeline(s).days[0]!;
     expect(new Set(day.winners)).toEqual(new Set([a.id, b.id]));
     expect(day.topPoints).toBe(5);
+  });
+});
+
+describe('playerGameLog + playerBreakdown', () => {
+  it('logs every pick chronologically with its result, points and category', () => {
+    let s = seed();
+    const john = s.predictors[0]!;
+    s = setPrediction(s, { matchId: 'g-A-1', predictorId: john.id, home: 2, away: 0, now: NOW });
+    s = setPrediction(s, { matchId: 'g-A-2', predictorId: john.id, home: 4, away: 0, now: NOW });
+    s = setResult(s, { matchId: 'g-A-1', home: 2, away: 0 }); // exact (+5)
+    s = setResult(s, { matchId: 'g-A-2', home: 1, away: 1 }); // way off (miss)
+
+    const log = playerGameLog(s, john.id);
+    expect(log.map((e) => e.matchId)).toEqual(['g-A-1', 'g-A-2']); // chronological
+    expect(log[0]).toMatchObject({ points: 5, category: 'exact' });
+    expect(log[0]!.result).toEqual({ home: 2, away: 0 });
+    expect(log[0]!.pred).toEqual({ home: 2, away: 0 });
+    expect(log[1]).toMatchObject({ points: 0, category: 'miss' });
+  });
+
+  it('keeps an unresolved pick with a null result and zero points', () => {
+    let s = seed();
+    const john = s.predictors[0]!;
+    s = setPrediction(s, { matchId: 'g-A-1', predictorId: john.id, home: 1, away: 0, now: NOW });
+    const log = playerGameLog(s, john.id);
+    expect(log).toHaveLength(1);
+    expect(log[0]).toMatchObject({ result: null, points: 0, category: null });
+  });
+
+  it('summarises the accuracy distribution by category', () => {
+    let s = seed();
+    const john = s.predictors[0]!;
+    s = setPrediction(s, { matchId: 'g-A-1', predictorId: john.id, home: 2, away: 0, now: NOW });
+    s = setPrediction(s, { matchId: 'g-A-2', predictorId: john.id, home: 3, away: 1, now: NOW });
+    s = setPrediction(s, { matchId: 'g-A-3', predictorId: john.id, home: 0, away: 4, now: NOW });
+    s = setResult(s, { matchId: 'g-A-1', home: 2, away: 0 }); // exact
+    s = setResult(s, { matchId: 'g-A-2', home: 2, away: 0 }); // 3-1 → same +2 margin → goalDiff
+    s = setResult(s, { matchId: 'g-A-3', home: 2, away: 0 }); // 0-4 → miss
+    expect(playerBreakdown(s, john.id)).toEqual({
+      exact: 1,
+      goalDiff: 1,
+      outcome: 0,
+      close: 0,
+      miss: 1,
+    });
   });
 });
 

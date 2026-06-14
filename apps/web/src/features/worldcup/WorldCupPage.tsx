@@ -17,12 +17,13 @@ import { GroupTables } from './GroupTables.js';
 import { IdentityModal } from './IdentityModal.js';
 import { Leaderboard } from './Leaderboard.js';
 import { MatchCard } from './MatchCard.js';
+import { PerformanceView } from './PerformanceView.js';
 import { PredictorBar } from './PredictorBar.js';
 import { ScoringLegend } from './ScoringLegend.js';
 import { TimelineView } from './TimelineView.js';
 import { formatDayLong } from './wcFormat.js';
 
-type Tab = 'fixtures' | 'groups' | 'bracket' | 'leaderboard' | 'timeline' | 'cards';
+type Tab = 'fixtures' | 'groups' | 'bracket' | 'leaderboard' | 'timeline' | 'performance' | 'cards';
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'fixtures', label: 'Fixtures', icon: '📅' },
@@ -30,6 +31,7 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'bracket', label: 'Bracket', icon: '🏟️' },
   { id: 'leaderboard', label: 'Leaderboard', icon: '🏆' },
   { id: 'timeline', label: 'Timeline', icon: '📈' },
+  { id: 'performance', label: 'Performance', icon: '📋' },
   { id: 'cards', label: 'Cards', icon: '🃏' },
 ];
 
@@ -205,6 +207,7 @@ export function WorldCupPage() {
         {tab === 'bracket' && <BracketView wc={wc} />}
         {tab === 'leaderboard' && <Leaderboard wc={wc} />}
         {tab === 'timeline' && <TimelineView wc={wc} />}
+        {tab === 'performance' && <PerformanceView wc={wc} />}
         {tab === 'cards' && <CardsView wc={wc} />}
       </div>
     </div>

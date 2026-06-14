@@ -48,7 +48,10 @@ get.
   knockouts) and bank points that grow with your team's run. A **📈 Timeline**
   tab replays the race day by day — a "days won" crown board with streaks, an
   animated rank-over-time **bump chart**, and a feed of each match day's winner
-  and standings swing. Top a match's points and you also win a random **player
+  and standings swing. A **📋 Performance** tab is a per-player deep dive —
+  pick anyone to see their accuracy breakdown, points-by-day chart, and **every
+  guess** (pick vs result and the points it earned, 🎯-flagged exacts). Top a
+  match's points and you also win a random **player
   card** (FIFA-style, drawn from the real squads, every card globally unique) to
   collect in a **🃏 Cards** tab. Gentle "still to predict" nudges keep everyone
   on track.

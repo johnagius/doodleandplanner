@@ -76,6 +76,14 @@ A standalone `/world-cup` board (no login) for predicting the tournament.
       and a vertical feed of every match day (who won, everyone's haul + rank
       movement, and who leads after it). New pure `wcTimeline()` in `@dap/shared`;
       counts match points day by day (the champion bonus stays on the Leaderboard).
+- [x] **Per-player Performance tab** — pick any predictor and see their deep
+      dive: a summary (points, rank, days won, exact hits, avg/game, day streak),
+      an **accuracy breakdown** bar (exact / margin / result / close / miss), a
+      **points-by-day** mini bar chart (👑 on days they won), and **every guess**
+      grouped by day — each game's pick vs the actual score and the points it
+      earned (🎯-flagged exacts). Your own upcoming locked-in picks show too;
+      rivals' unplayed picks stay hidden (the no-copying rule). New pure
+      `playerGameLog()` + `playerBreakdown()` in `@dap/shared`.
 - [x] **Player-card game** — top a match's points and win a random WC squad
       player as a FIFA-style card (1,249 players, our own ratings/tiers, real
       photos from Wikimedia where available, flag art otherwise). Every awarded

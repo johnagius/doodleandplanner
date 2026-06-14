@@ -147,6 +147,52 @@ describe('WorldCupPage', () => {
     await waitFor(() => expect(screen.getAllByText(/Day 2 of 2/)).toHaveLength(2));
   });
 
+  it('charts the day-by-day timeline with the day winner', async () => {
+    const user = userEvent.setup();
+    const past = new Date(Date.now() - 86_400_000).toISOString();
+    const at = new Date().toISOString();
+    const wc: WorldCupState = {
+      season: '2026',
+      title: 'Test Cup',
+      version: 9999,
+      teams: [
+        { id: 'AAA', name: 'Aland', flag: '🅰️', group: 'A' },
+        { id: 'BBB', name: 'Bland', flag: '🅱️', group: 'A' },
+      ],
+      matches: [
+        { id: 'g-A-1', stage: 'group', group: 'A', matchday: 1, order: 0, kickoff: past, homeId: 'AAA', awayId: 'BBB', result: { home: 2, away: 0 } }, // prettier-ignore
+      ],
+      predictors: [
+        { id: 'p1', name: 'John' },
+        { id: 'p2', name: 'Daniel' },
+      ],
+      predictions: [
+        { matchId: 'g-A-1', predictorId: 'p1', home: 2, away: 0, updatedAt: at }, // exact, +5
+        { matchId: 'g-A-1', predictorId: 'p2', home: 0, away: 1, updatedAt: at }, // miss, 0
+      ],
+      createdAt: at,
+    };
+    const { room } = await createRoom({
+      name: 'World Cup',
+      ownerName: 'Predictions',
+      slug: WORLD_CUP_SLUG,
+    });
+    await getRepository().createRoom({ ...emptyRoomState(room), worldCup: wc });
+
+    const { container } = renderPage();
+    await screen.findByRole('heading', { name: /World Cup 2026 Predictions/ });
+    await user.keyboard('{Escape}'); // dismiss first-run prompt
+
+    await user.click(screen.getByRole('tab', { name: /Timeline/ }));
+
+    expect(await screen.findByRole('heading', { name: /Standings over time/ })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Days won/ })).toBeInTheDocument();
+    expect(screen.getByText('Day winner')).toBeInTheDocument();
+    // John topped the day with an exact 2-0 (+5); the feed names him as the winner.
+    expect(container.querySelector('.wc-tl-winner-name')?.textContent).toBe('John');
+    expect(container.querySelector('.wc-tl-winner-pts')?.textContent).toBe('+5');
+  });
+
   it('falls back to a local board when the backend is unreachable', async () => {
     // A "remote" repo that fails like a CORS-blocked / offline fetch.
     const broken: Repository = {

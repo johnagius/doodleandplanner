@@ -56,6 +56,7 @@ import {
   sourceLabel,
   thirdPlacedRanking,
   tournamentDays,
+  wcTimeline,
   winnerOf,
   type WorldCupState,
 } from '../src/worldcup.js';
@@ -488,6 +489,67 @@ describe('leaderboard stats', () => {
     const h2h = headToHead(s, john.id, daniel.id);
     expect(h2h.rows).toHaveLength(1);
     expect(h2h).toMatchObject({ aTotal: 5, bTotal: 1 });
+  });
+});
+
+describe('wcTimeline', () => {
+  it('is empty until the first result lands', () => {
+    const t = wcTimeline(seed());
+    expect(t.days).toEqual([]);
+    expect(t.players.every((p) => p.daysWon === 0 && p.total === 0 && p.streak === 0)).toBe(true);
+  });
+
+  it('tells the race day by day with winners, totals, ranks and movement', () => {
+    let s = seed();
+    const [john, daniel] = s.predictors as [(typeof s.predictors)[0], (typeof s.predictors)[0]];
+    // Day 1 (g-A-1): John exact 2-0 (+5), Daniel right result 1-0 (+3). John wins.
+    s = setPrediction(s, { matchId: 'g-A-1', predictorId: john.id, home: 2, away: 0, now: NOW });
+    s = setPrediction(s, { matchId: 'g-A-1', predictorId: daniel.id, home: 1, away: 0, now: NOW });
+    s = setResult(s, { matchId: 'g-A-1', home: 2, away: 0 });
+    // Day 2 (g-A-2): Daniel exact 1-1 (+5), John miss 4-0 (0). Daniel wins + overtakes.
+    s = setPrediction(s, { matchId: 'g-A-2', predictorId: daniel.id, home: 1, away: 1, now: NOW });
+    s = setPrediction(s, { matchId: 'g-A-2', predictorId: john.id, home: 4, away: 0, now: NOW });
+    s = setResult(s, { matchId: 'g-A-2', home: 1, away: 1 });
+
+    const t = wcTimeline(s);
+    expect(t.days.map((d) => d.day)).toEqual(['2026-06-11', '2026-06-12']);
+
+    const day1 = t.days[0]!;
+    expect(day1.winners).toEqual([john.id]);
+    expect(day1.topPoints).toBe(5);
+    expect(day1.matches).toBe(1);
+    const j1 = day1.rows.find((r) => r.predictorId === john.id)!;
+    expect(j1).toMatchObject({ total: 5, rank: 1, prevRank: null, movement: 0, wonDay: true });
+
+    const day2 = t.days[1]!;
+    expect(day2.winners).toEqual([daniel.id]);
+    const d2 = day2.rows.find((r) => r.predictorId === daniel.id)!;
+    expect(d2).toMatchObject({ dayPoints: 5, total: 8, rank: 1, movement: 1, wonDay: true });
+    const j2 = day2.rows.find((r) => r.predictorId === john.id)!;
+    expect(j2).toMatchObject({ dayPoints: 0, total: 5, rank: 2, movement: -1, wonDay: false });
+
+    // Aggregate: a day each, Daniel ahead on total so leads the "days won" board.
+    const players = Object.fromEntries(t.players.map((p) => [p.predictorId, p]));
+    expect(players[john.id]).toMatchObject({ daysWon: 1, total: 5, streak: 0 });
+    expect(players[daniel.id]).toMatchObject({
+      daysWon: 1,
+      total: 8,
+      rank: 1,
+      streak: 1, // won the most recent day
+      bestDay: { day: '2026-06-12', points: 5 },
+    });
+    expect(t.players[0]!.predictorId).toBe(daniel.id);
+  });
+
+  it('hands every joint top scorer the day', () => {
+    let s = seed();
+    const [a, b] = s.predictors as [(typeof s.predictors)[0], (typeof s.predictors)[0]];
+    s = setPrediction(s, { matchId: 'g-A-1', predictorId: a.id, home: 2, away: 0, now: NOW });
+    s = setPrediction(s, { matchId: 'g-A-1', predictorId: b.id, home: 2, away: 0, now: NOW });
+    s = setResult(s, { matchId: 'g-A-1', home: 2, away: 0 });
+    const day = wcTimeline(s).days[0]!;
+    expect(new Set(day.winners)).toEqual(new Set([a.id, b.id]));
+    expect(day.topPoints).toBe(5);
   });
 });
 

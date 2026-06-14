@@ -45,8 +45,13 @@ get.
   standings with **qualification permutations** — what each team's remaining games
   can still produce: through / in the hunt / 3rd-place hopeful / out). There's also
   a **🏆 predict-the-winner** game: pick who lifts the trophy (locks at the
-  knockouts) and bank points that grow with your team's run. Gentle "still to
-  predict" nudges keep everyone on track.
+  knockouts) and bank points that grow with your team's run. A **📈 Timeline**
+  tab replays the race day by day — a "days won" crown board with streaks, an
+  animated rank-over-time **bump chart**, and a feed of each match day's winner
+  and standings swing. Top a match's points and you also win a random **player
+  card** (FIFA-style, drawn from the real squads, every card globally unique) to
+  collect in a **🃏 Cards** tab. Gentle "still to predict" nudges keep everyone
+  on track.
   Everyone shares one board through the realtime Worker (with a graceful local
   fallback). A first-run "Who are you?" prompt remembers you on the device.
 - **Party games** — a **Games** lobby with live, turn-based **Tic-Tac-Toe**,

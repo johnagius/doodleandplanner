@@ -928,6 +928,171 @@ export function dayChampion(
   return { day, name: top.name, points: top.points };
 }
 
+// --- Day-by-day timeline ---------------------------------------------------
+
+export interface WcTimelineRow {
+  predictorId: string;
+  name: string;
+  /** Points scored from this day's resulted matches. */
+  dayPoints: number;
+  /** Cumulative match points through this day (champion bonus excluded). */
+  total: number;
+  /** 1-based cumulative rank through this day (stable tie-break: predictor order). */
+  rank: number;
+  /** Cumulative rank as of the previous played day (null on the first day). */
+  prevRank: number | null;
+  /** Places gained vs the previous played day (+ climbed, − slipped, 0 held). */
+  movement: number;
+  /** Whether this predictor (jointly) topped the day's points. */
+  wonDay: boolean;
+}
+
+export interface WcTimelineDay {
+  /** Malta day key (YYYY-MM-DD). */
+  day: string;
+  /** Resulted matches counted on this day. */
+  matches: number;
+  /** The day's winning points (0 when nobody scored). */
+  topPoints: number;
+  /** Predictor ids that (jointly) won the day; empty when nobody scored. */
+  winners: string[];
+  /** All predictors, sorted by cumulative rank after this day. */
+  rows: WcTimelineRow[];
+}
+
+export interface WcTimelinePlayer {
+  predictorId: string;
+  name: string;
+  /** Days this predictor (jointly) topped. */
+  daysWon: number;
+  /** Final cumulative match points across the whole timeline. */
+  total: number;
+  /** Final cumulative rank. */
+  rank: number;
+  /** Their biggest single-day haul, if any. */
+  bestDay: { day: string; points: number } | null;
+  /** Consecutive most-recent days won (0 if they didn't win the latest day). */
+  streak: number;
+}
+
+export interface WcTimeline {
+  /** Played days oldest → newest. */
+  days: WcTimelineDay[];
+  /** Per-predictor aggregate, most days won first (then total, then name). */
+  players: WcTimelinePlayer[];
+}
+
+/**
+ * The race told day by day: for every Malta day with at least one resulted
+ * match, who scored what, who topped the day, and the running standings (with
+ * rank movement) after it. Cumulative totals are **match points only** — the
+ * champion-pick bonus isn't tied to a match day, so it lives on the main board.
+ * Pure and deterministic; ties in the cumulative rank break by predictor order
+ * so a bump chart drawn from this never crosses lines spuriously.
+ */
+export function wcTimeline(state: WorldCupState): WcTimeline {
+  const order = new Map(state.predictors.map((p, i) => [p.id, i]));
+  const nameOf = new Map(state.predictors.map((p) => [p.id, p.name]));
+
+  // Resulted matches grouped by Malta day.
+  const byDay = new Map<string, WcMatch[]>();
+  for (const m of state.matches) {
+    if (!m.result) continue;
+    const d = matchDateKey(m);
+    let arr = byDay.get(d);
+    if (!arr) byDay.set(d, (arr = []));
+    arr.push(m);
+  }
+  const dayKeys = [...byDay.keys()].sort();
+
+  const totals = new Map(state.predictors.map((p) => [p.id, 0]));
+  const daysWon = new Map(state.predictors.map((p) => [p.id, 0]));
+  const bestDay = new Map<string, { day: string; points: number } | null>(
+    state.predictors.map((p) => [p.id, null]),
+  );
+  let prevRankById: Map<string, number> | null = null;
+  const days: WcTimelineDay[] = [];
+
+  for (const day of dayKeys) {
+    const matches = byDay.get(day)!;
+
+    // Points each predictor scored from this day's results.
+    const dayPts = new Map(state.predictors.map((p) => [p.id, 0]));
+    for (const m of matches) {
+      for (const pred of state.predictions) {
+        if (pred.matchId !== m.id) continue;
+        const cur = dayPts.get(pred.predictorId);
+        if (cur === undefined) continue;
+        dayPts.set(pred.predictorId, cur + scorePrediction(pred, m.result!).points);
+      }
+    }
+
+    // Roll the day's points into the cumulative totals and the per-day records.
+    for (const p of state.predictors) {
+      const dp = dayPts.get(p.id) ?? 0;
+      totals.set(p.id, (totals.get(p.id) ?? 0) + dp);
+      const b = bestDay.get(p.id);
+      if (dp > 0 && (!b || dp > b.points)) bestDay.set(p.id, { day, points: dp });
+    }
+
+    // The day's (joint) winners — top scorers with more than zero.
+    const topPoints = Math.max(0, ...state.predictors.map((p) => dayPts.get(p.id) ?? 0));
+    const winners =
+      topPoints > 0
+        ? state.predictors.filter((p) => (dayPts.get(p.id) ?? 0) === topPoints).map((p) => p.id)
+        : [];
+    for (const id of winners) daysWon.set(id, (daysWon.get(id) ?? 0) + 1);
+
+    // Cumulative ranking after this day (total desc, stable by predictor order).
+    const ranked = state.predictors
+      .map((p) => ({ id: p.id, total: totals.get(p.id) ?? 0 }))
+      .sort((a, b) => b.total - a.total || (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
+    const rankById = new Map(ranked.map((r, i) => [r.id, i + 1]));
+
+    const rows: WcTimelineRow[] = ranked.map((r) => {
+      const rank = rankById.get(r.id)!;
+      const prev = prevRankById?.get(r.id) ?? null;
+      return {
+        predictorId: r.id,
+        name: nameOf.get(r.id) ?? r.id,
+        dayPoints: dayPts.get(r.id) ?? 0,
+        total: r.total,
+        rank,
+        prevRank: prev,
+        movement: prev == null ? 0 : prev - rank,
+        wonDay: winners.includes(r.id),
+      };
+    });
+
+    days.push({ day, matches: matches.length, topPoints, winners, rows });
+    prevRankById = rankById;
+  }
+
+  const finalRank = prevRankById ?? new Map<string, number>();
+  const streakOf = (id: string): number => {
+    let s = 0;
+    for (let i = days.length - 1; i >= 0; i--) {
+      if (days[i]!.winners.includes(id)) s++;
+      else break;
+    }
+    return s;
+  };
+
+  const players: WcTimelinePlayer[] = state.predictors
+    .map((p) => ({
+      predictorId: p.id,
+      name: p.name,
+      daysWon: daysWon.get(p.id) ?? 0,
+      total: totals.get(p.id) ?? 0,
+      rank: finalRank.get(p.id) ?? state.predictors.length,
+      bestDay: bestDay.get(p.id) ?? null,
+      streak: streakOf(p.id),
+    }))
+    .sort((a, b) => b.daysWon - a.daysWon || b.total - a.total || a.name.localeCompare(b.name));
+
+  return { days, players };
+}
+
 /** Score categories of a predictor's last `n` scored picks, most recent first. */
 export function playerForm(state: WorldCupState, predictorId: string, n = 5): WcScoreCategory[] {
   const scored: Array<{ kickoff: string; order: number; cat: WcScoreCategory }> = [];

@@ -3313,6 +3313,315 @@ label.field {
   font-variant-numeric: tabular-nums;
 }
 
+/* === Day-by-day timeline tab ============================================= */
+.wc-tl {
+  gap: 1rem;
+}
+
+/* Headline cards: overall leader + latest day winner */
+.wc-tl-headline {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.75rem;
+}
+.wc-tl-hl {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius);
+  border: 1px solid color-mix(in srgb, var(--c) 35%, var(--border));
+  background: linear-gradient(
+    120deg,
+    color-mix(in srgb, var(--c) 16%, var(--surface)),
+    var(--surface) 72%
+  );
+}
+.wc-tl-hl-emoji {
+  font-size: 1.8rem;
+  line-height: 1;
+}
+.wc-tl-hl-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.wc-tl-hl-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  font-weight: 700;
+}
+.wc-tl-hl-name {
+  font-size: 1.25rem;
+  font-weight: 800;
+  line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.wc-tl-hl-sub {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+/* "Days won" crown board */
+.wc-tl-crownlist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.wc-tl-crownrow {
+  display: grid;
+  grid-template-columns: 2rem minmax(6rem, 1fr) minmax(60px, 8rem) auto;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.4rem 0.55rem;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+.wc-tl-crownrow.is-me {
+  box-shadow: 0 0 0 2px var(--primary-soft);
+}
+.wc-tl-crank {
+  font-size: 1.05rem;
+  font-weight: 800;
+  text-align: center;
+}
+.wc-tl-cname {
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+}
+.wc-tl-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--c);
+  flex: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--c) 25%, transparent);
+}
+.wc-tl-streak {
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #f97316;
+}
+.wc-tl-cbar {
+  height: 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--c) 12%, var(--surface-2));
+  overflow: hidden;
+}
+.wc-tl-cbar > span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--c) 55%, transparent), var(--c));
+  transition: width 0.5s ease;
+}
+.wc-tl-cwins {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Rank-over-time bump chart */
+.wc-bump-scroll {
+  overflow-x: auto;
+  padding-bottom: 0.25rem;
+}
+.wc-bump {
+  display: block;
+}
+.wc-bump-grid {
+  stroke: var(--border);
+  stroke-width: 1;
+  stroke-dasharray: 3 5;
+}
+.wc-bump-axis {
+  fill: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  dominant-baseline: middle;
+}
+.wc-bump-date {
+  fill: var(--muted);
+  font-size: 10.5px;
+}
+.wc-bump-name {
+  font-size: 12.5px;
+  font-weight: 800;
+  dominant-baseline: middle;
+}
+.wc-bump-name.is-me {
+  text-decoration: underline;
+}
+.wc-bump-node {
+  transition: r 0.2s ease;
+}
+.wc-bump-line {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: wc-bump-draw 0.9s ease forwards;
+}
+@keyframes wc-bump-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Vertical day-by-day feed */
+.wc-tl-feed {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  position: relative;
+}
+.wc-tl-item {
+  position: relative;
+  padding-left: 2.4rem;
+  padding-bottom: 1rem;
+}
+.wc-tl-item::before {
+  content: '';
+  position: absolute;
+  left: calc(0.875rem - 1px);
+  top: 0.2rem;
+  bottom: -0.2rem;
+  width: 2px;
+  background: var(--border);
+}
+.wc-tl-item:last-child::before {
+  bottom: auto;
+  height: 1.4rem;
+}
+.wc-tl-node-mark {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1.75rem;
+  height: 1.75rem;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 2px solid var(--c);
+  font-size: 0.85rem;
+  z-index: 1;
+}
+.wc-tl-node-mark.won {
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--c) 20%, transparent);
+}
+.wc-tl-card {
+  gap: 0.55rem;
+}
+.wc-tl-winner {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.wc-tl-winner-tag {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 800;
+  color: var(--success);
+  background: color-mix(in srgb, var(--success) 14%, var(--surface));
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+}
+.wc-tl-winner-name {
+  font-weight: 800;
+  font-size: 1.05rem;
+}
+.wc-tl-winner-pts {
+  font-weight: 800;
+  color: var(--success);
+  font-variant-numeric: tabular-nums;
+}
+.wc-tl-bars {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.wc-tl-bar {
+  display: grid;
+  grid-template-columns: minmax(4.5rem, 1fr) minmax(50px, 2fr) 2.2rem auto;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+.wc-tl-bar-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 600;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.wc-tl-bar.is-me .wc-tl-bar-name {
+  font-weight: 800;
+}
+.wc-tl-bar-track {
+  height: 7px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+.wc-tl-bar-track > span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--c);
+  transition: width 0.5s ease;
+}
+.wc-tl-bar.won .wc-tl-bar-track > span {
+  background: linear-gradient(90deg, var(--c), #f5b301);
+}
+.wc-tl-bar-val {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.wc-tl-bar-move {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+.wc-tl-bar-move .wc-move {
+  display: inline;
+}
+.wc-tl-after {
+  padding-top: 0.35rem;
+  border-top: 1px dashed var(--border);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wc-bump-line {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+  .wc-bump-node,
+  .wc-tl-cbar > span,
+  .wc-tl-bar-track > span {
+    transition: none;
+  }
+}
+
 /* Knockout bracket */
 .wc-bracket-scroll {
   overflow-x: auto;

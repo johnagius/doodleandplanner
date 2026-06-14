@@ -29,6 +29,10 @@ test.describe('@smoke World Cup', () => {
     await page.getByRole('tab', { name: /Bracket/ }).click();
     await expect(page.getByText('Round of 32').first()).toBeVisible();
 
+    // The day-by-day timeline tab is wired up (empty until results land).
+    await page.getByRole('tab', { name: /Timeline/ }).click();
+    await expect(page.getByText(/The race hasn't started/)).toBeVisible();
+
     // Banter now lives in the hot zone: each fixture card has a comment thread.
     await page.getByRole('tab', { name: /Fixtures/ }).click();
     await expect(page.getByRole('button', { name: /Comment/ }).first()).toBeVisible();

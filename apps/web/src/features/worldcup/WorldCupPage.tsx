@@ -19,15 +19,17 @@ import { Leaderboard } from './Leaderboard.js';
 import { MatchCard } from './MatchCard.js';
 import { PredictorBar } from './PredictorBar.js';
 import { ScoringLegend } from './ScoringLegend.js';
+import { TimelineView } from './TimelineView.js';
 import { formatDayLong } from './wcFormat.js';
 
-type Tab = 'fixtures' | 'groups' | 'bracket' | 'leaderboard' | 'cards';
+type Tab = 'fixtures' | 'groups' | 'bracket' | 'leaderboard' | 'timeline' | 'cards';
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'fixtures', label: 'Fixtures', icon: '📅' },
   { id: 'groups', label: 'Groups', icon: '🔢' },
   { id: 'bracket', label: 'Bracket', icon: '🏟️' },
   { id: 'leaderboard', label: 'Leaderboard', icon: '🏆' },
+  { id: 'timeline', label: 'Timeline', icon: '📈' },
   { id: 'cards', label: 'Cards', icon: '🃏' },
 ];
 
@@ -202,6 +204,7 @@ export function WorldCupPage() {
         {tab === 'groups' && <GroupTables wc={wc} />}
         {tab === 'bracket' && <BracketView wc={wc} />}
         {tab === 'leaderboard' && <Leaderboard wc={wc} />}
+        {tab === 'timeline' && <TimelineView wc={wc} />}
         {tab === 'cards' && <CardsView wc={wc} />}
       </div>
     </div>

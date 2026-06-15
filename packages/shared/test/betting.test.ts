@@ -5,6 +5,7 @@ import {
   bankroll,
   bankrollLeaderboard,
   betsFor,
+  modelOddsFor,
   outcomeOf,
 } from '../src/betting.js';
 import {
@@ -115,18 +116,23 @@ describe('betsFor + bankroll', () => {
     expect(lb[lb.length - 1]!.predictorId).toBe(daniel);
   });
 
-  it('places no bet when there is no odds line, or none for that outcome', () => {
-    // No snapshot at all → no bets.
+  it('prices a game from the FIFA-rank model when there is no feed line', () => {
     let s = seedWorldCup(NOW);
     const john = s.predictors[0]!.id;
+    // No captureOdds at all — the model must still price (and settle) the bet.
     s = setPrediction(s, { matchId: 'g-A-1', predictorId: john, home: 2, away: 0, now: NOW });
-    expect(betsFor(s, john)).toHaveLength(0);
+    const [bet] = betsFor(s, john);
+    expect(bet).toMatchObject({ matchId: 'g-A-1', outcome: 'home', modelled: true });
+    expect(bet!.decimalOdds).toBeGreaterThan(1);
 
-    // A line that can't price the predicted away win → skipped.
-    const h = s.matches[0]!.homeId!;
-    const a = s.matches[0]!.awayId!;
-    s = setPrediction(s, { matchId: 'g-A-1', predictorId: john, home: 0, away: 2, now: NOW });
-    s = captureOdds(s, [oddsRow(h, a, { homeML: -150 })]); // only a home line
-    expect(betsFor(s, john)).toHaveLength(0);
+    s = setResult(s, { matchId: 'g-A-1', home: 2, away: 0 });
+    expect(betsFor(s, john)[0]!.status).toBe('won');
+    expect(bankroll(s, john).profit).toBeGreaterThan(0);
+  });
+
+  it('models a known group game but not a knockout slot with unknown teams', () => {
+    const s = seedWorldCup(NOW);
+    expect(modelOddsFor(s, 'g-A-1')).not.toBeNull();
+    expect(modelOddsFor(s, 'r32-1')).toBeNull(); // teams not decided yet
   });
 });

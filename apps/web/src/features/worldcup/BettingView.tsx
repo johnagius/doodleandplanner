@@ -50,8 +50,8 @@ export function BettingView({ wc }: { wc: WorldCupState }) {
     return (
       <EmptyState
         icon="💶"
-        title="No bets running yet"
-        hint="You're handed €5 a game. The moment a match you've predicted has odds, your €5 is auto-staked on the result you backed — then it settles here when the game ends."
+        title="No bets yet"
+        hint="You're handed €5 a game, automatically staked on the result your prediction backs — nothing to do. Predict some matches and your bankroll builds itself, settling here as games finish."
       />
     );
   }
@@ -64,8 +64,8 @@ export function BettingView({ wc }: { wc: WorldCupState }) {
           <span className="muted small">€{WC_STAKE} a game · auto-bet on your pick</span>
         </div>
         <p className="muted small" style={{ margin: 0 }}>
-          Every game you get €{WC_STAKE} of fake money, automatically staked on the result your
-          scoreline backs at the bookies' odds. It's just for bragging rights — it doesn't touch
+          Every game you're handed €{WC_STAKE} of fake money, automatically staked on the result
+          your prediction backs — no action needed. It's just for bragging rights; it doesn't touch
           your prediction points.
         </p>
         <ol className="wc-bank-board">
@@ -98,8 +98,7 @@ export function BettingView({ wc }: { wc: WorldCupState }) {
         <p className="muted small">Pick your name above to start your bankroll.</p>
       ) : myBets.length === 0 ? (
         <p className="muted small">
-          No bets yet — predict a match that has odds and your €{WC_STAKE} rides on it
-          automatically.
+          No bets yet — predict any match and your €{WC_STAKE} rides on it automatically.
         </p>
       ) : (
         <>
@@ -119,7 +118,8 @@ export function BettingView({ wc }: { wc: WorldCupState }) {
         </>
       )}
       <p className="muted small" style={{ textAlign: 'center' }}>
-        Odds frozen at first sight, three-way moneyline via ESPN/DraftKings.
+        Real bookies' odds (ESPN/DraftKings) when we catch a game pre-kickoff; otherwise a fair line
+        from the FIFA rankings (≈).
       </p>
     </div>
   );
@@ -152,7 +152,7 @@ function BetRow({ wc, bet }: { wc: WorldCupState; bet: WcBet }) {
           )}
         </span>
         <span className="muted small">
-          €{bet.stake} on {outcomeLabel(wc, bet.matchId, bet.outcome)} @{' '}
+          €{bet.stake} on {outcomeLabel(wc, bet.matchId, bet.outcome)} @ {bet.modelled ? '≈' : ''}
           {bet.decimalOdds.toFixed(2)}
         </span>
       </span>

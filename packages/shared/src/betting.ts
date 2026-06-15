@@ -5,7 +5,13 @@
  * result. Pure + derived (no stored bets) — the only persisted input is
  * `state.odds` (see {@link captureOdds}); everything here is computed.
  */
-import { findMatch, type WcMatchOdds, type WcResult, type WorldCupState } from './worldcup.js';
+import {
+  findMatch,
+  fifaRankOf,
+  type WcMatchOdds,
+  type WcResult,
+  type WorldCupState,
+} from './worldcup.js';
 
 /** Flat fake stake handed to every predictor, every game. */
 export const WC_STAKE = 5;
@@ -20,6 +26,8 @@ export interface WcBet {
   /** American moneyline used, and its decimal equivalent (for display). */
   americanOdds: number;
   decimalOdds: number;
+  /** True when the line came from our FIFA-rank model (no real feed odds). */
+  modelled: boolean;
   stake: number;
   status: 'pending' | 'won' | 'lost';
   /** Net profit/loss once settled (won ⇒ +winnings, lost ⇒ −stake, pending ⇒ 0). */
@@ -45,20 +53,59 @@ function moneylineFor(odds: WcMatchOdds, outcome: WcBetOutcome): number | null {
   return ml ?? null;
 }
 
+const clampP = (p: number) => Math.max(0.03, Math.min(0.92, p));
+
+function probToAmerican(p: number): number {
+  const dec = 1 / p;
+  const am = dec >= 2 ? (dec - 1) * 100 : -100 / (dec - 1);
+  return Math.round(am / 5) * 5; // tidy to the nearest 5
+}
+
+/**
+ * A fair three-way moneyline derived from the two teams' FIFA rankings (plus a
+ * small home edge) — used to price games we never caught a real feed line for,
+ * so the fake-money game settles retrospectively across every played match.
+ * Null when the match's teams aren't known yet (an unresolved knockout slot).
+ */
+export function modelOddsFor(state: WorldCupState, matchId: string): WcMatchOdds | null {
+  const m = findMatch(state, matchId);
+  if (!m?.homeId || !m?.awayId) return null;
+  const rh = fifaRankOf(m.homeId) ?? 48;
+  const ra = fifaRankOf(m.awayId) ?? 48;
+  const HOME_EDGE = 5;
+  const SCALE = 30;
+  const pHomeRaw = 0.5 + 0.5 * Math.tanh((ra - rh + HOME_EDGE) / SCALE);
+  const pDraw = 0.3 - 0.12 * Math.abs(pHomeRaw - 0.5) * 2;
+  const pHome = clampP((1 - pDraw) * pHomeRaw);
+  const pAway = clampP((1 - pDraw) * (1 - pHomeRaw));
+  return {
+    homeML: probToAmerican(pHome),
+    drawML: probToAmerican(clampP(pDraw)),
+    awayML: probToAmerican(pAway),
+  };
+}
+
 /**
  * Every auto-bet a predictor has running, chronological. One per match they
- * predicted that has a frozen odds line able to price their outcome. Settled
- * bets carry win/loss + profit; upcoming/in-play ones are pending.
+ * predicted with a usable line — the real frozen odds when we have them, else a
+ * fair model line — so it works for every game, past and present. Settled bets
+ * carry win/loss + profit; upcoming/in-play ones are pending.
  */
 export function betsFor(state: WorldCupState, predictorId: string): WcBet[] {
   const out: Array<WcBet & { _k: number; _o: number }> = [];
   for (const pred of state.predictions) {
     if (pred.predictorId !== predictorId) continue;
-    const odds = state.odds?.[pred.matchId];
-    if (!odds) continue;
     const outcome = outcomeOf(pred.home, pred.away);
-    const american = moneylineFor(odds, outcome);
-    if (american == null) continue; // can't price this side — no bet
+    const real = state.odds?.[pred.matchId];
+    const realMl = real ? moneylineFor(real, outcome) : null;
+    let american = realMl;
+    let modelled = false;
+    if (american == null) {
+      const model = modelOddsFor(state, pred.matchId);
+      american = model ? moneylineFor(model, outcome) : null;
+      modelled = american != null;
+    }
+    if (american == null) continue; // teams not known yet — no bet
     const decimal = americanToDecimal(american);
     const match = findMatch(state, pred.matchId);
     const result: WcResult | undefined = match?.result;
@@ -77,6 +124,7 @@ export function betsFor(state: WorldCupState, predictorId: string): WcBet[] {
       outcome,
       americanOdds: american,
       decimalOdds: decimal,
+      modelled,
       stake: WC_STAKE,
       status,
       profit,

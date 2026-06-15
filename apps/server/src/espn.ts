@@ -7,7 +7,7 @@
  * Everything here is pure and serialisable so it unit-tests against a captured
  * scoreboard payload. The Worker does the fetching; this just parses + merges.
  */
-import type { WcLiveScore, WcMatchEvent, WcMatchOdds } from '@dap/shared';
+import type { WcLineupPlayer, WcLiveScore, WcMatchEvent, WcMatchOdds } from '@dap/shared';
 
 /**
  * ESPN national-team abbreviations are FIFA-style and line up with our team ids
@@ -265,6 +265,65 @@ export function parseEspnMatchEvents(raw: unknown): Record<string, WcMatchEvent[
       list.push({ minute: d.clock?.displayValue ?? '', kind, teamTla, player, ...(assist ? { assist } : {}) }); // prettier-ignore
     }
     if (list.length) out[pairKey(alias(hAbbr), alias(aAbbr))] = list;
+  }
+  return out;
+}
+
+/** ESPN event id keyed by the (sorted) team pair, so the client can resolve a
+ * board match to its ESPN event (for the per-match summary / lineups). */
+export function parseEspnEventIds(raw: unknown): Record<string, string> {
+  const events = (raw as { events?: EspnEvent[] } | null)?.events ?? [];
+  const out: Record<string, string> = {};
+  for (const ev of events) {
+    if (ev.id == null) continue;
+    const comp = ev.competitions?.[0];
+    const home = comp?.competitors?.find((c) => c.homeAway === 'home')?.team?.abbreviation;
+    const away = comp?.competitors?.find((c) => c.homeAway === 'away')?.team?.abbreviation;
+    if (!home || !away) continue;
+    out[pairKey(alias(home), alias(away))] = String(ev.id);
+  }
+  return out;
+}
+
+interface EspnRosterEntry {
+  athlete?: { displayName?: string };
+  displayName?: string;
+  jersey?: string;
+  starter?: boolean;
+  position?: { abbreviation?: string };
+  formationPlace?: string;
+}
+interface EspnRoster {
+  team?: { abbreviation?: string };
+  roster?: EspnRosterEntry[];
+}
+
+const intOrNullStr = (v: string | undefined): number | null => {
+  if (v == null) return null;
+  const n = parseInt(v, 10);
+  return Number.isFinite(n) ? n : null;
+};
+
+/** Parse a match summary's `rosters` into starting-XI players, keyed by team code. */
+export function parseEspnLineups(raw: unknown): Record<string, WcLineupPlayer[]> {
+  const rosters = (raw as { rosters?: EspnRoster[] } | null)?.rosters ?? [];
+  const out: Record<string, WcLineupPlayer[]> = {};
+  for (const r of rosters) {
+    const code = r.team?.abbreviation ? alias(r.team.abbreviation) : null;
+    if (!code) continue;
+    const players: WcLineupPlayer[] = [];
+    for (const e of r.roster ?? []) {
+      const name = e.athlete?.displayName ?? e.displayName;
+      if (!name) continue;
+      players.push({
+        name,
+        jersey: intOrNullStr(e.jersey),
+        pos: e.position?.abbreviation ?? '',
+        starter: e.starter === true,
+        formationPlace: intOrNullStr(e.formationPlace),
+      });
+    }
+    if (players.length) out[code] = players;
   }
   return out;
 }

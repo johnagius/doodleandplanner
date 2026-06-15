@@ -4008,6 +4008,146 @@ label.field {
   color: var(--warn);
 }
 
+/* === Lineups / formation pitch ========================================== */
+.wc-lp {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.wc-lp-head {
+  align-items: center;
+}
+.wc-lp-team {
+  font-weight: 800;
+}
+.wc-lp-toggle {
+  display: flex;
+  gap: 0.4rem;
+}
+.wc-lp-side {
+  flex: 1;
+  padding: 0.4rem;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-weight: 700;
+  color: inherit;
+  cursor: pointer;
+}
+.wc-lp-side.active {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+.wc-lp-note {
+  text-align: center;
+  padding: 1rem 0;
+}
+
+/* The angled half-pitch (CSS 3D tilt ~28°). */
+.wc-lp-wrap {
+  perspective: 720px;
+  padding: 0.5rem 0 1rem;
+  overflow: hidden;
+}
+.wc-lp-pitch {
+  position: relative;
+  width: 100%;
+  max-width: 340px;
+  aspect-ratio: 3 / 4;
+  margin: 0 auto;
+  transform: rotateX(27deg);
+  transform-origin: center 68%;
+  border-radius: 8px;
+  background: repeating-linear-gradient(0deg, #2e8b39 0 8%, #38a043 8% 16%);
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.55);
+}
+.wc-lp-box {
+  position: absolute;
+  top: 0;
+  left: 25%;
+  width: 50%;
+  height: 16%;
+  border: 2px solid rgba(255, 255, 255, 0.6);
+  border-top: none;
+}
+.wc-lp-arc {
+  position: absolute;
+  bottom: -1px;
+  left: 50%;
+  width: 34%;
+  height: 13%;
+  transform: translateX(-50%);
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  border-bottom: none;
+  border-radius: 50% / 100% 100% 0 0;
+}
+.wc-lp-token {
+  position: absolute;
+  transform: translate(-50%, -50%) rotateX(-27deg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 64px;
+}
+.wc-lp-shirt {
+  position: relative;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: #0b0d14;
+  font-weight: 800;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+}
+.wc-lp-shirt.tier-gold {
+  background: linear-gradient(135deg, #ffe27a, #f5b301);
+}
+.wc-lp-shirt.tier-silver {
+  background: linear-gradient(135deg, #eef2f7, #c2cad6);
+}
+.wc-lp-shirt.tier-bronze {
+  background: linear-gradient(135deg, #e7b98c, #cd7f32);
+}
+.wc-lp-num {
+  font-size: 0.8rem;
+  line-height: 1;
+}
+.wc-lp-rating {
+  position: absolute;
+  top: -6px;
+  right: -9px;
+  font-size: 0.6rem;
+  background: #11131c;
+  color: #fff;
+  border-radius: 999px;
+  padding: 0 3px;
+  font-weight: 800;
+}
+.wc-lp-name {
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 64px;
+}
+.wc-lp-val {
+  font-size: 0.58rem;
+  font-weight: 700;
+  color: #eaffea;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
+}
+.wc-lp-total {
+  text-align: center;
+  font-size: 0.9rem;
+}
+
 /* Knockout bracket */
 .wc-bracket-scroll {
   overflow-x: auto;

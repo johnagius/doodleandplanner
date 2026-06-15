@@ -45,6 +45,7 @@ describe('route', () => {
   it('routes the football feed endpoints', () => {
     expect(route('GET', '/api/football/worldcup')).toEqual({ kind: 'wc-scores' });
     expect(route('GET', '/api/football/events')).toEqual({ kind: 'wc-events' });
+    expect(route('GET', '/api/football/lineups')).toEqual({ kind: 'wc-lineups' });
     expect(route('GET', '/api/football/h2h')).toEqual({ kind: 'wc-h2h' });
     expect(route('POST', '/api/football/events')).toEqual({ kind: 'not-found' });
   });

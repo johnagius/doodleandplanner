@@ -5,13 +5,18 @@
 import {
   espnDateWindow,
   mergeLiveScores,
+  parseEspnEventIds,
+  parseEspnLineups,
   parseEspnMatchEvents,
   parseEspnScoreboard,
 } from './espn.js';
 import { findWcMatch, mapHeadToHead, mapWorldCupScores } from './football.js';
 import { RoomDurableObject, type Env } from './roomObject.js';
 import { corsHeaders, json, route } from './router.js';
-import type { WcMatchEvent, WcTeamH2H, WcLiveScore } from '@dap/shared';
+import type { WcLineup, WcLineupPlayer, WcMatchEvent, WcTeamH2H, WcLiveScore } from '@dap/shared';
+
+const ESPN_UA = { 'User-Agent': 'doodleandplanner/1.0 (+world-cup board)' };
+const ESPN_SUMMARY = 'https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/summary';
 
 export { RoomDurableObject };
 
@@ -27,6 +32,12 @@ const ESPN_BASE = 'https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.wor
 const WC_EVENTS_RANGE = '20260611-20260719';
 let eventsCache: { at: number; events: Record<string, WcMatchEvent[]> } | null = null;
 const EVENTS_TTL_MS = 60_000;
+// ESPN event id per team-pair (to resolve a match → its summary), and the parsed
+// starting XIs per event id. Lineups are static once posted, so cache for a while.
+let idsCache: { at: number; ids: Record<string, string> } | null = null;
+const IDS_TTL_MS = 5 * 60_000;
+const lineupCache = new Map<string, { at: number; byCode: Record<string, WcLineupPlayer[]> }>();
+const LINEUP_TTL_MS = 5 * 60_000;
 
 // Raw WC fixtures (kept to resolve a team-pair → match id for head-to-head) and
 // per-pair head-to-head results. H2H barely changes, so it's cached for longer.
@@ -189,6 +200,52 @@ async function worldCupEvents(cors: Record<string, string>): Promise<Response> {
   }
 }
 
+/** Resolve the ESPN event id for each team-pair (cached from the range board). */
+async function ensureEventIds(): Promise<Record<string, string>> {
+  if (idsCache && Date.now() - idsCache.at < IDS_TTL_MS) return idsCache.ids;
+  try {
+    const res = await fetch(`${ESPN_BASE}?dates=${WC_EVENTS_RANGE}`, { headers: ESPN_UA });
+    if (!res.ok) return idsCache?.ids ?? {};
+    const ids = parseEspnEventIds(await res.json());
+    idsCache = { at: Date.now(), ids };
+    return ids;
+  } catch {
+    return idsCache?.ids ?? {};
+  }
+}
+
+/** Starting XIs for a match (~1h before kickoff), from ESPN's per-match summary. */
+async function worldCupLineups(
+  home: string,
+  away: string,
+  cors: Record<string, string>,
+): Promise<Response> {
+  const stamp = (at: number | undefined) => (at ? new Date(at).toISOString() : null);
+  if (!home || !away) {
+    return json({ home: null, away: null, fetchedAt: null, error: 'bad-request' }, { status: 400 }, cors); // prettier-ignore
+  }
+  const eventId = (await ensureEventIds())[[home, away].sort().join('|')];
+  if (!eventId) {
+    return json({ home: null, away: null, fetchedAt: null, error: 'not-found' }, {}, cors);
+  }
+  let entry = lineupCache.get(eventId);
+  if (!entry || Date.now() - entry.at >= LINEUP_TTL_MS) {
+    try {
+      const res = await fetch(`${ESPN_SUMMARY}?event=${eventId}`, { headers: ESPN_UA });
+      if (res.ok) {
+        entry = { at: Date.now(), byCode: parseEspnLineups(await res.json()) };
+        lineupCache.set(eventId, entry);
+      }
+    } catch {
+      /* keep any stale entry */
+    }
+  }
+  const byCode = entry?.byCode ?? {};
+  const lineup = (code: string): WcLineup | null =>
+    byCode[code]?.length ? { teamTla: code, players: byCode[code]! } : null;
+  return json({ home: lineup(home), away: lineup(away), fetchedAt: stamp(entry?.at) }, {}, cors);
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
@@ -199,6 +256,13 @@ export default {
     if (r.kind === 'health') return json({ ok: true }, {}, cors);
     if (r.kind === 'wc-scores') return worldCupScores(env, cors);
     if (r.kind === 'wc-events') return worldCupEvents(cors);
+    if (r.kind === 'wc-lineups') {
+      return worldCupLineups(
+        url.searchParams.get('home') ?? '',
+        url.searchParams.get('away') ?? '',
+        cors,
+      );
+    }
     if (r.kind === 'wc-h2h') {
       return worldCupH2H(
         env,

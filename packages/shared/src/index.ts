@@ -32,3 +32,4 @@ export * from './worldcup.js';
 export * from './squads.js';
 export * from './playerCards.js';
 export * from './betting.js';
+export * from './lineup.js';

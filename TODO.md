@@ -107,8 +107,15 @@ A standalone `/world-cup` board (no login) for predicting the tournament.
       scoreboard `details` in one cached call (`/api/football/events`); pure
       `parseEspnMatchEvents`. Bets also now settle **retrospectively** for every
       played game (real odds where caught, else a fair FIFA-rank model line).
+- [x] **Lineups & formation** — ~1h before kickoff, a 👥 Lineups tab draws each
+      team's confirmed starting XI on an **angled (3D-tilted) half-pitch** in their
+      real positions (ESPN summary `rosters`), each player with our ability rating + an **estimated** market value (€M) and the total XI value. New Worker
+      `/api/football/lineups` route (resolves the ESPN event, parses the summary);
+      pure `lineup.ts` does the role/placement/rating/value.
 - [ ] **Team match stats** — ESPN's per-match `summary` also has possession +
       shots; surface them on the Stats tab (no paid API needed after all).
+- [ ] Real market values would need a paid/licensed source (Transfermarkt has no
+      free API) — today's values are our own estimate from the rating.
 - [ ] Strategy layer: a per-matchday joker, knockout multipliers, outright bets.
 - [ ] A share card; let the organiser edit fixtures/teams (fixed 2026 seed today).
 

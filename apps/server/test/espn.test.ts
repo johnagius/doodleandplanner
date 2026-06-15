@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   espnDateWindow,
   mergeLiveScores,
+  parseEspnEventIds,
+  parseEspnLineups,
   parseEspnMatchEvents,
   parseEspnScoreboard,
 } from '../src/espn.js';
@@ -394,6 +396,37 @@ describe('parseEspnMatchEvents', () => {
     const list = parseEspnMatchEvents(raw)[key('BRA', 'SCO')]!;
     expect(list[0]!.kind).toBe('pen-goal');
     expect(list[1]!.kind).toBe('own-goal');
+  });
+});
+
+describe('parseEspnLineups + parseEspnEventIds', () => {
+  it('parses starting XIs keyed by team code', () => {
+    const out = parseEspnLineups({
+      rosters: [
+        {
+          team: { abbreviation: 'MEX' },
+          roster: [
+            { athlete: { displayName: 'Raúl Rangel' }, jersey: '1', starter: true, position: { abbreviation: 'G' }, formationPlace: '1' }, // prettier-ignore
+            { displayName: 'Johan Vásquez', jersey: '5', starter: true, position: { abbreviation: 'CD-L' }, formationPlace: '6' }, // prettier-ignore
+            { displayName: 'Bench Guy', jersey: '13', starter: false, position: { abbreviation: 'ST' } }, // prettier-ignore
+          ],
+        },
+        { team: { abbreviation: 'RSA' }, roster: [{ displayName: 'Keeper', jersey: '1', starter: true, position: { abbreviation: 'G' } }] }, // prettier-ignore
+      ],
+    });
+    expect(Object.keys(out).sort()).toEqual(['MEX', 'RSA']);
+    expect(out.MEX).toHaveLength(3);
+    expect(out.MEX![0]).toEqual({ name: 'Raúl Rangel', jersey: 1, pos: 'G', starter: true, formationPlace: 1 }); // prettier-ignore
+    expect(out.MEX![1]).toMatchObject({ name: 'Johan Vásquez', pos: 'CD-L', starter: true });
+  });
+
+  it('keys event ids by the sorted team pair', () => {
+    const ids = parseEspnEventIds({
+      events: [
+        { id: 760415, competitions: [{ competitors: [{ homeAway: 'home', team: { abbreviation: 'MEX' } }, { homeAway: 'away', team: { abbreviation: 'RSA' } }] }] }, // prettier-ignore
+      ],
+    });
+    expect(ids[['MEX', 'RSA'].sort().join('|')]).toBe('760415');
   });
 });
 

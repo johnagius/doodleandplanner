@@ -32,6 +32,7 @@ import { useToast } from '../../components/Toast.js';
 import { useWorldCupStore, type WcLiveInfo } from '../../state/worldCupStore.js';
 import { Countdown } from './Countdown.js';
 import { useHeadToHead, type H2HState } from './h2h.js';
+import { LineupView } from './LineupView.js';
 import { MatchComments } from './MatchComments.js';
 import { ScoreStepper } from './ScoreStepper.js';
 import { useNow } from './useNow.js';
@@ -313,16 +314,18 @@ export function MatchCard({ matchId }: { matchId: string }) {
       )}
 
       {view === 'stats' && <StatsView wc={wc} match={match} />}
+      {view === 'lineup' && <LineupView wc={wc} match={match} />}
       {view === 'group' && isGroup && <GroupView wc={wc} group={match.group!} match={match} />}
     </div>
   );
 }
 
-type CardView = 'match' | 'stats' | 'group';
+type CardView = 'match' | 'stats' | 'lineup' | 'group';
 
 const CARD_VIEWS: { id: CardView; icon: string; label: string }[] = [
   { id: 'match', icon: '⚽', label: 'Match' },
   { id: 'stats', icon: '📊', label: 'Stats' },
+  { id: 'lineup', icon: '👥', label: 'Lineups' },
   { id: 'group', icon: '🔢', label: 'Group' },
 ];
 

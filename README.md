@@ -55,7 +55,10 @@ get.
   guess** (pick vs result and the points it earned, 🎯-flagged exacts). Top a
   match's points and you also win a random **player
   card** (FIFA-style, drawn from the real squads, every card globally unique) to
-  collect in a **🃏 Cards** tab. A **💶 Bets** tab runs a fake-money side-game —
+  collect in a **🃏 Cards** tab. ~An hour before kickoff a **👥 Lineups** tab draws
+  each team's confirmed XI on an **angled half-pitch** in their real positions
+  (from ESPN), with each player's rating + an estimated market value and the
+  total XI value. A **💶 Bets** tab runs a fake-money side-game —
   everyone's handed €5 a game, auto-staked on the result their pick backs at the
   bookies' odds, with a bankroll leaderboard. Gentle "still to predict" nudges keep everyone
   on track.

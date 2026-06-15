@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Doodle &amp; Planner — redirecting…</title>
+    <meta name="robots" content="noindex" />
+    <!--
+      Stop-gap so the GitHub Pages URL works for everyone who already has the
+      link. The repo's Pages "Source" is currently "Deploy from a branch", which
+      Jekyll-renders the README at the root and 404s on SPA deep links like
+      /world-cup. GitHub serves THIS file for any missing path, so we bounce to
+      the live Cloudflare app, preserving the route. (Proper fix: set repo
+      Settings → Pages → Source → "GitHub Actions"; then this file is unused.)
+    -->
+    <script>
+      (function () {
+        var APP = 'https://doodleandplanner.pages.dev';
+        // Drop the GitHub project-page prefix (/doodleandplanner) if present.
+        var path = window.location.pathname.replace(/^\/doodleandplanner/, '');
+        if (path === '' || path === '/') path = '/';
+        window.location.replace(APP + path + window.location.search + window.location.hash);
+      })();
+    </script>
+  </head>
+  <body>
+    <p>
+      Redirecting to <a href="https://doodleandplanner.pages.dev">doodleandplanner.pages.dev</a>…
+    </p>
+  </body>
+</html>

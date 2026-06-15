@@ -49,6 +49,10 @@ describe('pitchRow', () => {
     expect(pitchRow('CAM')).toBe('AM');
     expect(pitchRow('LW')).toBe('FWD');
     expect(pitchRow('ST')).toBe('FWD');
+    expect(pitchRow('LF')).toBe('FWD'); // left forward — was mis-filed as MID
+    expect(pitchRow('RF')).toBe('FWD');
+    expect(pitchRow('SS')).toBe('FWD');
+    expect(pitchRow('CB')).toBe('DEF');
   });
 });
 
@@ -91,6 +95,45 @@ describe('placeLineup', () => {
     const lw = placed.find((p) => p.player.name === 'Left Wing')!;
     const rw = placed.find((p) => p.player.name === 'Right Wing')!;
     expect(lw.x).toBeLessThan(rw.x);
+
+    // The back four read LB → CD-L → CD-R → RB, full-backs on the touchline.
+    const def = placed.filter((p) => p.row === 'DEF').sort((a, b) => a.x - b.x);
+    expect(def.map((p) => p.player.name)).toEqual([
+      'Left Back',
+      'Centre Back L',
+      'Centre Back R',
+      'Right Back',
+    ]);
+    expect(def[0]!.x).toBeLessThan(0.2); // LB hugs the line
+    expect(def[3]!.x).toBeGreaterThan(0.8); // RB hugs the line
+    expect(def[1]!.x).toBeGreaterThan(0.2); // CB stays inner
+    expect(def[2]!.x).toBeLessThan(0.8);
+  });
+
+  it('keeps twin holding mids central, not flung to the wings', () => {
+    const placed = placeLineup({
+      teamTla: 'X',
+      players: [
+        P('G', 'G', 1),
+        P('lb', 'LB', 2),
+        P('cbl', 'CD-L', 3),
+        P('cbr', 'CD-R', 4),
+        P('rb', 'RB', 5),
+        P('dm1', 'DM', 6),
+        P('dm2', 'DM', 7),
+        P('aml', 'AM-L', 8),
+        P('am', 'AM', 9),
+        P('amr', 'AM-R', 10),
+        P('st', 'ST', 11),
+      ],
+    });
+    const dms = placed.filter((p) => p.row === 'DM');
+    expect(dms).toHaveLength(2);
+    for (const d of dms) {
+      expect(d.x).toBeGreaterThan(0.3);
+      expect(d.x).toBeLessThan(0.7);
+    }
+    expect(dms[0]!.x).not.toBeCloseTo(dms[1]!.x);
   });
 });
 

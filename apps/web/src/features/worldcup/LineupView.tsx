@@ -5,10 +5,12 @@ import {
   teamValueM,
   type WcLineup,
   type WcMatch,
+  type WcPlacedPlayer,
   type WorldCupState,
 } from '@dap/shared';
 import { useState } from 'react';
 import { useLineups } from './lineups.js';
+import { usePlayerPhoto } from './playerPhoto.js';
 
 /** Last name (or full name if single token) — keeps tokens compact. */
 function shortName(name: string): string {
@@ -18,6 +20,29 @@ function shortName(name: string): string {
 
 function valueLabel(m: number): string {
   return m >= 100 ? `€${Math.round(m)}M` : `€${m}M`;
+}
+
+/** One player token: their face when we can find a photo, else a numbered shirt,
+ * with the ability rating badged on top, and name + value beneath. */
+function LineupToken({ placed }: { placed: WcPlacedPlayer }) {
+  const photo = usePlayerPhoto(placed.player.name);
+  const tier = placed.rating >= 84 ? 'gold' : placed.rating >= 75 ? 'silver' : 'bronze';
+  return (
+    <div className="wc-lp-token" style={{ left: `${placed.x * 100}%`, top: `${placed.y * 100}%` }}>
+      <span className={`wc-lp-shirt tier-${tier} ${photo ? 'has-photo' : ''}`}>
+        {photo ? (
+          <img src={photo} alt="" loading="lazy" />
+        ) : (
+          <span className="wc-lp-num">{placed.player.jersey ?? ''}</span>
+        )}
+        <span className="wc-lp-rating">{placed.rating}</span>
+      </span>
+      <span className="wc-lp-name" title={placed.player.name}>
+        {shortName(placed.player.name)}
+      </span>
+      <span className="wc-lp-val">{valueLabel(placed.valueM)}</span>
+    </div>
+  );
 }
 
 /** The angled half-pitch with the starting XI drawn in their positions, each
@@ -39,25 +64,9 @@ function Pitch({ wc, lineup }: { wc: WorldCupState; lineup: WcLineup }) {
         <div className="wc-lp-pitch">
           <div className="wc-lp-box" aria-hidden />
           <div className="wc-lp-arc" aria-hidden />
-          {placed.map((p) => {
-            const tier = p.rating >= 84 ? 'gold' : p.rating >= 75 ? 'silver' : 'bronze';
-            return (
-              <div
-                key={p.player.name + p.player.jersey}
-                className="wc-lp-token"
-                style={{ left: `${p.x * 100}%`, top: `${p.y * 100}%` }}
-              >
-                <span className={`wc-lp-shirt tier-${tier}`}>
-                  <span className="wc-lp-num">{p.player.jersey ?? ''}</span>
-                  <span className="wc-lp-rating">{p.rating}</span>
-                </span>
-                <span className="wc-lp-name" title={p.player.name}>
-                  {shortName(p.player.name)}
-                </span>
-                <span className="wc-lp-val">{valueLabel(p.valueM)}</span>
-              </div>
-            );
-          })}
+          {placed.map((p) => (
+            <LineupToken key={p.player.name + p.player.jersey} placed={p} />
+          ))}
         </div>
       </div>
       <div className="wc-lp-total">

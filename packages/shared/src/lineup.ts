@@ -34,7 +34,14 @@ export type WcPitchRow = 'GK' | 'DEF' | 'DM' | 'MID' | 'AM' | 'FWD';
 export function pitchRow(pos: string): WcPitchRow {
   const p = pos.toUpperCase();
   if (p === 'G' || p.startsWith('GK')) return 'GK';
-  if (['ST', 'CF', 'LW', 'RW', 'SS', 'F', 'W'].includes(p) || p.startsWith('F')) return 'FWD';
+  // Forwards: strikers, centre-forwards and wingers/wide-forwards (a "W" that
+  // isn't a wing-back). Listed explicitly so a stray "D"/"B" can't leak in.
+  if (
+    ['ST', 'SS', 'CF', 'F', 'FW', 'LF', 'RF', 'LW', 'RW', 'W'].includes(p) ||
+    (p.includes('W') && !p.includes('B'))
+  ) {
+    return 'FWD';
+  }
   if (p.includes('AM') || p.includes('CAM')) return 'AM';
   if (p.includes('DM') || p.includes('CDM')) return 'DM';
   if (p.includes('M')) return 'MID';
@@ -42,11 +49,19 @@ export function pitchRow(pos: string): WcPitchRow {
   return 'MID';
 }
 
-/** Left (−1) / centre (0) / right (+1) lean from the position code. */
-function sideOf(pos: string): number {
+/**
+ * Horizontal lane in −1..+1 from the position: full-backs/wingers hug the
+ * touchline (±1), centre-left/right roles sit just off centre (±0.5), and
+ * everything central is 0. Keeps two holding mids in the middle, not on the wings.
+ */
+function laneOf(pos: string): number {
   const p = pos.toUpperCase();
-  if (p.endsWith('-L') || (p.startsWith('L') && p !== 'L')) return -1;
-  if (p.endsWith('-R') || (p.startsWith('R') && p !== 'R')) return 1;
+  if (['LB', 'LWB', 'LM', 'LW', 'LF'].includes(p)) return -1;
+  if (['RB', 'RWB', 'RM', 'RW', 'RF'].includes(p)) return 1;
+  if (p.endsWith('-L')) return -0.5;
+  if (p.endsWith('-R')) return 0.5;
+  if (p.startsWith('L') && p.length > 1) return -0.5;
+  if (p.startsWith('R') && p.length > 1) return 0.5;
   return 0;
 }
 
@@ -110,7 +125,15 @@ export function formationOf(players: WcLineupPlayer[]): string {
     .join('-');
 }
 
-/** Lay the XI out on the half-pitch: each player gets x/y, rating and value. */
+const clampX = (x: number) => Math.max(0.08, Math.min(0.92, x));
+
+/**
+ * Lay the XI out on the half-pitch. Each player's x comes from their position's
+ * lane (so full-backs hug the line and centre-backs stay inner — no flipping a
+ * right-back with a centre-back), and players who share a lane (e.g. two holding
+ * mids, twin centre-backs) are nudged apart symmetrically rather than flung to
+ * the touchlines. y is the role's band; rating + value are attached.
+ */
 export function placeLineup(lineup: WcLineup): WcPlacedPlayer[] {
   const starters = lineup.players.filter((p) => p.starter);
   const byRow = new Map<WcPitchRow, WcLineupPlayer[]>();
@@ -120,21 +143,29 @@ export function placeLineup(lineup: WcLineup): WcPlacedPlayer[] {
   }
   const out: WcPlacedPlayer[] = [];
   for (const row of ROW_ORDER) {
-    const inRow = (byRow.get(row) ?? []).sort(
-      (a, b) =>
-        sideOf(a.pos) - sideOf(b.pos) || (a.formationPlace ?? 99) - (b.formationPlace ?? 99),
-    );
-    inRow.forEach((player, i) => {
-      const x = inRow.length === 1 ? 0.5 : 0.14 + (i / (inRow.length - 1)) * 0.72;
-      out.push({
-        player,
-        row,
-        x,
-        y: ROW_Y[row],
-        rating: lineupRating(player.name),
-        valueM: estimatedValueM(player.name),
+    const inRow = byRow.get(row) ?? [];
+    const based = inRow.map((player) => ({ player, bx: clampX(0.5 + laneOf(player.pos) * 0.4) }));
+    // Group players that landed in the same lane, then fan them out around it.
+    const groups = new Map<number, typeof based>();
+    for (const b of based) {
+      const key = Math.round(b.bx * 20);
+      (groups.get(key) ?? groups.set(key, []).get(key)!).push(b);
+    }
+    for (const group of groups.values()) {
+      group.sort((a, b) => (a.player.formationPlace ?? 99) - (b.player.formationPlace ?? 99));
+      const k = group.length;
+      group.forEach((b, i) => {
+        const x = k === 1 ? b.bx : clampX(b.bx + (i - (k - 1) / 2) * 0.2);
+        out.push({
+          player: b.player,
+          row,
+          x,
+          y: ROW_Y[row],
+          rating: lineupRating(b.player.name),
+          valueM: estimatedValueM(b.player.name),
+        });
       });
-    });
+    }
   }
   return out;
 }

@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { espnDateWindow, mergeLiveScores, parseEspnScoreboard } from '../src/espn.js';
+import {
+  espnDateWindow,
+  mergeLiveScores,
+  parseEspnMatchEvents,
+  parseEspnScoreboard,
+} from '../src/espn.js';
 import type { WcLiveScore } from '@dap/shared';
 
 /** Build a minimal ESPN event the way the scoreboard returns them. */
@@ -333,6 +338,62 @@ describe('mergeLiveScores', () => {
     );
     expect(merged).toHaveLength(1);
     expect(merged[0]).toMatchObject({ homeTla: 'URU', awayTla: 'KSA', status: 'IN_PLAY' });
+  });
+});
+
+describe('parseEspnMatchEvents', () => {
+  const key = (a: string, b: string) => [a, b].sort().join('|');
+
+  it('extracts goals (with assists) and cards, keyed by team pair, skipping subs', () => {
+    const raw = {
+      events: [
+        {
+          competitions: [
+            {
+              competitors: [
+                { homeAway: 'home', team: { id: '203', abbreviation: 'MEX' } },
+                { homeAway: 'away', team: { id: '467', abbreviation: 'RSA' } },
+              ],
+              details: [
+                { type: { text: 'Goal' }, clock: { displayValue: "9'" }, team: { id: '203' }, scoringPlay: true, athletesInvolved: [{ displayName: 'Julián Quiñones' }, { displayName: 'Hirving Lozano' }] }, // prettier-ignore
+                { type: { text: 'Yellow Card' }, clock: { displayValue: "17'" }, team: { id: '467' }, yellowCard: true, athletesInvolved: [{ displayName: 'Teboho Mokoena' }] }, // prettier-ignore
+                { type: { text: 'Red Card' }, clock: { displayValue: "49'" }, team: { id: '467' }, redCard: true, athletesInvolved: [{ displayName: 'Sphephelo Sithole' }] }, // prettier-ignore
+                { type: { text: 'Substitution' }, clock: { displayValue: "60'" }, team: { id: '203' }, athletesInvolved: [{ displayName: 'Sub Guy' }] }, // prettier-ignore
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    const list = parseEspnMatchEvents(raw)[key('MEX', 'RSA')]!;
+    expect(list).toHaveLength(3); // substitution skipped
+    expect(list[0]).toEqual({ minute: "9'", kind: 'goal', teamTla: 'MEX', player: 'Julián Quiñones', assist: 'Hirving Lozano' }); // prettier-ignore
+    expect(list[1]).toMatchObject({ kind: 'yellow', teamTla: 'RSA', player: 'Teboho Mokoena' });
+    expect(list[2]).toMatchObject({ kind: 'red', teamTla: 'RSA', player: 'Sphephelo Sithole' });
+  });
+
+  it('classifies penalty and own goals', () => {
+    const raw = {
+      events: [
+        {
+          competitions: [
+            {
+              competitors: [
+                { homeAway: 'home', team: { id: '1', abbreviation: 'BRA' } },
+                { homeAway: 'away', team: { id: '2', abbreviation: 'SCO' } },
+              ],
+              details: [
+                { team: { id: '1' }, scoringPlay: true, penaltyKick: true, clock: { displayValue: "30'" }, athletesInvolved: [{ displayName: 'Neymar' }] }, // prettier-ignore
+                { team: { id: '2' }, scoringPlay: true, ownGoal: true, clock: { displayValue: "80'" }, athletesInvolved: [{ displayName: 'Hapless Defender' }] }, // prettier-ignore
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    const list = parseEspnMatchEvents(raw)[key('BRA', 'SCO')]!;
+    expect(list[0]!.kind).toBe('pen-goal');
+    expect(list[1]!.kind).toBe('own-goal');
   });
 });
 

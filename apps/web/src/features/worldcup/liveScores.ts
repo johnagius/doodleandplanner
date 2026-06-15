@@ -1,4 +1,4 @@
-import type { WcLiveScore } from '@dap/shared';
+import type { WcLiveScore, WcMatchEvent } from '@dap/shared';
 
 export interface LiveScoresResult {
   scores: WcLiveScore[];
@@ -25,5 +25,23 @@ export async function fetchLiveScores(): Promise<LiveScoresResult> {
     };
   } catch {
     return { scores: [], fetchedAt: null };
+  }
+}
+
+/**
+ * Fetch goals + cards for every match from the Worker (which pulls the whole
+ * tournament from ESPN and caches it). Keyed by the sorted team-code pair, so
+ * callers map it to board matches the same way as live scores.
+ */
+export async function fetchMatchEvents(): Promise<Record<string, WcMatchEvent[]>> {
+  const base = import.meta.env.VITE_API_BASE?.trim();
+  if (!base) return {};
+  try {
+    const res = await fetch(`${base.replace(/\/$/, '')}/api/football/events`);
+    if (!res.ok) return {};
+    const data = (await res.json()) as { events?: Record<string, WcMatchEvent[]> };
+    return data.events ?? {};
+  } catch {
+    return {};
   }
 }

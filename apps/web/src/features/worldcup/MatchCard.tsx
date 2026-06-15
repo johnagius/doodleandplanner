@@ -22,6 +22,7 @@ import {
   teamRecord,
   type WcGroupOutlookRow,
   type WcMatch,
+  type WcMatchEvent,
   type WcScoreCategory,
   type WcTeam,
   type WorldCupState,
@@ -63,6 +64,41 @@ function liveLabel(live: WcLiveInfo): string {
   return 'LIVE';
 }
 
+const EVENT_ICON: Record<WcMatchEvent['kind'], string> = {
+  goal: '⚽',
+  'pen-goal': '⚽',
+  'own-goal': '⚽',
+  yellow: '🟨',
+  red: '🟥',
+};
+const EVENT_TAG: Partial<Record<WcMatchEvent['kind'], string>> = {
+  'pen-goal': ' (pen)',
+  'own-goal': ' (OG)',
+};
+
+/** Goals + cards for a played/in-play game (from the live feed). */
+function MatchEvents({ events, wc }: { events?: WcMatchEvent[]; wc: WorldCupState }) {
+  if (!events || events.length === 0) return null;
+  return (
+    <ul className="wc-events">
+      {events.map((e, i) => (
+        <li key={i} className={`wc-ev wc-ev-${e.kind}`}>
+          <span className="wc-ev-min">{e.minute}</span>
+          <span aria-hidden>{EVENT_ICON[e.kind]}</span>
+          <span className="wc-ev-flag" aria-hidden>
+            {findTeam(wc, e.teamTla)?.flag ?? ''}
+          </span>
+          <span className="wc-ev-player">
+            {e.player}
+            {EVENT_TAG[e.kind] ?? ''}
+            {e.assist && <span className="muted"> · {e.assist}</span>}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 /** Optional extras from the live feed: the pre-match odds line and the crowd. */
 function MatchFacts({ live, hasResult }: { live?: WcLiveInfo; hasResult: boolean }) {
   if (!live) return null;
@@ -87,6 +123,7 @@ export function MatchCard({ matchId }: { matchId: string }) {
   const admin = useWorldCupStore((s) => s.admin);
   const live = useWorldCupStore((s) => s.live[matchId]);
   const liveFetchedAt = useWorldCupStore((s) => s.liveFetchedAt);
+  const events = useWorldCupStore((s) => s.matchEvents[matchId]);
   const { predict, unpredict } = useWorldCupStore();
   const { show } = useToast();
   const now = useNow();
@@ -248,6 +285,7 @@ export function MatchCard({ matchId }: { matchId: string }) {
           )}
 
           <CrowdPulse wc={wc} match={match} />
+          <MatchEvents events={events} wc={wc} />
           <MatchFacts live={live} hasResult={!!result} />
           {isLive && live!.home != null && live!.away != null && (
             <p className="muted small wc-live-caption">

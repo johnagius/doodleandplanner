@@ -15,6 +15,7 @@
 export type ApiRoute =
   | { kind: 'create' }
   | { kind: 'wc-scores' }
+  | { kind: 'wc-events' }
   | { kind: 'wc-h2h' }
   | { kind: 'get'; slug: string }
   | { kind: 'save'; slug: string }
@@ -36,6 +37,9 @@ export function route(method: string, pathname: string): ApiRoute {
   if (parts[1] === 'health' && parts.length === 2) return { kind: 'health' };
   if (parts[1] === 'football' && parts[2] === 'worldcup' && parts.length === 3) {
     return m === 'GET' ? { kind: 'wc-scores' } : { kind: 'not-found' };
+  }
+  if (parts[1] === 'football' && parts[2] === 'events' && parts.length === 3) {
+    return m === 'GET' ? { kind: 'wc-events' } : { kind: 'not-found' };
   }
   if (parts[1] === 'football' && parts[2] === 'h2h' && parts.length === 3) {
     return m === 'GET' ? { kind: 'wc-h2h' } : { kind: 'not-found' };

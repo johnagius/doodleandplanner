@@ -7,7 +7,7 @@
  * Everything here is pure and serialisable so it unit-tests against a captured
  * scoreboard payload. The Worker does the fetching; this just parses + merges.
  */
-import type { WcLiveScore, WcMatchOdds } from '@dap/shared';
+import type { WcLiveScore, WcMatchEvent, WcMatchOdds } from '@dap/shared';
 
 /**
  * ESPN national-team abbreviations are FIFA-style and line up with our team ids
@@ -24,7 +24,18 @@ interface EspnCompetitor {
   winner?: boolean;
   score?: string | number;
   form?: string;
-  team?: { abbreviation?: string; color?: string; alternateColor?: string; logo?: string };
+  team?: { id?: string; abbreviation?: string; color?: string; alternateColor?: string; logo?: string }; // prettier-ignore
+}
+interface EspnDetail {
+  type?: { text?: string };
+  clock?: { displayValue?: string };
+  team?: { id?: string };
+  scoringPlay?: boolean;
+  redCard?: boolean;
+  yellowCard?: boolean;
+  penaltyKick?: boolean;
+  ownGoal?: boolean;
+  athletesInvolved?: { displayName?: string }[];
 }
 interface EspnStatusType {
   name?: string;
@@ -47,6 +58,7 @@ interface EspnCompetition {
   venue?: { fullName?: string; address?: { city?: string; country?: string } };
   attendance?: number;
   odds?: EspnOdds[];
+  details?: EspnDetail[];
   competitors?: EspnCompetitor[];
 }
 interface EspnEvent {
@@ -208,6 +220,51 @@ export function mergeLiveScores(fd: WcLiveScore[], espn: WcLiveScore[]): WcLiveS
 
   for (const e of espn) {
     if (!used.has(pairKey(e.homeTla, e.awayTla))) out.push(e);
+  }
+  return out;
+}
+
+function detailKind(d: EspnDetail): WcMatchEvent['kind'] | null {
+  if (d.ownGoal) return 'own-goal';
+  if (d.scoringPlay) return d.penaltyKick ? 'pen-goal' : 'goal';
+  if (d.redCard) return 'red';
+  if (d.yellowCard) return 'yellow';
+  return null;
+}
+
+/**
+ * Parse goals + cards out of a scoreboard's per-match `details` arrays, keyed by
+ * the (sorted) team pair so the client can line them up with board matches.
+ * Best-effort assists (a goal's second athlete). Cards/goals only — other plays
+ * (subs, etc.) are skipped.
+ */
+export function parseEspnMatchEvents(raw: unknown): Record<string, WcMatchEvent[]> {
+  const events = (raw as { events?: EspnEvent[] } | null)?.events ?? [];
+  const out: Record<string, WcMatchEvent[]> = {};
+  for (const ev of events) {
+    const comp = ev.competitions?.[0];
+    if (!comp) continue;
+    const home = comp.competitors?.find((c) => c.homeAway === 'home');
+    const away = comp.competitors?.find((c) => c.homeAway === 'away');
+    const hAbbr = home?.team?.abbreviation;
+    const aAbbr = away?.team?.abbreviation;
+    if (!hAbbr || !aAbbr) continue;
+    const idToCode: Record<string, string> = {};
+    if (home?.team?.id) idToCode[home.team.id] = alias(hAbbr);
+    if (away?.team?.id) idToCode[away.team.id] = alias(aAbbr);
+
+    const list: WcMatchEvent[] = [];
+    for (const d of comp.details ?? []) {
+      const kind = detailKind(d);
+      if (!kind) continue;
+      const teamTla = d.team?.id ? idToCode[d.team.id] : undefined;
+      const player = d.athletesInvolved?.[0]?.displayName;
+      if (!teamTla || !player) continue;
+      const goal = kind === 'goal' || kind === 'pen-goal' || kind === 'own-goal';
+      const assist = goal ? d.athletesInvolved?.[1]?.displayName : undefined;
+      list.push({ minute: d.clock?.displayValue ?? '', kind, teamTla, player, ...(assist ? { assist } : {}) }); // prettier-ignore
+    }
+    if (list.length) out[pairKey(alias(hAbbr), alias(aAbbr))] = list;
   }
   return out;
 }

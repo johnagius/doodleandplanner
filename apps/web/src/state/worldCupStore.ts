@@ -18,13 +18,14 @@ import {
   togglePickReaction,
   toggleReaction,
   type RoomState,
+  type WcMatchEvent,
   type WcMatchOdds,
   type WorldCupState,
 } from '@dap/shared';
 import { create } from 'zustand';
 import { LocalStorageRepository, getRepository, type Repository } from '../lib/storage/index.js';
 import { WORLD_CUP_SLUG, loadOrCreateWorldCup } from '../features/worldcup/worldCupRoom.js';
-import { fetchLiveScores } from '../features/worldcup/liveScores.js';
+import { fetchLiveScores, fetchMatchEvents } from '../features/worldcup/liveScores.js';
 
 /** Live in-play info for one board match, for display while a game is on. */
 export interface WcLiveInfo {
@@ -93,6 +94,8 @@ interface WorldCupStore {
   live: Record<string, WcLiveInfo>;
   /** When the Worker last pulled the live feed (ISO), for a staleness read. */
   liveFetchedAt: string | null;
+  /** Goals + cards per board match id (from the football feed). */
+  matchEvents: Record<string, WcMatchEvent[]>;
   unsubscribe: (() => void) | null;
 
   load: () => Promise<void>;
@@ -101,6 +104,8 @@ interface WorldCupStore {
   setAdmin: (on: boolean) => void;
   /** Pull live scores: auto-fill finished results and refresh in-play info. */
   syncLiveScores: () => Promise<void>;
+  /** Pull goals + cards for every match (slower cadence than scores). */
+  syncMatchEvents: () => Promise<void>;
 
   predict: (matchId: string, home: number, away: number) => Promise<void>;
   unpredict: (matchId: string) => Promise<void>;
@@ -204,6 +209,7 @@ export const useWorldCupStore = create<WorldCupStore>((set, get) => {
     admin: readLocal(ADMIN_KEY) === '1',
     live: {},
     liveFetchedAt: null,
+    matchEvents: {},
     unsubscribe: null,
 
     async load() {
@@ -290,6 +296,20 @@ export const useWorldCupStore = create<WorldCupStore>((set, get) => {
         }
       }
       set({ live, liveFetchedAt: fetchedAt });
+    },
+
+    async syncMatchEvents() {
+      const board = get().state?.worldCup;
+      if (!board) return;
+      const byPair = await fetchMatchEvents();
+      if (Object.keys(byPair).length === 0) return;
+      const matchEvents: Record<string, WcMatchEvent[]> = {};
+      for (const m of board.matches) {
+        if (!m.homeId || !m.awayId) continue;
+        const evs = byPair[[m.homeId, m.awayId].sort().join('|')];
+        if (evs && evs.length) matchEvents[m.id] = evs;
+      }
+      set({ matchEvents });
     },
 
     selectPredictor(id) {

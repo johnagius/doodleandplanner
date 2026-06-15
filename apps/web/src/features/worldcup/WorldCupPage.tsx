@@ -68,7 +68,17 @@ export function WorldCupPage() {
     tick();
     // Poll ~every 20s to follow live games; the Worker caches the feed for the
     // same window, so many devices never exceed the 10 calls/min free limit.
-    const id = setInterval(tick, 20_000);
+    const id = setInterval(tick, 15_000);
+    return () => clearInterval(id);
+  }, []);
+
+  // Poll goals + cards on a slower cadence (the Worker caches the whole-tournament
+  // pull ~1 min; they change far less often than the live score).
+  useEffect(() => {
+    if (!isRealtimeBackend()) return;
+    const tick = () => void useWorldCupStore.getState().syncMatchEvents();
+    tick();
+    const id = setInterval(tick, 60_000);
     return () => clearInterval(id);
   }, []);
 

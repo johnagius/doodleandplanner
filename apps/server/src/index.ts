@@ -2,11 +2,16 @@
  * Worker entry point. Routes API requests to the per-room Durable Object,
  * deriving the room's DO id from its slug.
  */
-import { espnDateWindow, mergeLiveScores, parseEspnScoreboard } from './espn.js';
+import {
+  espnDateWindow,
+  mergeLiveScores,
+  parseEspnMatchEvents,
+  parseEspnScoreboard,
+} from './espn.js';
 import { findWcMatch, mapHeadToHead, mapWorldCupScores } from './football.js';
 import { RoomDurableObject, type Env } from './roomObject.js';
 import { corsHeaders, json, route } from './router.js';
-import type { WcTeamH2H, WcLiveScore } from '@dap/shared';
+import type { WcMatchEvent, WcTeamH2H, WcLiveScore } from '@dap/shared';
 
 export { RoomDurableObject };
 
@@ -18,6 +23,10 @@ let scoresCache: { at: number; scores: WcLiveScore[] } | null = null;
 const SCORES_TTL_MS = 15_000;
 
 const ESPN_BASE = 'https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard';
+// Whole-tournament window for goals/cards (one call, cached ~1 min, shared).
+const WC_EVENTS_RANGE = '20260611-20260719';
+let eventsCache: { at: number; events: Record<string, WcMatchEvent[]> } | null = null;
+const EVENTS_TTL_MS = 60_000;
 
 // Raw WC fixtures (kept to resolve a team-pair → match id for head-to-head) and
 // per-pair head-to-head results. H2H barely changes, so it's cached for longer.
@@ -143,6 +152,43 @@ async function worldCupScores(env: Env, cors: Record<string, string>): Promise<R
   return json({ scores, fetchedAt: stamp(scoresCache.at) }, {}, cors);
 }
 
+/** Goals + cards for every match, from ESPN's whole-tournament scoreboard. */
+async function worldCupEvents(cors: Record<string, string>): Promise<Response> {
+  const stamp = (at: number | undefined) => (at ? new Date(at).toISOString() : null);
+  if (eventsCache && Date.now() - eventsCache.at < EVENTS_TTL_MS) {
+    return json({ events: eventsCache.events, fetchedAt: stamp(eventsCache.at) }, {}, cors);
+  }
+  try {
+    const res = await fetch(`${ESPN_BASE}?dates=${WC_EVENTS_RANGE}`, {
+      headers: { 'User-Agent': 'doodleandplanner/1.0 (+world-cup board)' },
+    });
+    if (!res.ok) {
+      return json(
+        {
+          events: eventsCache?.events ?? {},
+          fetchedAt: stamp(eventsCache?.at),
+          error: `upstream-${res.status}`,
+        },
+        {},
+        cors,
+      );
+    }
+    const events = parseEspnMatchEvents(await res.json());
+    eventsCache = { at: Date.now(), events };
+    return json({ events, fetchedAt: stamp(eventsCache.at) }, {}, cors);
+  } catch {
+    return json(
+      {
+        events: eventsCache?.events ?? {},
+        fetchedAt: stamp(eventsCache?.at),
+        error: 'unavailable',
+      },
+      {},
+      cors,
+    );
+  }
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
@@ -152,6 +198,7 @@ export default {
     if (r.kind === 'preflight') return new Response(null, { status: 204, headers: cors });
     if (r.kind === 'health') return json({ ok: true }, {}, cors);
     if (r.kind === 'wc-scores') return worldCupScores(env, cors);
+    if (r.kind === 'wc-events') return worldCupEvents(cors);
     if (r.kind === 'wc-h2h') {
       return worldCupH2H(
         env,

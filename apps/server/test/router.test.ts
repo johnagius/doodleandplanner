@@ -41,6 +41,13 @@ describe('route', () => {
     expect(route('GET', '/nope')).toEqual({ kind: 'not-found' });
     expect(route('GET', '/api/rooms/abc/extra')).toEqual({ kind: 'not-found' });
   });
+
+  it('routes the football feed endpoints', () => {
+    expect(route('GET', '/api/football/worldcup')).toEqual({ kind: 'wc-scores' });
+    expect(route('GET', '/api/football/events')).toEqual({ kind: 'wc-events' });
+    expect(route('GET', '/api/football/h2h')).toEqual({ kind: 'wc-h2h' });
+    expect(route('POST', '/api/football/events')).toEqual({ kind: 'not-found' });
+  });
 });
 
 describe('corsHeaders', () => {

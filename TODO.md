@@ -102,10 +102,13 @@ A standalone `/world-cup` board (no login) for predicting the tournament.
       moneyline (odds frozen once via `captureOdds`), auto-settled on the result.
       Shows a bankroll leaderboard + your bet slip. Pure `betsFor`/`bankroll` in
       `@dap/shared`; a side-game that doesn't touch the prediction points.
-- [ ] **Live match events + stats** — ESPN's per-match `summary` endpoint carries
-      goal scorers/assists, 🟨🟥 cards, subs **and** team stats (possession, shots).
-      Next: a cached Worker route per event + a live events ticker, and finally
-      possession/shots on the Stats tab (no paid API needed after all).
+- [x] **Match events** — goals (with best-effort assists) and 🟨🟥 cards on each
+      card, for live **and** past games. The Worker pulls ESPN's whole-tournament
+      scoreboard `details` in one cached call (`/api/football/events`); pure
+      `parseEspnMatchEvents`. Bets also now settle **retrospectively** for every
+      played game (real odds where caught, else a fair FIFA-rank model line).
+- [ ] **Team match stats** — ESPN's per-match `summary` also has possession +
+      shots; surface them on the Stats tab (no paid API needed after all).
 - [ ] Strategy layer: a per-matchday joker, knockout multipliers, outright bets.
 - [ ] A share card; let the organiser edit fixtures/teams (fixed 2026 seed today).
 

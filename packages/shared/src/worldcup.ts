@@ -598,6 +598,20 @@ export interface WcLiveScore {
   source?: 'espn' | 'football-data';
 }
 
+/** A single in-match event (goal or card) from the live feed, for the timeline
+ * of a played/in-play game. */
+export interface WcMatchEvent {
+  /** Display minute, e.g. "9'" or "45'+2'". */
+  minute: string;
+  kind: 'goal' | 'own-goal' | 'pen-goal' | 'yellow' | 'red';
+  /** Team code (canonical) the event belongs to. */
+  teamTla: string;
+  /** Player involved (scorer / booked player). */
+  player: string;
+  /** Assisting player, when the feed provides one (goals only, best-effort). */
+  assist?: string;
+}
+
 /** One historical meeting between two teams (from the results feed). */
 export interface WcH2HMeeting {
   /** ISO date of the meeting. */

@@ -109,13 +109,20 @@ A standalone `/world-cup` board (no login) for predicting the tournament.
       played game (real odds where caught, else a fair FIFA-rank model line).
 - [x] **Lineups & formation** — ~1h before kickoff, a 👥 Lineups tab draws each
       team's confirmed starting XI on an **angled (3D-tilted) half-pitch** in their
-      real positions (ESPN summary `rosters`), each player with our ability rating + an **estimated** market value (€M) and the total XI value. New Worker
+      real positions (ESPN summary `rosters`), each player with our ability rating + their **real Transfermarkt market value** (€M) and the total XI value. New Worker
       `/api/football/lineups` route (resolves the ESPN event, parses the summary);
       pure `lineup.ts` does the role/placement/rating/value.
+- [x] **Real market values** — committed Transfermarkt value DB
+      (`packages/shared/src/transfermarktValues.ts`): a knowledge baseline layered
+      under values harvested from the community transfermarkt-api (regenerate with
+      `scripts/harvest-transfermarkt.mjs`). DB-first lookup in the web app + Worker,
+      so star values resolve instantly and reliably; the flaky live API is only a
+      fallback for names not in the DB.
 - [ ] **Team match stats** — ESPN's per-match `summary` also has possession +
       shots; surface them on the Stats tab (no paid API needed after all).
-- [ ] Real market values would need a paid/licensed source (Transfermarkt has no
-      free API) — today's values are our own estimate from the rating.
+- [ ] Broaden the value DB beyond the squad stars (long-tail squad players still
+      lean on the live API / house estimate). Ratings remain our own (real FIFA
+      data is proprietary).
 - [ ] Strategy layer: a per-matchday joker, knockout multipliers, outright bets.
 - [ ] A share card; let the organiser edit fixtures/teams (fixed 2026 seed today).
 

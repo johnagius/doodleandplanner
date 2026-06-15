@@ -1,12 +1,20 @@
 /**
  * Starting-XI lineup model: classify each player's role, lay them out on a
- * half-pitch, and attach our own ability rating + an *estimated* market value
- * (no free feed carries real values). The lineup, positions and formation are
- * real (from ESPN); ratings/values are deterministic house numbers, like the
- * collectible cards. Pure + serialisable so it unit-tests and runs anywhere.
+ * half-pitch, and attach our own ability rating + their market value. The lineup,
+ * positions and formation are real (from ESPN); values come from the committed
+ * Transfermarkt DB (`marketValueM`) and fall back to a deterministic house
+ * estimate only for players we don't carry. Pure + serialisable so it unit-tests
+ * and runs anywhere.
  */
 
+import { marketValueM } from './transfermarktValues.js';
 import type { WcMatchEvent } from './worldcup.js';
+
+/** A player's market value (€M): real Transfermarkt value when we have it, else a
+ * deterministic house estimate so every player still shows a sensible number. */
+export function playerValueM(name: string): number {
+  return marketValueM(name) ?? estimatedValueM(name);
+}
 
 export interface WcLineupPlayer {
   name: string;
@@ -86,7 +94,7 @@ export interface WcPlacedPlayer {
   x: number;
   y: number;
   rating: number;
-  /** Estimated market value, in millions of euros. */
+  /** Market value in €M — real Transfermarkt value when known, else an estimate. */
   valueM: number;
 }
 
@@ -160,7 +168,7 @@ export function placeLineup(lineup: WcLineup): WcPlacedPlayer[] {
         x,
         y: ROW_Y[row],
         rating: lineupRating(player.name),
-        valueM: estimatedValueM(player.name),
+        valueM: playerValueM(player.name),
       });
     });
   }
@@ -189,10 +197,11 @@ export function tallyPlayerEvents(events: WcMatchEvent[], name: string): WcPlaye
   return t;
 }
 
-/** Total estimated squad value (€M) of the starting XI. */
+/** Total squad value (€M) of the starting XI — real Transfermarkt values where we
+ * have them, the house estimate otherwise. */
 export function teamValueM(lineup: WcLineup): number {
   const total = lineup.players
     .filter((p) => p.starter)
-    .reduce((sum, p) => sum + estimatedValueM(p.name), 0);
+    .reduce((sum, p) => sum + playerValueM(p.name), 0);
   return Math.round(total * 10) / 10;
 }

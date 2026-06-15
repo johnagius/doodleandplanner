@@ -14,6 +14,7 @@ import { findWcMatch, mapHeadToHead, mapWorldCupScores } from './football.js';
 import { parseTmValueM } from './transfermarkt.js';
 import { RoomDurableObject, type Env } from './roomObject.js';
 import { corsHeaders, json, route } from './router.js';
+import { marketValueM } from '@dap/shared';
 import type { WcLineup, WcLineupPlayer, WcMatchEvent, WcTeamH2H, WcLiveScore } from '@dap/shared';
 
 const ESPN_UA = { 'User-Agent': 'doodleandplanner/1.0 (+world-cup board)' };
@@ -258,6 +259,10 @@ async function worldCupLineups(
  * value is cached hard (24h); a miss/timeout is cached only briefly so a flaky
  * upstream doesn't pin a player to "—" all day. */
 async function fetchTmValue(name: string): Promise<number | null> {
+  // DB-first: most players resolve from the committed Transfermarkt table with no
+  // network call, so the flaky community API is only hit for names we don't carry.
+  const fromDb = marketValueM(name);
+  if (fromDb != null) return fromDb;
   const key = name.trim().toLowerCase();
   const cached = valueCache.get(key);
   if (cached) {

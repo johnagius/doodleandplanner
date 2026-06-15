@@ -72,8 +72,8 @@ export function CardsView({ wc }: { wc: WorldCupState }) {
         </div>
       )}
       <p className="muted small" style={{ textAlign: 'center' }}>
-        1,249 squad players · every card globally unique · photos via Wikimedia Commons · ratings
-        are our own (real FIFA data is proprietary).
+        1,249 squad players · every card globally unique · photos via Wikimedia & TheSportsDB ·
+        ratings are our own (real FIFA data is proprietary).
       </p>
     </div>
   );

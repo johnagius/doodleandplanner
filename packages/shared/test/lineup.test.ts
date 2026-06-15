@@ -3,6 +3,7 @@ import {
   estimatedValueM,
   formationOf,
   lineupRating,
+  ratingFromValueM,
   pitchRow,
   placeLineup,
   tallyPlayerEvents,
@@ -158,16 +159,31 @@ describe('placeLineup', () => {
 });
 
 describe('rating + value', () => {
-  it('are deterministic and in sensible ranges', () => {
+  it('grounds the rating in market value (monotonic, clamped 50–95)', () => {
+    // A clean function of value: more valuable ⇒ higher rated, with sane bounds.
+    expect(ratingFromValueM(200)).toBeGreaterThan(ratingFromValueM(50));
+    expect(ratingFromValueM(50)).toBeGreaterThan(ratingFromValueM(5));
+    expect(ratingFromValueM(200)).toBeLessThanOrEqual(95);
+    expect(ratingFromValueM(0)).toBeGreaterThanOrEqual(50);
+    expect(ratingFromValueM(200)).toBe(94); // ≈€200M star tops out near 9.4
+    expect(ratingFromValueM(100)).toBe(89);
+  });
+
+  it('rates a DB player from their real value, deterministically', () => {
+    // Lamine Yamal is €200M in the DB ⇒ his rating comes straight off that value.
     expect(lineupRating('Lamine Yamal')).toBe(lineupRating('Lamine Yamal'));
+    expect(lineupRating('Lamine Yamal')).toBe(ratingFromValueM(200));
     const r = lineupRating('Lamine Yamal');
-    expect(r).toBeGreaterThanOrEqual(62);
-    expect(r).toBeLessThanOrEqual(91);
-    const v = estimatedValueM('Lamine Yamal');
-    expect(v).toBe(estimatedValueM('Lamine Yamal'));
+    expect(r).toBeGreaterThanOrEqual(50);
+    expect(r).toBeLessThanOrEqual(95);
+  });
+
+  it('keeps the estimated value (fallback) deterministic and sane', () => {
+    const v = estimatedValueM('Zzz Unknown Reserve');
+    expect(v).toBe(estimatedValueM('Zzz Unknown Reserve'));
     expect(v).toBeGreaterThan(0);
-    // Even the top of the scale stays in sane territory (no €150M no-names).
-    for (const n of ['Wahi', 'Sébastien Haller', 'A. Player', 'Zzz Xyz', 'Foo Bar', 'Q']) {
+    // Even the top of the estimate stays in sane territory (no €150M no-names).
+    for (const n of ['Wahi', 'A. Player', 'Zzz Xyz', 'Foo Bar', 'Q']) {
       expect(estimatedValueM(n)).toBeLessThanOrEqual(110);
     }
   });

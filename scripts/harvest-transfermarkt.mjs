@@ -464,7 +464,20 @@ async function fetchValue(name, tries = 4) {
 }
 
 async function main() {
+  // Seed from the values already harvested so a run only ever *builds up* the DB:
+  // a name the flaky host can't resolve this time keeps its previous real value.
+  const src0 = await readFile(TARGET, 'utf8');
   const harvested = new Map(); // tmName → €M
+  const existing = src0.match(/\/\* HARVEST:START \*\/([\s\S]*?)\/\* HARVEST:END \*\//);
+  if (existing) {
+    // Keys may be double-quoted, single-quoted, or unquoted (Prettier normalises
+    // valid identifiers), so match all three forms followed by `: <number>,`.
+    const re = /(?:"([^"]+)"|'([^']+)'|([A-Za-zÀ-ɏ][\wÀ-ɏ]*)):\s*([\d.]+),/g;
+    for (const m of existing[1].matchAll(re)) {
+      harvested.set(m[1] ?? m[2] ?? m[3], Number(m[4]));
+    }
+    process.stderr.write(`Seeded ${harvested.size} existing harvested values.\n`);
+  }
   let ok = 0;
   let miss = 0;
   let err = 0;

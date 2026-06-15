@@ -108,20 +108,38 @@ function hash(s: string): number {
   return h >>> 0;
 }
 
-/** Our deterministic "house" ability rating for a player, 62–91. */
-export function lineupRating(name: string): number {
+/** Deterministic 62–91 "house" number, used only to shape the *estimated* value
+ * of players we don't carry a real Transfermarkt value for. */
+function houseRating(name: string): number {
   return 62 + (hash('rate:' + name) % 30);
 }
 
 /**
- * A plausible, deterministic *estimated* market value (€M) from the rating, on a
- * steep curve (stars worth far more than squad players) with a little per-name
- * jitter, capped so even a top rating tops out around real-world territory (≈
- * €90M, hard cap €110M) rather than the silly €150M+ it used to reach. Not real
- * data — clearly an estimate.
+ * Ability rating on a 0–100 scale (shown as /10), **grounded in the market
+ * value** so it tracks Transfermarkt rather than being an arbitrary house
+ * number: a log curve where ≈€200M → 94, €100M → 89, €50M → 84, €15M → 76,
+ * €5M → 69, €1M → 62, clamped to 50–95. Same value ⇒ same rating, everywhere.
+ */
+export function ratingFromValueM(valueM: number): number {
+  const r = 57 + 16 * Math.log10(Math.max(0, valueM) + 1);
+  return Math.round(Math.max(50, Math.min(95, r)));
+}
+
+/** A player's ability rating (0–100, shown as /10), derived from their market
+ * value — real Transfermarkt value when we have it, else the house estimate. */
+export function lineupRating(name: string): number {
+  return ratingFromValueM(playerValueM(name));
+}
+
+/**
+ * A plausible, deterministic *estimated* market value (€M) for players we don't
+ * carry a real value for, on a steep curve (stars worth far more than squad
+ * players) with a little per-name jitter, capped so even the top tops out around
+ * real-world territory (≈€90M, hard cap €110M). Not real data — an estimate, and
+ * only ever a fallback behind the Transfermarkt DB.
  */
 export function estimatedValueM(name: string): number {
-  const r = lineupRating(name); // 62..91
+  const r = houseRating(name); // 62..91
   const base = 0.3 + Math.pow((r - 60) / 31, 3) * 88; // ~0.3 (low) → ~88 (top)
   const jitter = 0.9 + (hash('val:' + name) % 20) / 100; // 0.90..1.09
   const v = Math.min(base * jitter, 110);

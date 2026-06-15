@@ -122,7 +122,7 @@ function PlayerPanel({
           <span className="badge">🟥 {tally.red}</span>
         </div>
         <p className="muted small" style={{ margin: 0, textAlign: 'center' }}>
-          Value: Transfermarkt · goals/assists/cards: this World Cup. Rating is our own estimate.
+          Value &amp; rating from Transfermarkt · goals/assists/cards: this World Cup.
         </p>
       </div>
     </Modal>

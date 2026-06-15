@@ -7,7 +7,7 @@
  * Everything here is pure and serialisable so it unit-tests against a captured
  * scoreboard payload. The Worker does the fetching; this just parses + merges.
  */
-import type { WcLiveScore } from '@dap/shared';
+import type { WcLiveScore, WcMatchOdds } from '@dap/shared';
 
 /**
  * ESPN national-team abbreviations are FIFA-style and line up with our team ids
@@ -24,7 +24,7 @@ interface EspnCompetitor {
   winner?: boolean;
   score?: string | number;
   form?: string;
-  team?: { abbreviation?: string };
+  team?: { abbreviation?: string; color?: string; alternateColor?: string; logo?: string };
 }
 interface EspnStatusType {
   name?: string;
@@ -33,9 +33,20 @@ interface EspnStatusType {
   description?: string;
   shortDetail?: string;
 }
+interface EspnOddsSide {
+  close?: { odds?: string };
+  open?: { odds?: string };
+}
+interface EspnOdds {
+  details?: string;
+  overUnder?: number;
+  moneyline?: { home?: EspnOddsSide; away?: EspnOddsSide; draw?: EspnOddsSide };
+}
 interface EspnCompetition {
   status?: { displayClock?: string; type?: EspnStatusType };
-  venue?: { fullName?: string };
+  venue?: { fullName?: string; address?: { city?: string; country?: string } };
+  attendance?: number;
+  odds?: EspnOdds[];
   competitors?: EspnCompetitor[];
 }
 interface EspnEvent {
@@ -47,6 +58,24 @@ const intOrNull = (v: unknown): number | null => {
   const n = parseInt(String(v ?? ''), 10);
   return Number.isFinite(n) ? n : null;
 };
+
+const hex = (c: string | undefined): string | null => (c ? `#${c.replace(/^#/, '')}` : null);
+
+/** Map ESPN's odds block to our compact shape (American moneyline + O/U line). */
+function parseOdds(odds: EspnOdds[] | undefined): WcMatchOdds | null {
+  const o = odds?.[0];
+  if (!o) return null;
+  const ml = (s?: EspnOddsSide) => intOrNull(s?.close?.odds ?? s?.open?.odds);
+  const out: WcMatchOdds = {
+    details: o.details ?? null,
+    overUnder: typeof o.overUnder === 'number' ? o.overUnder : null,
+    homeML: ml(o.moneyline?.home),
+    awayML: ml(o.moneyline?.away),
+    drawML: ml(o.moneyline?.draw),
+  };
+  // Drop entirely-empty odds so the UI can treat null as "no line".
+  return out.details || out.overUnder != null || out.homeML != null ? out : null;
+}
 
 /** Normalise ESPN's status into our feed vocabulary (matches football-data). */
 function normaliseStatus(type: EspnStatusType): WcLiveScore['status'] {
@@ -73,6 +102,8 @@ export function parseEspnEvents(events: EspnEvent[]): WcLiveScore[] {
     const status = normaliseStatus(type);
     const playing = status === 'IN_PLAY' || status === 'PAUSED' || status === 'FINISHED';
     const displayClock = comp.status?.displayClock ?? null;
+    const city = comp.venue?.address?.city;
+    const country = comp.venue?.address?.country;
 
     out.push({
       homeTla: alias(hAbbr),
@@ -89,6 +120,13 @@ export function parseEspnEvents(events: EspnEvent[]): WcLiveScore[] {
       clock: status === 'IN_PLAY' ? displayClock : null,
       detail: type.shortDetail ?? type.description ?? null,
       venue: comp.venue?.fullName ?? null,
+      venueCity: [city, country].filter(Boolean).join(', ') || null,
+      attendance: comp.attendance && comp.attendance > 0 ? comp.attendance : null,
+      homeColor: hex(home?.team?.color),
+      awayColor: hex(away?.team?.color),
+      homeLogo: home?.team?.logo ?? null,
+      awayLogo: away?.team?.logo ?? null,
+      odds: parseOdds(comp.odds),
       source: 'espn',
     });
   }
@@ -126,9 +164,23 @@ export function mergeLiveScores(fd: WcLiveScore[], espn: WcLiveScore[]): WcLiveS
       continue;
     }
     used.add(key);
-    // Keep football-data's official finished result; otherwise take ESPN live.
+    // ESPN's team-level metadata, mapped by code so it attaches to the right
+    // side regardless of either feed's home/away orientation.
+    const colorOf: Record<string, string | null> = { [e.homeTla]: e.homeColor ?? null, [e.awayTla]: e.awayColor ?? null }; // prettier-ignore
+    const logoOf: Record<string, string | null> = { [e.homeTla]: e.homeLogo ?? null, [e.awayTla]: e.awayLogo ?? null }; // prettier-ignore
+    const meta = {
+      venue: f.venue ?? e.venue ?? null,
+      venueCity: e.venueCity ?? null,
+      attendance: e.attendance ?? null,
+      odds: e.odds ?? null,
+      homeColor: colorOf[f.homeTla] ?? null,
+      awayColor: colorOf[f.awayTla] ?? null,
+      homeLogo: logoOf[f.homeTla] ?? null,
+      awayLogo: logoOf[f.awayTla] ?? null,
+    };
+    // Keep football-data's official finished result; just enrich its metadata.
     if (f.status === 'FINISHED') {
-      out.push(f);
+      out.push({ ...f, ...meta });
       continue;
     }
     // Overlay ESPN by team code so orientation differences can't swap goals.
@@ -149,7 +201,7 @@ export function mergeLiveScores(fd: WcLiveScore[], espn: WcLiveScore[]): WcLiveS
         winnerCode === f.homeTla ? 'HOME_TEAM' : winnerCode === f.awayTla ? 'AWAY_TEAM' : null,
       clock: e.clock ?? null,
       detail: e.detail ?? null,
-      venue: e.venue ?? f.venue ?? null,
+      ...meta,
       source: 'espn',
     });
   }

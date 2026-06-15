@@ -550,6 +550,18 @@ export function clearResult(state: WorldCupState, matchId: string): WorldCupStat
  * A live/finished score for one match from an external feed (football-data.org).
  * Teams are identified by their three-letter code, which matches our team ids.
  */
+/** Pre-match betting lines from the feed (ESPN/DraftKings), for colour only. */
+export interface WcMatchOdds {
+  /** Headline favourite line, e.g. "ESP -1400". */
+  details?: string | null;
+  /** Over/Under total-goals line, e.g. 3.5. */
+  overUnder?: number | null;
+  /** Three-way moneyline (American odds). */
+  homeML?: number | null;
+  awayML?: number | null;
+  drawML?: number | null;
+}
+
 export interface WcLiveScore {
   homeTla: string;
   awayTla: string;
@@ -567,6 +579,17 @@ export interface WcLiveScore {
   detail?: string | null;
   /** Stadium name (ESPN). */
   venue?: string | null;
+  /** Stadium city/country, e.g. "Atlanta, Georgia, USA" (ESPN). */
+  venueCity?: string | null;
+  /** Crowd size, once known (ESPN; 0/absent before kick-off). */
+  attendance?: number | null;
+  /** Team brand colours (hex, e.g. "#c60b1e") and crest URLs (ESPN). */
+  homeColor?: string | null;
+  awayColor?: string | null;
+  homeLogo?: string | null;
+  awayLogo?: string | null;
+  /** Pre-match odds (ESPN). */
+  odds?: WcMatchOdds | null;
   /** Which feed supplied the live fields — 'espn' (near-real-time) or 'football-data'. */
   source?: 'espn' | 'football-data';
 }

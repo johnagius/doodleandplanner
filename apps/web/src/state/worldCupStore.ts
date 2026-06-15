@@ -17,6 +17,7 @@ import {
   togglePickReaction,
   toggleReaction,
   type RoomState,
+  type WcMatchOdds,
   type WorldCupState,
 } from '@dap/shared';
 import { create } from 'zustand';
@@ -34,6 +35,14 @@ export interface WcLiveInfo {
   clock?: string | null;
   /** Short status text, e.g. "HT", "FT", "62'" (ESPN). */
   detail?: string | null;
+  /** Stadium city/country and crowd size (ESPN). */
+  venueCity?: string | null;
+  attendance?: number | null;
+  /** Team brand colours (hex) for a live-score accent (ESPN). */
+  homeColor?: string | null;
+  awayColor?: string | null;
+  /** Pre-match odds (ESPN). */
+  odds?: WcMatchOdds | null;
   /** Which feed supplied this — 'espn' (real-time) or 'football-data'. */
   source?: 'espn' | 'football-data';
 }
@@ -268,6 +277,11 @@ export const useWorldCupStore = create<WorldCupStore>((set, get) => {
             away: sc.away,
             clock: sc.clock ?? null,
             detail: sc.detail ?? null,
+            venueCity: sc.venueCity ?? null,
+            attendance: sc.attendance ?? null,
+            homeColor: sc.homeColor ?? null,
+            awayColor: sc.awayColor ?? null,
+            odds: sc.odds ?? null,
             source: sc.source,
           };
         }

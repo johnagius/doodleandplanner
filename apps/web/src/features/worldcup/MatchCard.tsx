@@ -63,6 +63,24 @@ function liveLabel(live: WcLiveInfo): string {
   return 'LIVE';
 }
 
+/** Optional extras from the live feed: the pre-match odds line and the crowd. */
+function MatchFacts({ live, hasResult }: { live?: WcLiveInfo; hasResult: boolean }) {
+  if (!live) return null;
+  const odds = live.odds;
+  const showOdds = !hasResult && !!odds && (odds.overUnder != null || !!odds.details);
+  const showAtt = live.attendance != null && live.attendance > 0;
+  if (!showOdds && !showAtt) return null;
+  const oddsText = [odds?.overUnder != null ? `O/U ${odds.overUnder}` : null, odds?.details ?? null]
+    .filter(Boolean)
+    .join(' · ');
+  return (
+    <p className="muted small wc-facts">
+      {showOdds && <span title="Pre-match line (DraftKings via ESPN)">📊 {oddsText}</span>}
+      {showAtt && <span title="Attendance">👥 {live.attendance!.toLocaleString()}</span>}
+    </p>
+  );
+}
+
 export function MatchCard({ matchId }: { matchId: string }) {
   const wc = useWorldCupStore((s) => s.state?.worldCup) ?? null;
   const meId = useWorldCupStore((s) => s.meId);
@@ -152,9 +170,13 @@ export function MatchCard({ matchId }: { matchId: string }) {
             </div>
           ) : isLive && live!.home != null ? (
             <div className="wc-scoreline wc-live-score" aria-label="Live score">
-              <span>{live!.home}</span>
+              <span style={live!.homeColor ? { color: live!.homeColor } : undefined}>
+                {live!.home}
+              </span>
               <span className="wc-dash">–</span>
-              <span>{live!.away}</span>
+              <span style={live!.awayColor ? { color: live!.awayColor } : undefined}>
+                {live!.away}
+              </span>
             </div>
           ) : canPredict && view === 'match' ? (
             <div className="wc-pick-steppers">
@@ -226,6 +248,7 @@ export function MatchCard({ matchId }: { matchId: string }) {
           )}
 
           <CrowdPulse wc={wc} match={match} />
+          <MatchFacts live={live} hasResult={!!result} />
           {isLive && live!.home != null && live!.away != null && (
             <p className="muted small wc-live-caption">
               {live!.clock || live!.minute != null

@@ -2783,6 +2783,12 @@ label.field {
   color: var(--warn);
   letter-spacing: 0.01em;
 }
+.wc-facts {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.9rem;
+}
 .wc-live-banner {
   background: color-mix(in srgb, var(--danger) 12%, var(--surface));
   border-color: color-mix(in srgb, var(--danger) 35%, var(--border));

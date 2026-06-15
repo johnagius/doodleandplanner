@@ -16,6 +16,14 @@ function event(opts: {
   homeWinner?: boolean;
   awayWinner?: boolean;
   venue?: string;
+  city?: string;
+  country?: string;
+  attendance?: number;
+  overUnder?: number;
+  oddsDetails?: string;
+  homeML?: string;
+  homeColor?: string;
+  homeLogo?: string;
   id?: string;
 }) {
   return {
@@ -32,13 +40,27 @@ function event(opts: {
             shortDetail: opts.shortDetail ?? 'Scheduled',
           },
         },
-        venue: { fullName: opts.venue ?? 'Some Stadium' },
+        venue: {
+          fullName: opts.venue ?? 'Some Stadium',
+          address: { city: opts.city, country: opts.country },
+        },
+        attendance: opts.attendance,
+        odds:
+          opts.overUnder != null || opts.oddsDetails || opts.homeML
+            ? [
+                {
+                  details: opts.oddsDetails,
+                  overUnder: opts.overUnder,
+                  moneyline: { home: { close: { odds: opts.homeML } } },
+                },
+              ]
+            : undefined,
         competitors: [
           {
             homeAway: 'home',
             winner: !!opts.homeWinner,
             score: opts.homeScore ?? '0',
-            team: { abbreviation: opts.home },
+            team: { abbreviation: opts.home, color: opts.homeColor, logo: opts.homeLogo },
           },
           {
             homeAway: 'away',
@@ -158,6 +180,43 @@ describe('parseEspnScoreboard', () => {
     expect(pens).toMatchObject({ status: 'FINISHED', home: 1, away: 1, winner: 'AWAY_TEAM' });
   });
 
+  it('captures attendance, venue location, team colours/logos and odds', () => {
+    const [s] = parseEspnScoreboard({
+      events: [
+        event({
+          home: 'ESP',
+          away: 'CPV',
+          state: 'post',
+          completed: true,
+          homeScore: '3',
+          awayScore: '0',
+          city: 'Atlanta, Georgia',
+          country: 'USA',
+          attendance: 70123,
+          overUnder: 3.5,
+          oddsDetails: 'ESP -1400',
+          homeML: '-1400',
+          homeColor: 'c60b1e',
+          homeLogo: 'https://a.espncdn.com/i/teamlogos/countries/500/esp.png',
+        }),
+      ],
+    });
+    expect(s).toMatchObject({
+      venue: 'Some Stadium',
+      venueCity: 'Atlanta, Georgia, USA',
+      attendance: 70123,
+      homeColor: '#c60b1e',
+      homeLogo: 'https://a.espncdn.com/i/teamlogos/countries/500/esp.png',
+      odds: { details: 'ESP -1400', overUnder: 3.5, homeML: -1400 },
+    });
+  });
+
+  it('leaves odds null when the feed has none', () => {
+    const [s] = parseEspnScoreboard({ events: [event({ home: 'BRA', away: 'SCO' })] });
+    expect(s?.odds ?? null).toBeNull();
+    expect(s?.attendance ?? null).toBeNull();
+  });
+
   it('drops events without two team codes', () => {
     const scores = parseEspnScoreboard({
       events: [{ competitions: [{ competitors: [{ homeAway: 'home', team: {} }] }] }],
@@ -233,6 +292,36 @@ describe('mergeLiveScores', () => {
       }),
     );
     expect(merged).toMatchObject({ status: 'FINISHED', home: 2, away: 0, source: 'football-data' });
+  });
+
+  it('enriches a finished football-data game with ESPN metadata (attendance, odds)', () => {
+    const [merged] = mergeLiveScores(
+      [fd({ status: 'FINISHED', home: 3, away: 0, winner: 'HOME_TEAM' })],
+      parseEspnScoreboard({
+        events: [
+          event({
+            home: 'ESP',
+            away: 'CPV',
+            state: 'post',
+            completed: true,
+            homeScore: '3',
+            awayScore: '0',
+            attendance: 70123,
+            overUnder: 3.5,
+            oddsDetails: 'ESP -1400',
+          }),
+        ],
+      }),
+    );
+    // Official score/source preserved, but now carries the crowd + odds.
+    expect(merged).toMatchObject({
+      status: 'FINISHED',
+      home: 3,
+      away: 0,
+      source: 'football-data',
+      attendance: 70123,
+      odds: { overUnder: 3.5 },
+    });
   });
 
   it('appends ESPN-only games when football-data is empty or lagging', () => {

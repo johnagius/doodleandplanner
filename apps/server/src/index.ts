@@ -2,6 +2,7 @@
  * Worker entry point. Routes API requests to the per-room Durable Object,
  * deriving the room's DO id from its slug.
  */
+import { espnDateWindow, mergeLiveScores, parseEspnScoreboard } from './espn.js';
 import { findWcMatch, mapHeadToHead, mapWorldCupScores } from './football.js';
 import { RoomDurableObject, type Env } from './roomObject.js';
 import { corsHeaders, json, route } from './router.js';
@@ -9,12 +10,14 @@ import type { WcTeamH2H, WcLiveScore } from '@dap/shared';
 
 export { RoomDurableObject };
 
-// Short-lived cache so we poll football-data.org roughly every 20s — fresh
-// enough to follow a live game, comfortably under the free tier's 10 calls/min.
-// `at` is surfaced to clients as `fetchedAt` so they can show how stale the
-// score is (the feed gives no live minute).
+// Short-lived cache for the merged live feed. ESPN (no key, ~real-time, carries
+// the live minute) is the primary source; football-data.org is the official
+// full-time result + fallback. Both are shared via this cache so many devices
+// polling never hammer either upstream. `at` is surfaced as `fetchedAt`.
 let scoresCache: { at: number; scores: WcLiveScore[] } | null = null;
-const SCORES_TTL_MS = 20_000;
+const SCORES_TTL_MS = 15_000;
+
+const ESPN_BASE = 'https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard';
 
 // Raw WC fixtures (kept to resolve a team-pair → match id for head-to-head) and
 // per-pair head-to-head results. H2H barely changes, so it's cached for longer.
@@ -69,44 +72,75 @@ async function worldCupH2H(
   }
 }
 
-async function worldCupScores(env: Env, cors: Record<string, string>): Promise<Response> {
-  if (!env.FOOTBALL_DATA_TOKEN) {
-    return json({ scores: [], fetchedAt: null, error: 'not-configured' }, { status: 503 }, cors);
+/** football-data.org WC fixtures → our scores, or null on error / no token. */
+async function fetchFdScores(env: Env): Promise<WcLiveScore[] | null> {
+  if (!env.FOOTBALL_DATA_TOKEN) return null;
+  try {
+    const res = await fetch(`${FD_BASE}/competitions/WC/matches`, {
+      headers: { 'X-Auth-Token': env.FOOTBALL_DATA_TOKEN },
+    });
+    if (!res.ok) return null;
+    return mapWorldCupScores(await res.json());
+  } catch {
+    return null;
   }
+}
+
+/** ESPN scoreboard across a Malta-safe UTC day window → our scores, or null. */
+async function fetchEspnScores(): Promise<WcLiveScore[] | null> {
+  try {
+    const pages = await Promise.all(
+      espnDateWindow(new Date()).map((d) =>
+        fetch(`${ESPN_BASE}?dates=${d}`, {
+          headers: { 'User-Agent': 'doodleandplanner/1.0 (+world-cup board)' },
+        })
+          .then((r) => (r.ok ? (r.json() as Promise<unknown>) : null))
+          .catch(() => null),
+      ),
+    );
+    // Dedupe events by id (a game can appear on adjacent day pages).
+    const seen = new Set<string | number>();
+    const events: unknown[] = [];
+    for (const page of pages) {
+      for (const ev of (page as { events?: { id?: string | number }[] } | null)?.events ?? []) {
+        const id = ev?.id ?? JSON.stringify(ev);
+        if (seen.has(id)) continue;
+        seen.add(id);
+        events.push(ev);
+      }
+    }
+    if (events.length === 0) return null;
+    return parseEspnScoreboard({ events });
+  } catch {
+    return null;
+  }
+}
+
+async function worldCupScores(env: Env, cors: Record<string, string>): Promise<Response> {
   const stamp = (at: number | undefined) => (at ? new Date(at).toISOString() : null);
   if (scoresCache && Date.now() - scoresCache.at < SCORES_TTL_MS) {
     return json({ scores: scoresCache.scores, fetchedAt: stamp(scoresCache.at) }, {}, cors);
   }
-  try {
-    const res = await fetch('https://api.football-data.org/v4/competitions/WC/matches', {
-      headers: { 'X-Auth-Token': env.FOOTBALL_DATA_TOKEN },
-    });
-    if (!res.ok) {
-      // Serve stale data on a transient upstream error (e.g. rate limit).
+
+  // ESPN is primary (real-time + minute); football-data is official + fallback.
+  const [espn, fd] = await Promise.all([fetchEspnScores(), fetchFdScores(env)]);
+
+  if (!espn && !fd) {
+    // Nothing fresh — serve the last good snapshot, else signal why.
+    if (scoresCache) {
       return json(
-        {
-          scores: scoresCache?.scores ?? [],
-          fetchedAt: stamp(scoresCache?.at),
-          error: `upstream-${res.status}`,
-        },
+        { scores: scoresCache.scores, fetchedAt: stamp(scoresCache.at), error: 'unavailable' },
         {},
         cors,
       );
     }
-    const scores = mapWorldCupScores(await res.json());
-    scoresCache = { at: Date.now(), scores };
-    return json({ scores, fetchedAt: stamp(scoresCache.at) }, {}, cors);
-  } catch {
-    return json(
-      {
-        scores: scoresCache?.scores ?? [],
-        fetchedAt: stamp(scoresCache?.at),
-        error: 'unavailable',
-      },
-      {},
-      cors,
-    );
+    const error = env.FOOTBALL_DATA_TOKEN ? 'unavailable' : 'not-configured';
+    return json({ scores: [], fetchedAt: null, error }, { status: 503 }, cors);
   }
+
+  const scores = mergeLiveScores(fd ?? [], espn ?? []);
+  scoresCache = { at: Date.now(), scores };
+  return json({ scores, fetchedAt: stamp(scoresCache.at) }, {}, cors);
 }
 
 export default {

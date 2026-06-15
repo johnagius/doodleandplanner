@@ -555,12 +555,20 @@ export interface WcLiveScore {
   awayTla: string;
   /** Feed status: TIMED | SCHEDULED | IN_PLAY | PAUSED | FINISHED | … */
   status: string;
-  /** Live minute, when the feed provides it (paid feature; often absent). */
+  /** Live minute, when the feed provides it (number; ESPN/paid feeds). */
   minute?: number | null;
   home: number | null;
   away: number | null;
   /** 'HOME_TEAM' | 'AWAY_TEAM' | 'DRAW' | null — the advancing side for KO ties. */
   winner?: string | null;
+  /** Display clock from the feed, e.g. "45'+2'" or "90'" (ESPN). */
+  clock?: string | null;
+  /** Short human status, e.g. "HT", "FT", "62'", "Scheduled" (ESPN). */
+  detail?: string | null;
+  /** Stadium name (ESPN). */
+  venue?: string | null;
+  /** Which feed supplied the live fields — 'espn' (near-real-time) or 'football-data'. */
+  source?: 'espn' | 'football-data';
 }
 
 /** One historical meeting between two teams (from the results feed). */

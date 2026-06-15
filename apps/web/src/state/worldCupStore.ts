@@ -30,6 +30,12 @@ export interface WcLiveInfo {
   minute: number | null;
   home: number | null;
   away: number | null;
+  /** Display clock from the feed, e.g. "45'+2'" (ESPN). */
+  clock?: string | null;
+  /** Short status text, e.g. "HT", "FT", "62'" (ESPN). */
+  detail?: string | null;
+  /** Which feed supplied this — 'espn' (real-time) or 'football-data'. */
+  source?: 'espn' | 'football-data';
 }
 
 const PREDICTOR_KEY = 'dap:wc:predictor';
@@ -260,6 +266,9 @@ export const useWorldCupStore = create<WorldCupStore>((set, get) => {
             minute: sc.minute ?? null,
             home: sc.home,
             away: sc.away,
+            clock: sc.clock ?? null,
+            detail: sc.detail ?? null,
+            source: sc.source,
           };
         }
       }

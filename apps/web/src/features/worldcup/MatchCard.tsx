@@ -2,6 +2,7 @@ import {
   WC_REACTIONS,
   WC_SCORE_LABEL,
   WC_STAGE_LABEL,
+  WC_TIMEZONE,
   climateEdge,
   closestPredictors,
   closestToScore,
@@ -27,7 +28,7 @@ import {
 } from '@dap/shared';
 import { useState } from 'react';
 import { useToast } from '../../components/Toast.js';
-import { useWorldCupStore } from '../../state/worldCupStore.js';
+import { useWorldCupStore, type WcLiveInfo } from '../../state/worldCupStore.js';
 import { Countdown } from './Countdown.js';
 import { useHeadToHead, type H2HState } from './h2h.js';
 import { MatchComments } from './MatchComments.js';
@@ -43,13 +44,23 @@ const POINT_CLASS: Record<WcScoreCategory, string> = {
   miss: 'wc-pts-miss',
 };
 
-/** Wall-clock HH:MM:SS for "score as of …" (the feed gives no live minute). */
+/** Malta-time HH:MM:SS for "score as of …" (used only when the feed has no
+ * live minute — i.e. the football-data fallback). */
 function fmtClock(iso: string): string {
-  return new Date(iso).toLocaleTimeString([], {
+  return new Date(iso).toLocaleTimeString('en-GB', {
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
+    timeZone: WC_TIMEZONE,
   });
+}
+
+/** Live badge/caption text: half-time, the live minute/clock, or just "LIVE". */
+function liveLabel(live: WcLiveInfo): string {
+  if (live.status === 'PAUSED') return live.detail || 'HT';
+  if (live.clock) return live.clock;
+  if (live.minute != null) return `${live.minute}'`;
+  return 'LIVE';
 }
 
 export function MatchCard({ matchId }: { matchId: string }) {
@@ -119,9 +130,7 @@ export function MatchCard({ matchId }: { matchId: string }) {
         {result ? (
           <span className="badge badge-success wc-ft">FT</span>
         ) : isLive ? (
-          <span className="badge wc-ft wc-live">
-            🔴 LIVE{live!.minute ? ` ${live!.minute}'` : ''}
-          </span>
+          <span className="badge wc-ft wc-live">🔴 {liveLabel(live!)}</span>
         ) : locked ? (
           <span className="badge badge-warn wc-ft">🔒 Kicked off</span>
         ) : (
@@ -219,8 +228,9 @@ export function MatchCard({ matchId }: { matchId: string }) {
           <CrowdPulse wc={wc} match={match} />
           {isLive && live!.home != null && live!.away != null && (
             <p className="muted small wc-live-caption">
-              ⚡ Live{liveFetchedAt ? ` · score as of ${fmtClock(liveFetchedAt)}` : ''} — points if
-              it ends now
+              {live!.clock || live!.minute != null
+                ? `⚡ Live ${liveLabel(live!)} — points if it ends now`
+                : `⚡ Live${liveFetchedAt ? ` · score as of ${fmtClock(liveFetchedAt)}` : ''} — points if it ends now`}
             </p>
           )}
           <PredictionsRow

@@ -36,7 +36,7 @@ import { LineupView } from './LineupView.js';
 import { MatchComments } from './MatchComments.js';
 import { ScoreStepper } from './ScoreStepper.js';
 import { useNow } from './useNow.js';
-import { formatKickoff } from './wcFormat.js';
+import { formatKickoff, legibleScoreColor } from './wcFormat.js';
 
 const POINT_CLASS: Record<WcScoreCategory, string> = {
   exact: 'wc-pts-exact',
@@ -208,13 +208,9 @@ export function MatchCard({ matchId }: { matchId: string }) {
             </div>
           ) : isLive && live!.home != null ? (
             <div className="wc-scoreline wc-live-score" aria-label="Live score">
-              <span style={live!.homeColor ? { color: live!.homeColor } : undefined}>
-                {live!.home}
-              </span>
+              <span style={{ color: legibleScoreColor(live!.homeColor) }}>{live!.home}</span>
               <span className="wc-dash">–</span>
-              <span style={live!.awayColor ? { color: live!.awayColor } : undefined}>
-                {live!.away}
-              </span>
+              <span style={{ color: legibleScoreColor(live!.awayColor) }}>{live!.away}</span>
             </div>
           ) : canPredict && view === 'match' ? (
             <div className="wc-pick-steppers">

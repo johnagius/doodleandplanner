@@ -34,3 +34,40 @@ export function formatKickoff(iso: string): string {
     timeZone: WC_TIMEZONE,
   });
 }
+
+/**
+ * A team's brand colour nudged so the live score stays readable on both themes.
+ * ESPN hands back raw kit colours and several are pure white (Saudi Arabia, Iran)
+ * or black (New Zealand) — those vanish on the white card or in dark mode (the
+ * "missing score" bug). We keep the hue but pull the luminance into a legible
+ * mid-band. Returns undefined for a missing/invalid colour so the caller falls
+ * back to its default text colour.
+ */
+export function legibleScoreColor(hex: string | null | undefined): string | undefined {
+  if (!hex) return undefined;
+  const m = /^#?([0-9a-fA-F]{6})$/.exec(hex.trim());
+  const body = m?.[1];
+  if (!body) return undefined;
+  const n = parseInt(body, 16);
+  let r = (n >> 16) & 255;
+  let g = (n >> 8) & 255;
+  let b = n & 255;
+  const lum = 0.299 * r + 0.587 * g + 0.114 * b; // perceived brightness, 0..255
+  const MAX = 175; // lighter than this washes out on the white card
+  const MIN = 75; //  darker than this disappears in dark mode
+  if (lum > MAX) {
+    const f = MAX / lum; // darken toward black, preserving hue
+    r *= f;
+    g *= f;
+    b *= f;
+  } else if (lum < MIN) {
+    const f = (MIN - lum) / (255 - lum); // lighten toward white, preserving hue
+    r += (255 - r) * f;
+    g += (255 - g) * f;
+    b += (255 - b) * f;
+  } else {
+    return `#${body.toLowerCase()}`;
+  }
+  const h = (v: number) => Math.round(v).toString(16).padStart(2, '0');
+  return `#${h(r)}${h(g)}${h(b)}`;
+}

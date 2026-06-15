@@ -61,26 +61,31 @@ export function WorldCupPage() {
     return () => leave();
   }, [load, leave]);
 
+  // Only start polling once the board has actually loaded — otherwise the first
+  // tick fires before load() resolves, finds no board, and bails, leaving live
+  // scores/goals/cards blank until the next interval.
+  const boardReady = !!state?.worldCup;
+
   // Poll the football feed: auto-fill finished results and refresh in-play info.
   useEffect(() => {
-    if (!isRealtimeBackend()) return;
+    if (!isRealtimeBackend() || !boardReady) return;
     const tick = () => void useWorldCupStore.getState().syncLiveScores();
     tick();
-    // Poll ~every 20s to follow live games; the Worker caches the feed for the
-    // same window, so many devices never exceed the 10 calls/min free limit.
+    // Poll ~every 15s to follow live games; the Worker caches the feed for the
+    // same window, so many devices never exceed the upstream rate limits.
     const id = setInterval(tick, 15_000);
     return () => clearInterval(id);
-  }, []);
+  }, [boardReady]);
 
   // Poll goals + cards on a slower cadence (the Worker caches the whole-tournament
   // pull ~1 min; they change far less often than the live score).
   useEffect(() => {
-    if (!isRealtimeBackend()) return;
+    if (!isRealtimeBackend() || !boardReady) return;
     const tick = () => void useWorldCupStore.getState().syncMatchEvents();
     tick();
     const id = setInterval(tick, 60_000);
     return () => clearInterval(id);
-  }, []);
+  }, [boardReady]);
 
   const wc = state?.worldCup ?? null;
 

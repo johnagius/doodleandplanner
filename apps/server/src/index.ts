@@ -45,6 +45,7 @@ const LINEUP_TTL_MS = 5 * 60_000;
 const TM_API = 'https://transfermarkt-api.fly.dev';
 const valueCache = new Map<string, { at: number; m: number | null }>();
 const VALUE_TTL_MS = 24 * 60 * 60_000;
+const VALUE_MISS_TTL_MS = 10 * 60_000; // retry a miss/timeout soon, don't pin "—" all day
 
 // Raw WC fixtures (kept to resolve a team-pair → match id for head-to-head) and
 // per-pair head-to-head results. H2H barely changes, so it's cached for longer.
@@ -253,15 +254,20 @@ async function worldCupLineups(
   return json({ home: lineup(home), away: lineup(away), fetchedAt: stamp(entry?.at) }, {}, cors);
 }
 
-/** One player's Transfermarkt value (€M), cached; null when unresolved. */
+/** One player's Transfermarkt value (€M), cached; null when unresolved. A real
+ * value is cached hard (24h); a miss/timeout is cached only briefly so a flaky
+ * upstream doesn't pin a player to "—" all day. */
 async function fetchTmValue(name: string): Promise<number | null> {
   const key = name.trim().toLowerCase();
   const cached = valueCache.get(key);
-  if (cached && Date.now() - cached.at < VALUE_TTL_MS) return cached.m;
+  if (cached) {
+    const ttl = cached.m != null ? VALUE_TTL_MS : VALUE_MISS_TTL_MS;
+    if (Date.now() - cached.at < ttl) return cached.m;
+  }
   let m: number | null = null;
   try {
     const res = await fetch(`${TM_API}/players/search/${encodeURIComponent(name)}`, {
-      signal: AbortSignal.timeout(8000),
+      signal: AbortSignal.timeout(6000),
       headers: { Accept: 'application/json' },
     });
     if (res.ok) m = parseTmValueM(await res.json());

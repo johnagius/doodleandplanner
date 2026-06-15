@@ -30,22 +30,25 @@ export interface WcLineups {
 
 export type WcPitchRow = 'GK' | 'DEF' | 'DM' | 'MID' | 'AM' | 'FWD';
 
-/** Which band of the pitch a position abbreviation belongs to. */
+/** Which band of the pitch a position abbreviation belongs to. ESPN suffixes a
+ * side (e.g. "CF-L", "CD-R", "CM-L") — strip it so the base role drives the band
+ * (otherwise "CF-L" was leaking into midfield, e.g. a 4-4-2 reading as "4-6"). */
 export function pitchRow(pos: string): WcPitchRow {
   const p = pos.toUpperCase();
   if (p === 'G' || p.startsWith('GK')) return 'GK';
+  const base = p.replace(/-[LR]$/, ''); // CF-L → CF, CM-R → CM
   // Forwards: strikers, centre-forwards and wingers/wide-forwards (a "W" that
   // isn't a wing-back). Listed explicitly so a stray "D"/"B" can't leak in.
   if (
-    ['ST', 'SS', 'CF', 'F', 'FW', 'LF', 'RF', 'LW', 'RW', 'W'].includes(p) ||
-    (p.includes('W') && !p.includes('B'))
+    ['ST', 'SS', 'CF', 'F', 'FW', 'LF', 'RF', 'LW', 'RW', 'W'].includes(base) ||
+    (base.includes('W') && !base.includes('B'))
   ) {
     return 'FWD';
   }
-  if (p.includes('AM') || p.includes('CAM')) return 'AM';
-  if (p.includes('DM') || p.includes('CDM')) return 'DM';
-  if (p.includes('M')) return 'MID';
-  if (p.includes('B') || p.includes('D')) return 'DEF';
+  if (base.includes('AM') || base.includes('CAM')) return 'AM';
+  if (base.includes('DM') || base.includes('CDM')) return 'DM';
+  if (base.includes('M')) return 'MID';
+  if (base.includes('B') || base.includes('D')) return 'DEF';
   return 'MID';
 }
 
@@ -104,14 +107,16 @@ export function lineupRating(name: string): number {
 
 /**
  * A plausible, deterministic *estimated* market value (€M) from the rating, on a
- * steep curve (stars worth a lot more than squad players) with a little per-name
- * jitter. Not real data — clearly an estimate.
+ * steep curve (stars worth far more than squad players) with a little per-name
+ * jitter, capped so even a top rating tops out around real-world territory (≈
+ * €90M, hard cap €110M) rather than the silly €150M+ it used to reach. Not real
+ * data — clearly an estimate.
  */
 export function estimatedValueM(name: string): number {
-  const r = lineupRating(name);
-  const base = 0.4 + Math.pow((r - 60) / 30, 3.2) * 135;
-  const jitter = 0.85 + (hash('val:' + name) % 30) / 100; // 0.85..1.14
-  const v = base * jitter;
+  const r = lineupRating(name); // 62..91
+  const base = 0.3 + Math.pow((r - 60) / 31, 3) * 88; // ~0.3 (low) → ~88 (top)
+  const jitter = 0.9 + (hash('val:' + name) % 20) / 100; // 0.90..1.09
+  const v = Math.min(base * jitter, 110);
   return v >= 20 ? Math.round(v) : Math.round(v * 10) / 10; // 1 dp under €20M
 }
 

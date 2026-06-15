@@ -53,6 +53,9 @@ describe('pitchRow', () => {
     expect(pitchRow('RF')).toBe('FWD');
     expect(pitchRow('SS')).toBe('FWD');
     expect(pitchRow('CB')).toBe('DEF');
+    expect(pitchRow('CF-L')).toBe('FWD'); // side-suffixed striker — was leaking to MID
+    expect(pitchRow('CF-R')).toBe('FWD');
+    expect(pitchRow('CM-L')).toBe('MID');
   });
 });
 
@@ -73,6 +76,13 @@ describe('formationOf', () => {
       P('j', 'ST', 11),
     ];
     expect(formationOf(f4231)).toBe('4-2-3-1');
+  });
+
+  it('reads a 4-4-2 with side-suffixed centre-forwards (the Côte d’Ivoire case)', () => {
+    const civ = ['G', 'CD-L', 'CD-R', 'LB', 'RB', 'CM-L', 'CM-R', 'LM', 'RM', 'CF-L', 'CF-R'].map(
+      (pos, i) => P('p' + i, pos, i + 1),
+    );
+    expect(formationOf(civ)).toBe('4-4-2'); // was "4-6" before the suffix fix
   });
 });
 
@@ -146,6 +156,10 @@ describe('rating + value', () => {
     const v = estimatedValueM('Lamine Yamal');
     expect(v).toBe(estimatedValueM('Lamine Yamal'));
     expect(v).toBeGreaterThan(0);
+    // Even the top of the scale stays in sane territory (no €150M no-names).
+    for (const n of ['Wahi', 'Sébastien Haller', 'A. Player', 'Zzz Xyz', 'Foo Bar', 'Q']) {
+      expect(estimatedValueM(n)).toBeLessThanOrEqual(110);
+    }
   });
 
   it('sums the starting XI into a team value', () => {

@@ -2,7 +2,6 @@ import {
   findTeam,
   formationOf,
   placeLineup,
-  teamValueM,
   type WcLineup,
   type WcMatch,
   type WcPlacedPlayer,
@@ -11,6 +10,7 @@ import {
 import { useState } from 'react';
 import { useLineups } from './lineups.js';
 import { usePlayerPhoto } from './playerPhoto.js';
+import { usePlayerValues } from './values.js';
 
 /** Last name (or full name if single token) — keeps tokens compact. */
 function shortName(name: string): string {
@@ -18,13 +18,22 @@ function shortName(name: string): string {
   return parts.length > 1 ? parts[parts.length - 1]! : name;
 }
 
-function valueLabel(m: number): string {
+/** €M label, e.g. "€80M" or "€1.5M"; "…" while loading, "—" when unknown. */
+function valueLabel(m: number | null | undefined): string {
+  if (m === undefined) return '…';
+  if (m === null) return '—';
   return m >= 100 ? `€${Math.round(m)}M` : `€${m}M`;
 }
 
 /** One player token: their face when we can find a photo, else a numbered shirt,
- * with the ability rating badged on top, and name + value beneath. */
-function LineupToken({ placed }: { placed: WcPlacedPlayer }) {
+ * with our ability rating badged on top, and name + real market value beneath. */
+function LineupToken({
+  placed,
+  value,
+}: {
+  placed: WcPlacedPlayer;
+  value: number | null | undefined;
+}) {
   const photo = usePlayerPhoto(placed.player.name);
   const tier = placed.rating >= 84 ? 'gold' : placed.rating >= 75 ? 'silver' : 'bronze';
   return (
@@ -40,18 +49,21 @@ function LineupToken({ placed }: { placed: WcPlacedPlayer }) {
       <span className="wc-lp-name" title={placed.player.name}>
         {shortName(placed.player.name)}
       </span>
-      <span className="wc-lp-val">{valueLabel(placed.valueM)}</span>
+      <span className="wc-lp-val">{valueLabel(value)}</span>
     </div>
   );
 }
 
 /** The angled half-pitch with the starting XI drawn in their positions, each
- * with our ability rating + an estimated market value. */
+ * with our ability rating + their real Transfermarkt market value. */
 function Pitch({ wc, lineup }: { wc: WorldCupState; lineup: WcLineup }) {
   const placed = placeLineup(lineup);
   const formation = formationOf(lineup.players);
-  const total = teamValueM(lineup);
   const team = findTeam(wc, lineup.teamTla);
+  const names = lineup.players.filter((p) => p.starter).map((p) => p.name);
+  const values = usePlayerValues(names);
+  const loading = Object.keys(values).length === 0;
+  const total = names.reduce((sum, n) => sum + (typeof values[n] === 'number' ? values[n]! : 0), 0);
   return (
     <div className="wc-lp">
       <div className="row spread wc-lp-head">
@@ -65,12 +77,23 @@ function Pitch({ wc, lineup }: { wc: WorldCupState; lineup: WcLineup }) {
           <div className="wc-lp-box" aria-hidden />
           <div className="wc-lp-arc" aria-hidden />
           {placed.map((p) => (
-            <LineupToken key={p.player.name + p.player.jersey} placed={p} />
+            <LineupToken
+              key={p.player.name + p.player.jersey}
+              placed={p}
+              value={values[p.player.name]}
+            />
           ))}
         </div>
       </div>
       <div className="wc-lp-total">
-        Total XI value ≈ <strong>{valueLabel(total)}</strong> <span className="muted">(est.)</span>
+        {loading ? (
+          <span className="muted">Loading market values…</span>
+        ) : (
+          <>
+            Total XI value ≈ <strong>€{Math.round(total)}M</strong>{' '}
+            <span className="muted">· Transfermarkt</span>
+          </>
+        )}
       </div>
     </div>
   );

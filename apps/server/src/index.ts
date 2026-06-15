@@ -11,6 +11,7 @@ import {
   parseEspnScoreboard,
 } from './espn.js';
 import { findWcMatch, mapHeadToHead, mapWorldCupScores } from './football.js';
+import { parseTmValueM } from './transfermarkt.js';
 import { RoomDurableObject, type Env } from './roomObject.js';
 import { corsHeaders, json, route } from './router.js';
 import type { WcLineup, WcLineupPlayer, WcMatchEvent, WcTeamH2H, WcLiveScore } from '@dap/shared';
@@ -38,6 +39,12 @@ let idsCache: { at: number; ids: Record<string, string> } | null = null;
 const IDS_TTL_MS = 5 * 60_000;
 const lineupCache = new Map<string, { at: number; byCode: Record<string, WcLineupPlayer[]> }>();
 const LINEUP_TTL_MS = 5 * 60_000;
+// Real market values via the community transfermarkt-api (transfermarkt.com
+// blocks bots). Cached hard per name — values barely move and the source is a
+// hobby host we don't want to hammer.
+const TM_API = 'https://transfermarkt-api.fly.dev';
+const valueCache = new Map<string, { at: number; m: number | null }>();
+const VALUE_TTL_MS = 24 * 60 * 60_000;
 
 // Raw WC fixtures (kept to resolve a team-pair → match id for head-to-head) and
 // per-pair head-to-head results. H2H barely changes, so it's cached for longer.
@@ -246,6 +253,42 @@ async function worldCupLineups(
   return json({ home: lineup(home), away: lineup(away), fetchedAt: stamp(entry?.at) }, {}, cors);
 }
 
+/** One player's Transfermarkt value (€M), cached; null when unresolved. */
+async function fetchTmValue(name: string): Promise<number | null> {
+  const key = name.trim().toLowerCase();
+  const cached = valueCache.get(key);
+  if (cached && Date.now() - cached.at < VALUE_TTL_MS) return cached.m;
+  let m: number | null = null;
+  try {
+    const res = await fetch(`${TM_API}/players/search/${encodeURIComponent(name)}`, {
+      signal: AbortSignal.timeout(8000),
+      headers: { Accept: 'application/json' },
+    });
+    if (res.ok) m = parseTmValueM(await res.json());
+  } catch {
+    m = null;
+  }
+  valueCache.set(key, { at: Date.now(), m });
+  return m;
+}
+
+/** Batch market-value lookup: ?names=A|B|C → { values: { A: 80, B: 12.5, … } } in €M. */
+async function worldCupValues(namesParam: string, cors: Record<string, string>): Promise<Response> {
+  const names = namesParam
+    .split('|')
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .slice(0, 30);
+  const values: Record<string, number | null> = {};
+  const queue = [...names];
+  const worker = async () => {
+    for (let n = queue.shift(); n !== undefined; n = queue.shift())
+      values[n] = await fetchTmValue(n);
+  };
+  await Promise.all([worker(), worker(), worker(), worker()]); // gentle concurrency
+  return json({ values }, {}, cors);
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
@@ -263,6 +306,7 @@ export default {
         cors,
       );
     }
+    if (r.kind === 'wc-values') return worldCupValues(url.searchParams.get('names') ?? '', cors);
     if (r.kind === 'wc-h2h') {
       return worldCupH2H(
         env,

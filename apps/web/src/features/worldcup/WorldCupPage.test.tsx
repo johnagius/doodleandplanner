@@ -284,6 +284,30 @@ describe('WorldCupPage', () => {
     expect(screen.getByText('−€5.00')).toBeInTheDocument();
   });
 
+  it('shows goal scorers and cards on a match card', async () => {
+    const user = userEvent.setup();
+    await seedControlledBoard();
+    renderPage();
+    await screen.findByRole('heading', { name: /World Cup 2026 Predictions/ });
+    await user.keyboard('{Escape}');
+
+    // Feed in goals + cards for the fixture (as syncMatchEvents would).
+    act(() => {
+      useWorldCupStore.setState({
+        matchEvents: {
+          'g-A-1': [
+            { minute: "12'", kind: 'goal', teamTla: 'AAA', player: 'Quiñones', assist: 'Lozano' },
+            { minute: "63'", kind: 'red', teamTla: 'BBB', player: 'Sithole' },
+          ],
+        },
+      });
+    });
+
+    expect(await screen.findByText(/Quiñones/)).toBeInTheDocument();
+    expect(screen.getByText(/Lozano/)).toBeInTheDocument(); // assist
+    expect(screen.getByText('Sithole')).toBeInTheDocument(); // red card
+  });
+
   it('falls back to a local board when the backend is unreachable', async () => {
     // A "remote" repo that fails like a CORS-blocked / offline fetch.
     const broken: Repository = {

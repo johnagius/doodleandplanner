@@ -56,6 +56,7 @@ describe('pitchRow', () => {
     expect(pitchRow('CF-L')).toBe('FWD'); // side-suffixed striker — was leaking to MID
     expect(pitchRow('CF-R')).toBe('FWD');
     expect(pitchRow('CM-L')).toBe('MID');
+    expect(pitchRow('SW')).toBe('DM'); // sweeper/pivot — the "W" must NOT make it a winger
   });
 });
 
@@ -83,6 +84,13 @@ describe('formationOf', () => {
       (pos, i) => P('p' + i, pos, i + 1),
     );
     expect(formationOf(civ)).toBe('4-4-2'); // was "4-6" before the suffix fix
+  });
+
+  it('reads a 3-1-4-2 with a sweeper pivot (the Sweden case)', () => {
+    const swe = ['G', 'CD', 'CD-L', 'CD-R', 'SW', 'CM-L', 'CM-R', 'LM', 'RM', 'CF-L', 'CF-R'].map(
+      (pos, i) => P('p' + i, pos, i + 1),
+    );
+    expect(formationOf(swe)).toBe('3-1-4-2'); // SW was wrongly a forward before
   });
 });
 

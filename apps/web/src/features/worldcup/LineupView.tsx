@@ -35,7 +35,7 @@ function LineupToken({ placed }: { placed: WcPlacedPlayer }) {
         ) : (
           <span className="wc-lp-num">{placed.player.jersey ?? ''}</span>
         )}
-        <span className="wc-lp-rating">{placed.rating}</span>
+        <span className="wc-lp-rating">{(placed.rating / 10).toFixed(1)}</span>
       </span>
       <span className="wc-lp-name" title={placed.player.name}>
         {shortName(placed.player.name)}
@@ -121,9 +121,6 @@ export function LineupView({ wc, match }: { wc: WorldCupState; match: WcMatch })
       ) : (
         <p className="muted small wc-lp-note">That side's lineup isn't out yet.</p>
       )}
-      <p className="muted small" style={{ textAlign: 'center' }}>
-        Lineup + positions from ESPN · ratings & values are our own estimate.
-      </p>
     </div>
   );
 }

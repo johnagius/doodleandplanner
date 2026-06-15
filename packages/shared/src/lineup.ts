@@ -37,12 +37,10 @@ export function pitchRow(pos: string): WcPitchRow {
   const p = pos.toUpperCase();
   if (p === 'G' || p.startsWith('GK')) return 'GK';
   const base = p.replace(/-[LR]$/, ''); // CF-L → CF, CM-R → CM
-  // Forwards: strikers, centre-forwards and wingers/wide-forwards (a "W" that
-  // isn't a wing-back). Listed explicitly so a stray "D"/"B" can't leak in.
-  if (
-    ['ST', 'SS', 'CF', 'F', 'FW', 'LF', 'RF', 'LW', 'RW', 'W'].includes(base) ||
-    (base.includes('W') && !base.includes('B'))
-  ) {
+  if (base === 'SW') return 'DM'; // sweeper / single pivot — NOT a winger ("W")
+  // Forwards: strikers, centre-forwards and wingers/wide-forwards. Listed
+  // explicitly (no loose "contains W", which mis-caught the sweeper "SW").
+  if (['ST', 'SS', 'CF', 'F', 'FW', 'LF', 'RF', 'LW', 'RW', 'W', 'WF'].includes(base)) {
     return 'FWD';
   }
   if (base.includes('AM') || base.includes('CAM')) return 'AM';

@@ -4090,6 +4090,43 @@ label.field {
   align-items: center;
   gap: 2px;
   width: 64px;
+  /* It's a <button> — strip the chrome. */
+  background: none;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.wc-lp-token:hover .wc-lp-shirt,
+.wc-lp-token:focus-visible .wc-lp-shirt {
+  box-shadow: 0 0 0 3px var(--primary-soft);
+}
+
+/* Player tap-through panel */
+.wc-pp-head {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+.wc-pp-photo {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  flex: none;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  background: var(--surface-2);
+  font-size: 2rem;
+}
+.wc-pp-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.wc-pp-pos {
+  font-weight: 800;
 }
 .wc-lp-shirt {
   position: relative;

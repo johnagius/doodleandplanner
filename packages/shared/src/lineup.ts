@@ -6,6 +6,8 @@
  * collectible cards. Pure + serialisable so it unit-tests and runs anywhere.
  */
 
+import type { WcMatchEvent } from './worldcup.js';
+
 export interface WcLineupPlayer {
   name: string;
   jersey: number | null;
@@ -171,6 +173,28 @@ export function placeLineup(lineup: WcLineup): WcPlacedPlayer[] {
     }
   }
   return out;
+}
+
+export interface WcPlayerTally {
+  goals: number;
+  assists: number;
+  yellow: number;
+  red: number;
+}
+
+/** A player's World Cup goals / assists / cards, summed from the match events
+ * (matched by name). Own goals don't count as goals. */
+export function tallyPlayerEvents(events: WcMatchEvent[], name: string): WcPlayerTally {
+  const t: WcPlayerTally = { goals: 0, assists: 0, yellow: 0, red: 0 };
+  for (const e of events) {
+    if (e.player === name) {
+      if (e.kind === 'goal' || e.kind === 'pen-goal') t.goals++;
+      else if (e.kind === 'yellow') t.yellow++;
+      else if (e.kind === 'red') t.red++;
+    }
+    if (e.assist === name) t.assists++;
+  }
+  return t;
 }
 
 /** Total estimated squad value (€M) of the starting XI. */

@@ -1,16 +1,31 @@
 import {
   findTeam,
   formationOf,
+  pitchRow,
   placeLineup,
+  tallyPlayerEvents,
   type WcLineup,
   type WcMatch,
+  type WcPitchRow,
   type WcPlacedPlayer,
+  type WcTeam,
   type WorldCupState,
 } from '@dap/shared';
 import { useState } from 'react';
+import { Modal } from '../../components/Modal.js';
+import { useWorldCupStore } from '../../state/worldCupStore.js';
 import { useLineups } from './lineups.js';
 import { usePlayerPhoto } from './playerPhoto.js';
 import { usePlayerValues } from './values.js';
+
+const POS_LABEL: Record<WcPitchRow, string> = {
+  GK: 'Goalkeeper',
+  DEF: 'Defender',
+  DM: 'Defensive midfielder',
+  MID: 'Midfielder',
+  AM: 'Attacking midfielder',
+  FWD: 'Forward',
+};
 
 /** Last name (or full name if single token) — keeps tokens compact. */
 function shortName(name: string): string {
@@ -26,18 +41,27 @@ function valueLabel(m: number | null | undefined): string {
 }
 
 /** One player token: their face when we can find a photo, else a numbered shirt,
- * with our ability rating badged on top, and name + real market value beneath. */
+ * with our ability rating badged on top, and name + real market value beneath.
+ * Tap it for the player panel. */
 function LineupToken({
   placed,
   value,
+  onOpen,
 }: {
   placed: WcPlacedPlayer;
   value: number | null | undefined;
+  onOpen: () => void;
 }) {
   const photo = usePlayerPhoto(placed.player.name);
   const tier = placed.rating >= 84 ? 'gold' : placed.rating >= 75 ? 'silver' : 'bronze';
   return (
-    <div className="wc-lp-token" style={{ left: `${placed.x * 100}%`, top: `${placed.y * 100}%` }}>
+    <button
+      type="button"
+      className="wc-lp-token"
+      style={{ left: `${placed.x * 100}%`, top: `${placed.y * 100}%` }}
+      onClick={onOpen}
+      aria-label={`${placed.player.name} — details`}
+    >
       <span className={`wc-lp-shirt tier-${tier} ${photo ? 'has-photo' : ''}`}>
         {photo ? (
           <img src={photo} alt="" loading="lazy" />
@@ -50,6 +74,64 @@ function LineupToken({
         {shortName(placed.player.name)}
       </span>
       <span className="wc-lp-val">{valueLabel(value)}</span>
+    </button>
+  );
+}
+
+/** Tap-through panel for one player: photo, position, real value, our rating,
+ * and their World Cup goals / assists / cards so far. */
+function PlayerPanel({
+  placed,
+  value,
+  team,
+  onClose,
+}: {
+  placed: WcPlacedPlayer;
+  value: number | null | undefined;
+  team: WcTeam | undefined;
+  onClose: () => void;
+}) {
+  const photo = usePlayerPhoto(placed.player.name);
+  const matchEvents = useWorldCupStore((s) => s.matchEvents);
+  const tally = tallyPlayerEvents(Object.values(matchEvents).flat(), placed.player.name);
+  return (
+    <Modal open onClose={onClose} title={placed.player.name}>
+      <div className="stack wc-pp" style={{ gap: '0.85rem' }}>
+        <div className="wc-pp-head">
+          <span className={`wc-pp-photo ${photo ? '' : 'is-flag'}`} aria-hidden>
+            {photo ? <img src={photo} alt="" /> : (team?.flag ?? '⚽')}
+          </span>
+          <div className="stack" style={{ gap: '0.15rem' }}>
+            <span className="wc-pp-pos">
+              {team?.flag} {POS_LABEL[pitchRow(placed.player.pos)]}
+              {placed.player.jersey != null && ` · #${placed.player.jersey}`}
+            </span>
+            <span className="muted small">{team?.name ?? team?.id}</span>
+          </div>
+        </div>
+        <div className="wc-stat-grid">
+          <Stat label="Value" value={valueLabel(value)} />
+          <Stat label="Rating" value={`${(placed.rating / 10).toFixed(1)}`} />
+          <Stat label="Goals" value={tally.goals} />
+          <Stat label="Assists" value={tally.assists} />
+        </div>
+        <div className="row" style={{ gap: '0.6rem', justifyContent: 'center' }}>
+          <span className="badge">🟨 {tally.yellow}</span>
+          <span className="badge">🟥 {tally.red}</span>
+        </div>
+        <p className="muted small" style={{ margin: 0, textAlign: 'center' }}>
+          Value: Transfermarkt · goals/assists/cards: this World Cup. Rating is our own estimate.
+        </p>
+      </div>
+    </Modal>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="wc-stat">
+      <div className="wc-stat-value">{value}</div>
+      <div className="muted small">{label}</div>
     </div>
   );
 }
@@ -64,6 +146,7 @@ function Pitch({ wc, lineup }: { wc: WorldCupState; lineup: WcLineup }) {
   const values = usePlayerValues(names);
   const loading = Object.keys(values).length === 0;
   const total = names.reduce((sum, n) => sum + (typeof values[n] === 'number' ? values[n]! : 0), 0);
+  const [open, setOpen] = useState<WcPlacedPlayer | null>(null);
   return (
     <div className="wc-lp">
       <div className="row spread wc-lp-head">
@@ -81,6 +164,7 @@ function Pitch({ wc, lineup }: { wc: WorldCupState; lineup: WcLineup }) {
               key={p.player.name + p.player.jersey}
               placed={p}
               value={values[p.player.name]}
+              onOpen={() => setOpen(p)}
             />
           ))}
         </div>
@@ -91,10 +175,18 @@ function Pitch({ wc, lineup }: { wc: WorldCupState; lineup: WcLineup }) {
         ) : (
           <>
             Total XI value ≈ <strong>€{Math.round(total)}M</strong>{' '}
-            <span className="muted">· Transfermarkt</span>
+            <span className="muted">· Transfermarkt · tap a player</span>
           </>
         )}
       </div>
+      {open && (
+        <PlayerPanel
+          placed={open}
+          value={values[open.player.name]}
+          team={team}
+          onClose={() => setOpen(null)}
+        />
+      )}
     </div>
   );
 }

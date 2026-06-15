@@ -5,10 +5,12 @@ import {
   lineupRating,
   pitchRow,
   placeLineup,
+  tallyPlayerEvents,
   teamValueM,
   type WcLineup,
   type WcLineupPlayer,
 } from '../src/lineup.js';
+import type { WcMatchEvent } from '../src/worldcup.js';
 
 const P = (name: string, pos: string, formationPlace: number): WcLineupPlayer => ({
   name,
@@ -168,6 +170,37 @@ describe('rating + value', () => {
     for (const n of ['Wahi', 'Sébastien Haller', 'A. Player', 'Zzz Xyz', 'Foo Bar', 'Q']) {
       expect(estimatedValueM(n)).toBeLessThanOrEqual(110);
     }
+  });
+
+  it('tallies a player World Cup goals, assists and cards by name', () => {
+    const ev = (kind: WcMatchEvent['kind'], player: string, assist?: string): WcMatchEvent => ({
+      minute: "1'",
+      kind,
+      teamTla: 'X',
+      player,
+      assist,
+    });
+    const events: WcMatchEvent[] = [
+      ev('goal', 'Gyökeres', 'Isak'),
+      ev('pen-goal', 'Gyökeres'),
+      ev('goal', 'Isak', 'Gyökeres'),
+      ev('yellow', 'Gyökeres'),
+      ev('red', 'Karlström'),
+      ev('own-goal', 'Gyökeres'), // own goals don't count as a goal
+    ];
+    expect(tallyPlayerEvents(events, 'Gyökeres')).toEqual({
+      goals: 2,
+      assists: 1,
+      yellow: 1,
+      red: 0,
+    });
+    expect(tallyPlayerEvents(events, 'Isak')).toEqual({ goals: 1, assists: 1, yellow: 0, red: 0 });
+    expect(tallyPlayerEvents(events, 'Karlström')).toEqual({
+      goals: 0,
+      assists: 0,
+      yellow: 0,
+      red: 1,
+    });
   });
 
   it('sums the starting XI into a team value', () => {

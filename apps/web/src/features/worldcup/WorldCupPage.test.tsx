@@ -240,6 +240,50 @@ describe('WorldCupPage', () => {
     await waitFor(() => expect(container.querySelector('.wc-perf-pts')?.textContent).toBe('+0'));
   });
 
+  it('settles the fake-money bets on the Bets tab', async () => {
+    const user = userEvent.setup();
+    const past = new Date(Date.now() - 86_400_000).toISOString();
+    const at = new Date().toISOString();
+    const wc: WorldCupState = {
+      season: '2026',
+      title: 'Test Cup',
+      version: 9999,
+      teams: [
+        { id: 'AAA', name: 'Aland', flag: '🅰️', group: 'A' },
+        { id: 'BBB', name: 'Bland', flag: '🅱️', group: 'A' },
+      ],
+      matches: [
+        { id: 'g-A-1', stage: 'group', group: 'A', matchday: 1, order: 0, kickoff: past, homeId: 'AAA', awayId: 'BBB', result: { home: 2, away: 0 } }, // prettier-ignore
+      ],
+      predictors: [
+        { id: 'p1', name: 'John' },
+        { id: 'p2', name: 'Daniel' },
+      ],
+      predictions: [
+        { matchId: 'g-A-1', predictorId: 'p1', home: 2, away: 0, updatedAt: at }, // backs home → wins
+        { matchId: 'g-A-1', predictorId: 'p2', home: 0, away: 1, updatedAt: at }, // backs away → loses
+      ],
+      odds: { 'g-A-1': { homeML: 100, drawML: 200, awayML: 400 } }, // home @ evens
+      createdAt: at,
+    };
+    const { room } = await createRoom({
+      name: 'World Cup',
+      ownerName: 'Predictions',
+      slug: WORLD_CUP_SLUG,
+    });
+    await getRepository().createRoom({ ...emptyRoomState(room), worldCup: wc });
+
+    renderPage();
+    await screen.findByRole('heading', { name: /World Cup 2026 Predictions/ });
+    await user.keyboard('{Escape}');
+
+    await user.click(screen.getByRole('tab', { name: /Bets/ }));
+    expect(await screen.findByRole('heading', { name: /Bankroll/ })).toBeInTheDocument();
+    // John backed the home win at evens (€5) → +€5.00; Daniel lost his €5.
+    expect(screen.getByText('+€5.00')).toBeInTheDocument();
+    expect(screen.getByText('−€5.00')).toBeInTheDocument();
+  });
+
   it('falls back to a local board when the backend is unreachable', async () => {
     // A "remote" repo that fails like a CORS-blocked / offline fetch.
     const broken: Repository = {

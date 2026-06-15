@@ -11,6 +11,7 @@ import { Link } from 'react-router-dom';
 import { isRealtimeBackend } from '../../lib/storage/index.js';
 import { useTitleAlert } from '../../lib/useTitleAlert.js';
 import { useWorldCupStore } from '../../state/worldCupStore.js';
+import { BettingView } from './BettingView.js';
 import { BracketView } from './BracketView.js';
 import { CardsView } from './CardsView.js';
 import { GroupTables } from './GroupTables.js';
@@ -23,7 +24,15 @@ import { ScoringLegend } from './ScoringLegend.js';
 import { TimelineView } from './TimelineView.js';
 import { formatDayLong } from './wcFormat.js';
 
-type Tab = 'fixtures' | 'groups' | 'bracket' | 'leaderboard' | 'timeline' | 'performance' | 'cards';
+type Tab =
+  | 'fixtures'
+  | 'groups'
+  | 'bracket'
+  | 'leaderboard'
+  | 'timeline'
+  | 'performance'
+  | 'cards'
+  | 'bets';
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'fixtures', label: 'Fixtures', icon: '📅' },
@@ -33,6 +42,7 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'timeline', label: 'Timeline', icon: '📈' },
   { id: 'performance', label: 'Performance', icon: '📋' },
   { id: 'cards', label: 'Cards', icon: '🃏' },
+  { id: 'bets', label: 'Bets', icon: '💶' },
 ];
 
 export function WorldCupPage() {
@@ -209,6 +219,7 @@ export function WorldCupPage() {
         {tab === 'timeline' && <TimelineView wc={wc} />}
         {tab === 'performance' && <PerformanceView wc={wc} />}
         {tab === 'cards' && <CardsView wc={wc} />}
+        {tab === 'bets' && <BettingView wc={wc} />}
       </div>
     </div>
   );

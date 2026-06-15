@@ -113,6 +113,10 @@ export interface WorldCupState {
   /** Each predictor's pick for the tournament winner: predictorId → team id.
    * Locks at the first knockout kickoff. Older boards omit this. */
   championPicks?: Record<string, string>;
+  /** Frozen pre-kickoff odds per match (matchId → line), captured once from the
+   * live feed so the fake-money betting game settles deterministically. Older
+   * boards omit this. */
+  odds?: Record<string, WcMatchOdds>;
   createdAt: ISODateTime;
 }
 
@@ -643,6 +647,26 @@ export function applyLiveResults(state: WorldCupState, scores: WcLiveScore[]): W
     next = setResult(next, { matchId: match.id, home: sc.home, away: sc.away, advancesId });
   }
   return next;
+}
+
+/**
+ * Freeze the betting odds for any match we have a line for but haven't snapshotted
+ * yet — captured **once** (the first pre-kickoff line we see) so the fake-money
+ * game settles from a stable price. Pure + idempotent: existing snapshots are
+ * never overwritten, and matches without a usable line are skipped.
+ */
+export function captureOdds(state: WorldCupState, scores: WcLiveScore[]): WorldCupState {
+  let odds: Record<string, WcMatchOdds> | undefined;
+  for (const sc of scores) {
+    if (!sc.odds) continue;
+    const match = state.matches.find((m) => m.homeId === sc.homeTla && m.awayId === sc.awayTla);
+    if (!match || state.odds?.[match.id] || odds?.[match.id]) continue;
+    // Only worth storing if it can price at least one 1X2 outcome.
+    const o = sc.odds;
+    if (o.homeML == null && o.drawML == null && o.awayML == null) continue;
+    odds = { ...(odds ?? state.odds ?? {}), [match.id]: o };
+  }
+  return odds ? { ...state, odds } : state;
 }
 
 /** Winner team id of a played match, or undefined if drawn-without-advance / unplayed. */

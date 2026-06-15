@@ -91,11 +91,23 @@ A standalone `/world-cup` board (no login) for predicting the tournament.
       own distinct player, and no player is ever drawn twice across the whole
       tournament (the 1,249 pool dwarfs the ~104-game card count). Collect them
       and climb a "most cards" table. Fully derived from results — no stored state.
-- [ ] Stats tab: possession + shots for/against — API-Football's **free** plan is
-      limited to seasons 2022–2024, so live-2026 stats need a **paid** plan.
+      Photos fall back Wikipedia → **TheSportsDB** → flag art.
+- [x] **Near-real-time live feed** — ESPN's public (no-key) scoreboard is now the
+      primary live source (carries the **live minute**, status, score, venue,
+      attendance, team colours, odds), with **football-data.org as the official
+      full-time result + fallback**. Pure `parseEspnScoreboard`/`mergeLiveScores`
+      in the Worker; merged + cached ~15s; a Malta-safe 3-day UTC fetch window.
+- [x] **Fake-money betting** — a **Bets** tab: everyone's handed €5 a game,
+      auto-staked on the result their scoreline backs at the feed's three-way
+      moneyline (odds frozen once via `captureOdds`), auto-settled on the result.
+      Shows a bankroll leaderboard + your bet slip. Pure `betsFor`/`bankroll` in
+      `@dap/shared`; a side-game that doesn't touch the prediction points.
+- [ ] **Live match events + stats** — ESPN's per-match `summary` endpoint carries
+      goal scorers/assists, 🟨🟥 cards, subs **and** team stats (possession, shots).
+      Next: a cached Worker route per event + a live events ticker, and finally
+      possession/shots on the Stats tab (no paid API needed after all).
 - [ ] Strategy layer: a per-matchday joker, knockout multipliers, outright bets.
-- [ ] Live match minute (needs a paid football-data tier) and a share card.
-- [ ] Let the organiser edit fixtures/teams (currently a fixed 2026 seed).
+- [ ] A share card; let the organiser edit fixtures/teams (fixed 2026 seed today).
 
 ## Ideas / later
 

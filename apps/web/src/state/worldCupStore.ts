@@ -3,6 +3,7 @@ import {
   adminSetPrediction,
   appendMessage,
   applyLiveResults,
+  captureOdds,
   clearChampionPick,
   clearPrediction,
   clearResult,
@@ -254,12 +255,14 @@ export const useWorldCupStore = create<WorldCupStore>((set, get) => {
       const { scores, fetchedAt } = await fetchLiveScores();
       if (scores.length === 0) return;
 
-      // Auto-fill any finished results that aren't on the board yet (only writes
-      // when something actually changed, so we don't spam the shared room).
-      const nextWc = applyLiveResults(wc, scores);
+      // Auto-fill finished results AND freeze new betting-odds snapshots (only
+      // writes when something actually changed, so we don't spam the shared room).
+      const nextWc = captureOdds(applyLiveResults(wc, scores), scores);
       if (nextWc !== wc) {
         await apply((s) =>
-          s.worldCup ? { ...s, worldCup: applyLiveResults(s.worldCup, scores) } : s,
+          s.worldCup
+            ? { ...s, worldCup: captureOdds(applyLiveResults(s.worldCup, scores), scores) }
+            : s,
         );
       }
 

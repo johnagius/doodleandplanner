@@ -32,8 +32,10 @@ get.
   out day by day with a **live countdown**; picks **lock at kickoff** and rivals'
   predictions stay **hidden until then**. Points are awarded by how close each
   guess was (exact score scores most, right margin next, right result next, then a
-  consolation for being a goal or two off). **Results auto-fill from a live feed**
-  (football-data.org) so no one has to enter them. Group standings compute
+  consolation for being a goal or two off). **Scores come in near-real-time** from
+  ESPN's public feed (the **live minute**, score, venue, attendance, odds), with
+  **football-data.org** as the official full-time result + fallback — so results
+  auto-fill and no one has to enter them. Group standings compute
   automatically and, once the groups finish, the **knockout bracket populates
   itself** (Round of 32 → final). The **leaderboard** shows rank movement, the
   day's top scorer, recent form, badges and head-to-head comparisons. Every match
@@ -53,7 +55,9 @@ get.
   guess** (pick vs result and the points it earned, 🎯-flagged exacts). Top a
   match's points and you also win a random **player
   card** (FIFA-style, drawn from the real squads, every card globally unique) to
-  collect in a **🃏 Cards** tab. Gentle "still to predict" nudges keep everyone
+  collect in a **🃏 Cards** tab. A **💶 Bets** tab runs a fake-money side-game —
+  everyone's handed €5 a game, auto-staked on the result their pick backs at the
+  bookies' odds, with a bankroll leaderboard. Gentle "still to predict" nudges keep everyone
   on track.
   Everyone shares one board through the realtime Worker (with a graceful local
   fallback). A first-run "Who are you?" prompt remembers you on the device.

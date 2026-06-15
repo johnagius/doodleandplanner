@@ -62,12 +62,14 @@ function LineupToken({
       onClick={onOpen}
       aria-label={`${placed.player.name} — details`}
     >
-      <span className={`wc-lp-shirt tier-${tier} ${photo ? 'has-photo' : ''}`}>
-        {photo ? (
-          <img src={photo} alt="" loading="lazy" />
-        ) : (
-          <span className="wc-lp-num">{placed.player.jersey ?? ''}</span>
-        )}
+      <span className="wc-lp-shirtwrap">
+        <span className={`wc-lp-shirt tier-${tier} ${photo ? 'has-photo' : ''}`}>
+          {photo ? (
+            <img src={photo} alt="" loading="lazy" />
+          ) : (
+            <span className="wc-lp-num">{placed.player.jersey ?? ''}</span>
+          )}
+        </span>
         <span className="wc-lp-rating">{(placed.rating / 10).toFixed(1)}</span>
       </span>
       <span className="wc-lp-name" title={placed.player.name}>

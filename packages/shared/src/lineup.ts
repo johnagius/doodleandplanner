@@ -130,14 +130,12 @@ export function formationOf(players: WcLineupPlayer[]): string {
     .join('-');
 }
 
-const clampX = (x: number) => Math.max(0.08, Math.min(0.92, x));
-
 /**
- * Lay the XI out on the half-pitch. Each player's x comes from their position's
- * lane (so full-backs hug the line and centre-backs stay inner — no flipping a
- * right-back with a centre-back), and players who share a lane (e.g. two holding
- * mids, twin centre-backs) are nudged apart symmetrically rather than flung to
- * the touchlines. y is the role's band; rating + value are attached.
+ * Lay the XI out on the half-pitch. Within a row, players are ordered by lane
+ * (left → centre → right, so a right-back is never flipped with a centre-back),
+ * then spread across a band **whose width grows with the row size**: a 4-man
+ * back line spreads to the touchlines, while a 2-man midfield pivot stays
+ * central (even when ESPN labels it "LM/RM"). y is the role's band.
  */
 export function placeLineup(lineup: WcLineup): WcPlacedPlayer[] {
   const starters = lineup.players.filter((p) => p.starter);
@@ -148,29 +146,23 @@ export function placeLineup(lineup: WcLineup): WcPlacedPlayer[] {
   }
   const out: WcPlacedPlayer[] = [];
   for (const row of ROW_ORDER) {
-    const inRow = byRow.get(row) ?? [];
-    const based = inRow.map((player) => ({ player, bx: clampX(0.5 + laneOf(player.pos) * 0.4) }));
-    // Group players that landed in the same lane, then fan them out around it.
-    const groups = new Map<number, typeof based>();
-    for (const b of based) {
-      const key = Math.round(b.bx * 20);
-      (groups.get(key) ?? groups.set(key, []).get(key)!).push(b);
-    }
-    for (const group of groups.values()) {
-      group.sort((a, b) => (a.player.formationPlace ?? 99) - (b.player.formationPlace ?? 99));
-      const k = group.length;
-      group.forEach((b, i) => {
-        const x = k === 1 ? b.bx : clampX(b.bx + (i - (k - 1) / 2) * 0.2);
-        out.push({
-          player: b.player,
-          row,
-          x,
-          y: ROW_Y[row],
-          rating: lineupRating(b.player.name),
-          valueM: estimatedValueM(b.player.name),
-        });
+    const inRow = [...(byRow.get(row) ?? [])].sort(
+      (a, b) =>
+        laneOf(a.pos) - laneOf(b.pos) || (a.formationPlace ?? 99) - (b.formationPlace ?? 99),
+    );
+    const n = inRow.length;
+    const width = Math.min(0.84, 0.26 * (n - 1)); // wider line ⇒ wider spread
+    inRow.forEach((player, i) => {
+      const x = n === 1 ? 0.5 : 0.5 - width / 2 + (i / (n - 1)) * width;
+      out.push({
+        player,
+        row,
+        x,
+        y: ROW_Y[row],
+        rating: lineupRating(player.name),
+        valueM: estimatedValueM(player.name),
       });
-    }
+    });
   }
   return out;
 }

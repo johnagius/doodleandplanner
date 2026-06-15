@@ -4128,11 +4128,18 @@ label.field {
 .wc-pp-pos {
   font-weight: 800;
 }
-.wc-lp-shirt {
+/* Holds the round shirt + the rating badge; the badge can poke outside without
+   being clipped, while the shirt clips the photo to a circle. */
+.wc-lp-shirtwrap {
   position: relative;
   width: 30px;
   height: 30px;
+}
+.wc-lp-shirt {
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
+  overflow: hidden;
   display: grid;
   place-items: center;
   color: #0b0d14;

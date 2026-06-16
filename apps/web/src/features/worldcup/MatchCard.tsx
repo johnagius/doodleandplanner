@@ -34,6 +34,7 @@ import { Countdown } from './Countdown.js';
 import { useHeadToHead, type H2HState } from './h2h.js';
 import { LineupView } from './LineupView.js';
 import { MatchComments } from './MatchComments.js';
+import { ScenariosView } from './ScenariosView.js';
 import { ScoreStepper } from './ScoreStepper.js';
 import { useNow } from './useNow.js';
 import { formatKickoff, legibleScoreColor } from './wcFormat.js';
@@ -174,6 +175,8 @@ export function MatchCard({ matchId }: { matchId: string }) {
       ? `Group ${match.group} · MD${match.matchday}`
       : WC_STAGE_LABEL[match.stage];
   const isGroup = match.stage === 'group' && !!match.group;
+  // Scenarios are about an upcoming/ongoing match's leaderboard impact.
+  const showScenarios = ready && !result;
 
   return (
     <div className={`card wc-match ${result ? 'is-final' : ''}`}>
@@ -194,7 +197,12 @@ export function MatchCard({ matchId }: { matchId: string }) {
         )}
       </div>
 
-      <CardViewTabs view={view} onChange={setView} showGroup={isGroup} />
+      <CardViewTabs
+        view={view}
+        onChange={setView}
+        showGroup={isGroup}
+        showScenarios={showScenarios}
+      />
 
       <div className="wc-fixture">
         <TeamSide wc={wc} team={home} placeholder={slotLabel(wc, match.homeId, match.homeSource)} />
@@ -311,31 +319,39 @@ export function MatchCard({ matchId }: { matchId: string }) {
 
       {view === 'stats' && <StatsView wc={wc} match={match} />}
       {view === 'lineup' && <LineupView wc={wc} match={match} />}
+      {view === 'scenarios' && showScenarios && (
+        <ScenariosView wc={wc} match={match} live={live} meId={meId} />
+      )}
       {view === 'group' && isGroup && <GroupView wc={wc} group={match.group!} match={match} />}
     </div>
   );
 }
 
-type CardView = 'match' | 'stats' | 'lineup' | 'group';
+type CardView = 'match' | 'stats' | 'lineup' | 'scenarios' | 'group';
 
 const CARD_VIEWS: { id: CardView; icon: string; label: string }[] = [
   { id: 'match', icon: '⚽', label: 'Match' },
   { id: 'stats', icon: '📊', label: 'Stats' },
   { id: 'lineup', icon: '👥', label: 'Lineups' },
+  { id: 'scenarios', icon: '🔮', label: 'Scenarios' },
   { id: 'group', icon: '🔢', label: 'Group' },
 ];
 
-/** The three little tabs in the card's top-right that switch its lower panel. */
+/** The little tabs in the card's top-right that switch its lower panel. */
 function CardViewTabs({
   view,
   onChange,
   showGroup,
+  showScenarios,
 }: {
   view: CardView;
   onChange: (v: CardView) => void;
   showGroup: boolean;
+  showScenarios: boolean;
 }) {
-  const views = showGroup ? CARD_VIEWS : CARD_VIEWS.filter((v) => v.id !== 'group');
+  const views = CARD_VIEWS.filter(
+    (v) => (v.id !== 'group' || showGroup) && (v.id !== 'scenarios' || showScenarios),
+  );
   return (
     <div className="wc-card-tabs" role="tablist" aria-label="Card view">
       {views.map((v) => (

@@ -50,6 +50,7 @@ import {
   predictionFor,
   removePredictor,
   renamePredictor,
+  scenarioBoard,
   scorePrediction,
   seedWorldCup,
   setPrediction,
@@ -142,6 +143,62 @@ describe('seedWorldCup', () => {
   it('starts with the four default predictors', () => {
     const s = seed();
     expect(s.predictors.map((p) => p.name)).toEqual(['John', 'Daniel', 'Noel', 'Saviour']);
+  });
+});
+
+describe('scenarioBoard', () => {
+  // Ann leads after m0 (exact 1-0 = 5) over Bob (right result = 3). m1 is unplayed.
+  const base: WorldCupState = {
+    season: '2026',
+    title: 'T',
+    teams: [],
+    matches: [
+      {
+        id: 'm0',
+        stage: 'group',
+        order: 0,
+        kickoff: '2026-06-11T00:00:00Z',
+        homeId: 'AAA',
+        awayId: 'BBB',
+        result: { home: 1, away: 0 },
+      },
+      {
+        id: 'm1',
+        stage: 'group',
+        order: 1,
+        kickoff: '2026-06-12T00:00:00Z',
+        homeId: 'CCC',
+        awayId: 'DDD',
+      },
+    ],
+    predictors: [
+      { id: 'A', name: 'Ann' },
+      { id: 'B', name: 'Bob' },
+    ],
+    predictions: [
+      { predictorId: 'A', matchId: 'm0', home: 1, away: 0, updatedAt: 'x' },
+      { predictorId: 'B', matchId: 'm0', home: 3, away: 0, updatedAt: 'x' },
+      { predictorId: 'A', matchId: 'm1', home: 0, away: 0, updatedAt: 'x' },
+      { predictorId: 'B', matchId: 'm1', home: 2, away: 1, updatedAt: 'x' },
+    ],
+    createdAt: '2026-01-01T00:00:00.000Z',
+  };
+
+  it('shows who pips whom: a 2-1 hands Bob the exact and the lead', () => {
+    const rows = scenarioBoard(base, 'm1', 2, 1);
+    expect(rows[0]!.predictorId).toBe('B'); // Bob climbs to 1st
+    expect(rows[0]!.gain).toBe(WC_POINTS.exact); // +5 from nailing 2-1
+    expect(rows[0]!.movement).toBe(1); // up one place
+    const ann = rows.find((r) => r.predictorId === 'A')!;
+    expect(ann.gain).toBe(0); // 0-0 pick misses a 2-1
+    expect(ann.movement).toBe(-1); // slips to 2nd
+  });
+
+  it('leaves the order unchanged when the leader also scores', () => {
+    const rows = scenarioBoard(base, 'm1', 0, 0); // Ann nailed 0-0
+    expect(rows[0]!.predictorId).toBe('A');
+    expect(rows[0]!.gain).toBe(WC_POINTS.exact);
+    expect(rows.every((r) => r.movement === 0)).toBe(true);
   });
 });
 

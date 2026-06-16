@@ -2128,6 +2128,108 @@ label.field {
   white-space: nowrap;
 }
 
+/* Scenarios (what-if) tab */
+.wc-scenarios {
+  gap: 0.7rem;
+}
+.wc-scn-stepper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.wc-scn-team {
+  font-weight: 800;
+  font-size: 0.95rem;
+}
+.wc-scn-prob {
+  display: grid;
+  gap: 0.4rem;
+}
+.wc-scn-chance {
+  text-align: center;
+  font-size: 1.05rem;
+}
+.wc-scn-bar {
+  display: flex;
+  height: 12px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--border);
+}
+.wc-scn-bar .seg {
+  height: 100%;
+}
+.wc-scn-bar .seg.home {
+  background: var(--primary);
+}
+.wc-scn-bar .seg.draw {
+  background: var(--muted);
+}
+.wc-scn-bar .seg.away {
+  background: var(--danger);
+}
+.wc-scn-legend {
+  display: flex;
+  justify-content: space-between;
+}
+.wc-scn-board {
+  display: grid;
+  gap: 0.25rem;
+}
+.wc-scn-row {
+  display: grid;
+  grid-template-columns: 1.4rem auto 1fr auto auto;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0.5rem;
+  border-radius: var(--radius);
+  background: var(--surface-soft, var(--surface));
+}
+.wc-scn-row.is-me {
+  outline: 2px solid var(--primary);
+}
+.wc-scn-row.climbs {
+  background: color-mix(in srgb, var(--success) 14%, transparent);
+}
+.wc-scn-row.slips {
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
+}
+.wc-scn-rank {
+  font-weight: 800;
+  text-align: center;
+  color: var(--muted);
+}
+.wc-scn-name {
+  font-weight: 700;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wc-scn-pts {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.wc-scn-gain {
+  color: var(--success);
+  font-size: 0.85em;
+}
+.wc-move {
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+.wc-move.up {
+  color: var(--success);
+}
+.wc-move.down {
+  color: var(--danger);
+}
+.wc-move.flat {
+  color: var(--muted);
+}
+
 /* Predictor picker */
 .wc-predictor-bar {
   display: flex;

@@ -988,6 +988,47 @@ export function leaderboardWithMovement(
   });
 }
 
+export interface WcScenarioRow extends WcLeaderRow {
+  /** 1-based position under the hypothetical result. */
+  rank: number;
+  /** Current position (this match still unplayed). */
+  prevRank: number;
+  /** Places climbed vs now (+ up, − down, 0 same). */
+  movement: number;
+  /** Points this predictor would earn from this match under the hypothetical. */
+  gain: number;
+}
+
+/**
+ * "What if this match ends home–away?" — the leaderboard recomputed with that
+ * scoreline folded in, annotated with each predictor's gain and how far they
+ * climb or slip versus the current table. Pure: it just runs {@link leaderboard}
+ * twice (now vs with the hypothetical), so champion bonuses and every other
+ * match cancel out and `gain` is exactly this match's points. Lets a card show
+ * who can pip whom before a ball is kicked.
+ */
+export function scenarioBoard(
+  state: WorldCupState,
+  matchId: string,
+  home: number,
+  away: number,
+): WcScenarioRow[] {
+  const base = leaderboard(state);
+  const baseRank = new Map(base.map((r, i) => [r.predictorId, i + 1]));
+  const basePts = new Map(base.map((r) => [r.predictorId, r.points]));
+  const hypo = leaderboard(state, { liveScores: { [matchId]: { home, away } } });
+  return hypo.map((r, i) => {
+    const prevRank = baseRank.get(r.predictorId) ?? i + 1;
+    return {
+      ...r,
+      rank: i + 1,
+      prevRank,
+      movement: prevRank - (i + 1),
+      gain: r.points - (basePts.get(r.predictorId) ?? r.points),
+    };
+  });
+}
+
 /** Points each predictor scored on a single Malta day, best first. */
 export function dayPoints(
   state: WorldCupState,

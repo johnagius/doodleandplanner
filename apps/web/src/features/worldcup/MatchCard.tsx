@@ -9,6 +9,8 @@ import {
   consensusScore,
   fifaRankOf,
   findTeam,
+  liveRankFlips,
+  minuteValue,
   teamClimate,
   venueClimate,
   groupOutlook,
@@ -27,7 +29,7 @@ import {
   type WcTeam,
   type WorldCupState,
 } from '@dap/shared';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useToast } from '../../components/Toast.js';
 import { useWorldCupStore, type WcLiveInfo } from '../../state/worldCupStore.js';
 import { Avatar } from './Avatar.js';
@@ -79,13 +81,26 @@ const EVENT_TAG: Partial<Record<WcMatchEvent['kind'], string>> = {
   'own-goal': ' (OG)',
 };
 
-/** Goals + cards for a played/in-play game (from the live feed). */
-function MatchEvents({ events, wc }: { events?: WcMatchEvent[]; wc: WorldCupState }) {
+/** Goals + cards for a played/in-play game (from the live feed), interleaved
+ *  with the prediction-table flips each goal caused — so you can watch the
+ *  standings shuffle in step with the match. */
+function MatchEvents({
+  events,
+  wc,
+  match,
+}: {
+  events?: WcMatchEvent[];
+  wc: WorldCupState;
+  match: WcMatch;
+}) {
+  const flips = useMemo(() => liveRankFlips(wc, match.id, events), [wc, match.id, events]);
   if (!events || events.length === 0) return null;
-  return (
-    <ul className="wc-events">
-      {events.map((e, i) => (
-        <li key={i} className={`wc-ev wc-ev-${e.kind}`}>
+
+  const items: { sort: number; el: JSX.Element }[] = [
+    ...events.map((e, i) => ({
+      sort: minuteValue(e.minute),
+      el: (
+        <li key={`e${i}`} className={`wc-ev wc-ev-${e.kind}`}>
           <span className="wc-ev-min">{e.minute}</span>
           <span aria-hidden>{EVENT_ICON[e.kind]}</span>
           <span className="wc-ev-flag" aria-hidden>
@@ -97,9 +112,37 @@ function MatchEvents({ events, wc }: { events?: WcMatchEvent[]; wc: WorldCupStat
             {e.assist && <span className="muted"> · {e.assist}</span>}
           </span>
         </li>
-      ))}
-    </ul>
-  );
+      ),
+    })),
+    ...flips.map((f, i) => ({
+      sort: minuteValue(f.minute) + 0.001, // sit just after the goal that caused it
+      el: (
+        <li key={`f${i}`} className="wc-ev wc-ev-flip">
+          <span className="wc-ev-min">{f.minute}</span>
+          <span aria-hidden>{f.topChange ? '👑' : '🔀'}</span>
+          <span className="wc-ev-flag" aria-hidden />
+          <span className="wc-ev-player">
+            <strong>{f.name}</strong>{' '}
+            {f.topChange ? 'tops the table' : `up to ${POS_LABEL(f.toRank)}`}
+            {f.passed.length > 0 && (
+              <span className="muted">
+                {' '}
+                · pips {f.passed.slice(0, 2).join(', ')}
+                {f.passed.length > 2 ? '…' : ''}
+              </span>
+            )}
+            {f.alsoMoved > 0 && <span className="muted"> · +{f.alsoMoved} more</span>}
+            <span className="muted">
+              {' '}
+              · {f.home}–{f.away}
+            </span>
+          </span>
+        </li>
+      ),
+    })),
+  ].sort((a, b) => a.sort - b.sort);
+
+  return <ul className="wc-events">{items.map((it) => it.el)}</ul>;
 }
 
 /** Optional extras from the live feed: the pre-match odds line and the crowd. */
@@ -291,7 +334,7 @@ export function MatchCard({ matchId }: { matchId: string }) {
           )}
 
           <CrowdPulse wc={wc} match={match} />
-          <MatchEvents events={events} wc={wc} />
+          <MatchEvents events={events} wc={wc} match={match} />
           <MatchFacts live={live} hasResult={!!result} />
           {isLive && live!.home != null && live!.away != null && (
             <p className="muted small wc-live-caption">

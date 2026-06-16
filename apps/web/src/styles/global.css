@@ -2987,6 +2987,16 @@ label.field {
 .wc-ev-red .wc-ev-player {
   color: var(--danger);
 }
+/* Prediction-table flips woven into the timeline — tinted so they read as a
+   different kind of event from the football ones. */
+.wc-ev-flip {
+  background: color-mix(in srgb, var(--primary) 9%, transparent);
+  border-radius: var(--radius-sm);
+  padding-block: 0.1rem;
+}
+.wc-ev-flip .wc-ev-player {
+  white-space: normal;
+}
 .wc-live-banner {
   background: color-mix(in srgb, var(--danger) 12%, var(--surface));
   border-color: color-mix(in srgb, var(--danger) 35%, var(--border));

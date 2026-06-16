@@ -173,9 +173,9 @@ export function forwardScenarios(
   const oddsFor = (m: WcMatch): WcMatchOdds | null | undefined =>
     opts?.oddsByMatch?.[m.id] ?? state.odds?.[m.id];
 
-  // Per simulated match: its goal model, the picks riding on it, and — for
-  // anyone who hasn't picked yet — a stand-in of the bookies' favourite scoreline
-  // (rounded expected goals) so they're projected as playing on, not frozen.
+  // Per simulated match: its goal model, the picks riding on it, and the
+  // predictors yet to pick it — who get a plausible sampled stand-in in the trial
+  // loop below ("assume everyone plays on") rather than being frozen at zero.
   const simData = sims.map((m) => {
     const model = expectedGoals(oddsFor(m));
     const picks = state.predictions.filter((p) => p.matchId === m.id);
@@ -370,4 +370,65 @@ export function liveSweat(state: WorldCupState, matchId: string, opts?: WcSweatO
     leaderName: nameOf.get(nowLeader) ?? null,
     trials,
   };
+}
+
+export interface WcCrownOdds {
+  predictorId: string;
+  name: string;
+  /** Probability of being closest (bagging this match's 🎯) at full time. */
+  p: number;
+}
+
+/**
+ * Live odds on who'll be closest at full time — the 🎯 "crown" race. Simulates
+ * the remaining goals from the match's odds model (scaled by time left), and for
+ * each outcome credits whoever scores most on it (ties split the crown). Sorted
+ * best→worst; empty when no pick can score. Mirrors {@link closestToScore}'s
+ * "best points wins" rule, inlined over the match's picks for speed.
+ */
+export function crownOdds(
+  state: WorldCupState,
+  matchId: string,
+  opts?: WcSweatOptions,
+): WcCrownOdds[] {
+  const match = findMatch(state, matchId);
+  if (!match) return [];
+  const picks = state.predictions.filter((p) => p.matchId === matchId);
+  if (picks.length === 0) return [];
+  const nameOf = new Map(state.predictors.map((p) => [p.id, p.name]));
+
+  const curHome = opts?.live?.home ?? 0;
+  const curAway = opts?.live?.away ?? 0;
+  const minute = opts?.live?.minute ?? 0;
+  const remaining = Math.min(1, Math.max(0, (90 - minute) / 90));
+  const model = expectedGoals(opts?.odds);
+  const lamH = model.home * remaining;
+  const lamA = model.away * remaining;
+
+  const trials = Math.max(1, Math.floor(opts?.trials ?? 1500));
+  const rng = mulberry32(seedHash(`wccrown|${matchId}|${curHome}-${curAway}|${opts?.salt ?? ''}`));
+  const win = new Map<string, number>();
+  for (let t = 0; t < trials; t++) {
+    const fh = curHome + samplePoisson(lamH, rng);
+    const fa = curAway + samplePoisson(lamA, rng);
+    let best = 0;
+    const got: Array<{ id: string; pts: number }> = [];
+    for (const p of picks) {
+      const pts = scorePrediction(p, { home: fh, away: fa }).points;
+      got.push({ id: p.predictorId, pts });
+      if (pts > best) best = pts;
+    }
+    if (best <= 0) continue; // nobody scored ⇒ no crown this outcome
+    const winners = got.filter((g) => g.pts === best);
+    const share = 1 / winners.length;
+    for (const w of winners) win.set(w.id, (win.get(w.id) ?? 0) + share);
+  }
+  return picks
+    .map((p) => ({
+      predictorId: p.predictorId,
+      name: nameOf.get(p.predictorId) ?? '?',
+      p: (win.get(p.predictorId) ?? 0) / trials,
+    }))
+    .filter((c) => c.p > 0)
+    .sort((a, b) => b.p - a.p);
 }

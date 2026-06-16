@@ -7,6 +7,7 @@ import {
   closestPredictors,
   closestToScore,
   consensusScore,
+  crownOdds,
   fifaRankOf,
   findTeam,
   liveRankFlips,
@@ -16,6 +17,7 @@ import {
   venueClimate,
   groupOutlook,
   groupStandings,
+  impliedOutcome,
   isMatchLocked,
   isMatchReady,
   pendingPredictors,
@@ -26,6 +28,7 @@ import {
   type WcGroupOutlookRow,
   type WcMatch,
   type WcMatchEvent,
+  type WcMatchOdds,
   type WcScoreCategory,
   type WcTeam,
   type WorldCupState,
@@ -68,6 +71,35 @@ function liveLabel(live: WcLiveInfo): string {
   if (live.clock) return live.clock;
   if (live.minute != null) return `${live.minute}'`;
   return 'LIVE';
+}
+
+/** A headline when the live score is defying the bookies' pre-match favourite —
+ *  the underdog leading, or a heavy favourite held. null when it's going to form. */
+function upsetAlert(
+  odds: WcMatchOdds | null,
+  live: WcLiveInfo,
+  home: WcTeam | undefined,
+  away: WcTeam | undefined,
+): string | null {
+  const imp = impliedOutcome(odds);
+  if (!imp || live.home == null || live.away == null) return null;
+  const asPct = (n: number) => `${Math.round(n * 100)}%`;
+  const favHome = imp.home >= imp.away;
+  const lead = live.home - live.away;
+  if (favHome && lead < 0 && away) {
+    return `${away.flag} ${away.name} leading — the ${asPct(imp.away)} shock is on`;
+  }
+  if (!favHome && lead > 0 && home) {
+    return `${home.flag} ${home.name} leading — the ${asPct(imp.home)} shock is on`;
+  }
+  const favProb = Math.max(imp.home, imp.away);
+  if (live.home === live.away && favProb >= 0.6 && (live.minute ?? 0) >= 55) {
+    const fav = favHome ? home : away;
+    if (fav) {
+      return `${fav.flag} ${fav.name} held ${live.home}–${live.away} — they were ${asPct(favProb)} to win`;
+    }
+  }
+  return null;
 }
 
 const EVENT_ICON: Record<WcMatchEvent['kind'], string> = {
@@ -162,16 +194,20 @@ function SweatMeter({ wc, match, live }: { wc: WorldCupState; match: WcMatch; li
   if (sweat.trials === 0 || predictionCount(wc, match.id) === 0) return null;
 
   const pct = Math.round(sweat.index * 100);
+  const minute = live.minute ?? 0;
+  const endgame = minute >= 80 && sweat.index >= 0.3; // late and still in flux
   const band =
-    sweat.index >= 0.55
-      ? { cls: 'is-boiling', label: '🔥 Boiling' }
-      : sweat.index >= 0.3
-        ? { cls: 'is-hot', label: '😅 Sweaty' }
-        : sweat.index >= 0.12
-          ? { cls: 'is-warm', label: '🌤️ Simmering' }
-          : { cls: 'is-cool', label: '🧊 Settled' };
+    endgame && sweat.index >= 0.45
+      ? { cls: 'is-boiling', label: '⏱️ Squeaky-bum time' }
+      : sweat.index >= 0.55
+        ? { cls: 'is-boiling', label: '🔥 Boiling' }
+        : sweat.index >= 0.3
+          ? { cls: 'is-hot', label: '😅 Sweaty' }
+          : sweat.index >= 0.12
+            ? { cls: 'is-warm', label: '🌤️ Simmering' }
+            : { cls: 'is-cool', label: '🧊 Settled' };
   return (
-    <div className={`wc-sweat ${band.cls}`}>
+    <div className={`wc-sweat ${band.cls}${endgame ? ' is-endgame' : ''}`}>
       <div className="wc-sweat-head">
         <span>🌡️ Sweat-o-meter</span>
         <span className="wc-sweat-band">{band.label}</span>
@@ -186,6 +222,31 @@ function SweatMeter({ wc, match, live }: { wc: WorldCupState; match: WcMatch; li
             ? `${sweat.leaderName} sitting tight up top`
             : 'No predictions in yet'}
       </div>
+    </div>
+  );
+}
+
+/** Live race for this match's 🎯 crown (closest pick), via the same odds-driven
+ *  simulation as the sweat-o-meter. Shows the top few contenders' chances. */
+function CrownRace({ wc, match, live }: { wc: WorldCupState; match: WcMatch; live: WcLiveInfo }) {
+  const odds = live.odds ?? wc.odds?.[match.id] ?? null;
+  const race = useMemo(
+    () =>
+      crownOdds(wc, match.id, {
+        odds,
+        live: { home: live.home ?? 0, away: live.away ?? 0, minute: live.minute },
+      }),
+    [wc, match.id, odds, live.home, live.away, live.minute],
+  );
+  if (race.length === 0) return null;
+  return (
+    <div className="wc-crownrace">
+      <span className="wc-crownrace-tag">🎯 Crown race</span>
+      {race.slice(0, 3).map((c) => (
+        <span key={c.predictorId} className="wc-crownrace-item">
+          {c.name} <strong>{Math.round(c.p * 100)}%</strong>
+        </span>
+      ))}
     </div>
   );
 }
@@ -230,6 +291,8 @@ export function MatchCard({ matchId }: { matchId: string }) {
   const locked = isMatchLocked(match, new Date(now));
   const result = match.result;
   const isLive = !result && !!live && (live.status === 'IN_PLAY' || live.status === 'PAUSED');
+  const upset =
+    isLive && live ? upsetAlert(live.odds ?? wc.odds?.[match.id] ?? null, live, home, away) : null;
   // Who still hasn't predicted this open match (names only — not their picks).
   const stillToPick =
     !result && !locked && ready ? pendingPredictors(wc, matchId, new Date(now)) : [];
@@ -378,6 +441,7 @@ export function MatchCard({ matchId }: { matchId: string }) {
             </p>
           )}
 
+          {upset && <div className="wc-upset">😱 {upset}</div>}
           <CrowdPulse wc={wc} match={match} />
           <MatchEvents events={events} wc={wc} match={match} />
           <MatchFacts live={live} hasResult={!!result} />
@@ -389,6 +453,7 @@ export function MatchCard({ matchId }: { matchId: string }) {
             </p>
           )}
           {isLive && live!.home != null && <SweatMeter wc={wc} match={match} live={live!} />}
+          {isLive && live!.home != null && <CrownRace wc={wc} match={match} live={live!} />}
           <PredictionsRow
             wc={wc}
             match={match}

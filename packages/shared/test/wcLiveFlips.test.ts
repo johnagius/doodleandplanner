@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { liveSweat } from '../src/wcForward.js';
+import { crownOdds, liveSweat } from '../src/wcForward.js';
 import { liveRankFlips, minuteValue } from '../src/wcLiveFlips.js';
 import type { WcMatchEvent, WorldCupState } from '../src/worldcup.js';
 
@@ -90,5 +90,22 @@ describe('liveSweat', () => {
     const a = liveSweat(state, 'm1', { odds: null, live: { home: 1, away: 0, minute: 30 } });
     const b = liveSweat(state, 'm1', { odds: null, live: { home: 1, away: 0, minute: 30 } });
     expect(a).toEqual(b);
+  });
+});
+
+describe('crownOdds', () => {
+  it('is certain once the score is locked in someone’s favour', () => {
+    // 0–0 with no time left: Ann's 0–0 pick is exact, so she's certain to be closest.
+    const settled = crownOdds(state, 'm1', { odds: null, live: { home: 0, away: 0, minute: 90 } });
+    expect(settled[0]!.name).toBe('Ann');
+    expect(settled[0]!.p).toBeCloseTo(1, 5);
+  });
+
+  it('spreads the crown while the match can still move', () => {
+    const open = crownOdds(state, 'm1', { odds: null, live: { home: 0, away: 0, minute: 1 } });
+    const names = open.map((c) => c.name);
+    expect(names).toContain('Ann');
+    expect(names).toContain('Bob');
+    expect(open.every((c) => c.p > 0 && c.p <= 1)).toBe(true);
   });
 });

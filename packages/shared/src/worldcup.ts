@@ -100,6 +100,8 @@ export interface WcPredictor {
    * read it (to show a lock) but cannot forge it — the Worker recomputes it on
    * every save from its private bindings. */
   claimed?: boolean;
+  /** Profile-picture photo id (bytes stored in the repository's photo store). */
+  avatarPhotoId?: string;
 }
 
 /** The complete, serialisable World Cup state. */
@@ -364,6 +366,19 @@ export function renamePredictor(
   return {
     ...state,
     predictors: state.predictors.map((p) => (p.id === predictorId ? { ...p, name: trimmed } : p)),
+  };
+}
+
+/** Set (or clear) a predictor's profile-picture photo id. The bytes live in the
+ * repository's photo store; only this id rides in the synced state. */
+export function setPredictorAvatar(
+  state: WorldCupState,
+  predictorId: string,
+  avatarPhotoId: string | undefined,
+): WorldCupState {
+  return {
+    ...state,
+    predictors: state.predictors.map((p) => (p.id === predictorId ? { ...p, avatarPhotoId } : p)),
   };
 }
 

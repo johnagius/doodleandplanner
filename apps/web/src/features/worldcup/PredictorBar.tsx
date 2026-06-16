@@ -1,16 +1,18 @@
 import { type WorldCupState } from '@dap/shared';
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { useToast } from '../../components/Toast.js';
 import { useWorldCupStore } from '../../state/worldCupStore.js';
+import { Avatar } from './Avatar.js';
 
-/** Pick who you are (no login). The owner can add more names. */
+/** Pick who you are. The owner can add more names; you can set a profile photo. */
 export function PredictorBar({ wc }: { wc: WorldCupState }) {
   const meId = useWorldCupStore((s) => s.meId);
   const admin = useWorldCupStore((s) => s.admin);
-  const { selectPredictor, addName, removeName } = useWorldCupStore();
+  const { selectPredictor, addName, removeName, setAvatar } = useWorldCupStore();
   const { show } = useToast();
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState('');
+  const fileRef = useRef<HTMLInputElement>(null);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -26,6 +28,19 @@ export function PredictorBar({ wc }: { wc: WorldCupState }) {
     }
   }
 
+  async function onPickPhoto(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    try {
+      await setAvatar(file);
+      const err = useWorldCupStore.getState().error;
+      show(err ?? 'Profile photo updated ✓');
+    } catch {
+      show('Could not upload that photo.');
+    }
+  }
+
   return (
     <div className="wc-predictor-bar">
       <span className="wc-predictor-label">You are</span>
@@ -38,7 +53,8 @@ export function PredictorBar({ wc }: { wc: WorldCupState }) {
               onClick={() => selectPredictor(p.id)}
               aria-pressed={p.id === meId}
             >
-              {p.name}
+              <Avatar predictor={p} size={20} />
+              <span>{p.name}</span>
             </button>
             {admin && wc.predictors.length > 1 && (
               <button
@@ -91,6 +107,24 @@ export function PredictorBar({ wc }: { wc: WorldCupState }) {
           </button>
         )}
       </div>
+
+      {meId && (
+        <button
+          type="button"
+          className="btn btn-sm btn-ghost wc-photo-btn"
+          onClick={() => fileRef.current?.click()}
+          title="Set your profile photo"
+        >
+          📷 Photo
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            hidden
+            onChange={(e) => void onPickPhoto(e)}
+          />
+        </button>
+      )}
     </div>
   );
 }

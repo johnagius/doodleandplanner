@@ -2,6 +2,7 @@ import {
   badgesFor,
   dayChampion,
   findMatch,
+  findPredictor,
   findTeam,
   headToHead,
   leaderboardWithMovement,
@@ -15,6 +16,7 @@ import { useState } from 'react';
 import { EmptyState } from '../../components/EmptyState.js';
 import { Modal } from '../../components/Modal.js';
 import { useWorldCupStore } from '../../state/worldCupStore.js';
+import { Avatar } from './Avatar.js';
 import { formatDayLong } from './wcFormat.js';
 
 const MEDALS = ['🥇', '🥈', '🥉'];
@@ -130,6 +132,7 @@ export function Leaderboard({ wc }: { wc: WorldCupState }) {
                   <Movement n={r.movement} />
                 </span>
                 <span className="wc-leader-name">
+                  <Avatar predictor={findPredictor(wc, r.predictorId)} size={24} />
                   {r.name}
                   {badges.map((b) => (
                     <span key={b.id} className="wc-badge" title={b.label} aria-label={b.label}>

@@ -115,6 +115,18 @@ describe('authorizeWcWrite', () => {
     expect(authorizeWcWrite(prev, next, new Set(['john']), 'john').ok).toBe(true);
   });
 
+  it('locks a claimed name’s profile picture too', () => {
+    const next = state({
+      predictions: prev.predictions,
+      predictors: [
+        { id: 'john', name: 'John', avatarPhotoId: 'photo_1' },
+        { id: 'dan', name: 'Daniel' },
+      ],
+    });
+    expect(authorizeWcWrite(prev, next, new Set(['john']), null).ok).toBe(false);
+    expect(authorizeWcWrite(prev, next, new Set(['john']), 'john').ok).toBe(true);
+  });
+
   it('does not block organiser-style changes that touch no predictor picks', () => {
     // Same predictions, but a match result was entered (matches differ).
     const next = state({

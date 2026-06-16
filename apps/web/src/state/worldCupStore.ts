@@ -9,10 +9,12 @@ import {
   clearResult,
   createMessage,
   deleteMessage,
+  generateId,
   removePredictor,
   renamePredictor,
   setChampionPick,
   setPrediction,
+  setPredictorAvatar,
   setResult,
   toggleMatchReaction,
   togglePickReaction,
@@ -23,6 +25,7 @@ import {
   type WorldCupState,
 } from '@dap/shared';
 import { create } from 'zustand';
+import { downscaleImage } from '../lib/image.js';
 import { LocalStorageRepository, getRepository, type Repository } from '../lib/storage/index.js';
 import { SaveLockedError } from '../lib/storage/httpRepository.js';
 import { WORLD_CUP_SLUG, loadOrCreateWorldCup } from '../features/worldcup/worldCupRoom.js';
@@ -122,6 +125,8 @@ interface WorldCupStore {
   addName: (name: string) => Promise<void>;
   renameName: (id: string, name: string) => Promise<void>;
   removeName: (id: string) => Promise<void>;
+  /** Upload an image as the current predictor's profile picture. */
+  setAvatar: (file: Blob) => Promise<void>;
 
   // Per-match comments — stored in RoomState.messages (tagged with matchId),
   // authored by the predictor.
@@ -376,6 +381,15 @@ export const useWorldCupStore = create<WorldCupStore>((set, get) => {
     async removeName(id) {
       await apply((s) => withWorldCup(s, (wc) => removePredictor(wc, id)));
       if (get().meId === id) get().selectPredictor(null);
+    },
+
+    async setAvatar(file) {
+      const me = requireMe();
+      // Profile pics are small — downscale hard before upload to stay tiny.
+      const { blob } = await downscaleImage(file, 256, 0.85);
+      const photoId = generateId('photo');
+      await repo().uploadPhoto(WORLD_CUP_SLUG, photoId, blob);
+      await apply((s) => withWorldCup(s, (wc) => setPredictorAvatar(wc, me, photoId)));
     },
 
     async postComment(matchId, text) {

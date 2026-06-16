@@ -4,6 +4,7 @@ import { Modal } from '../../components/Modal.js';
 import { useToast } from '../../components/Toast.js';
 import { isRealtimeBackend } from '../../lib/storage/index.js';
 import { useWorldCupStore } from '../../state/worldCupStore.js';
+import { Avatar } from './Avatar.js';
 import { hasSession, requestCode, verifyCode } from './wcAuthClient.js';
 import { WORLD_CUP_SLUG } from './worldCupRoom.js';
 
@@ -216,6 +217,7 @@ export function IdentityModal({
                 className="wc-identity-name"
                 onClick={() => pick(p.id, p.name)}
               >
+                <Avatar predictor={p} size={26} />
                 {p.name}
                 {p.claimed && (
                   <span className="wc-lock" aria-label="protected" title="Protected by email">

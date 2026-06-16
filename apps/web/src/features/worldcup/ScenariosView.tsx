@@ -1,7 +1,9 @@
 import {
   findTeam,
+  forwardScenarios,
   impliedOutcome,
   matchScenarios,
+  unplayedBefore,
   type WcLiveSnapshot,
   type WcMatch,
   type WorldCupState,
@@ -69,45 +71,77 @@ export function ScenariosView({
   }
 
   // ── Leaderboard scenarios ────────────────────────────────────────────────
-  const sc = matchScenarios(wc, match.id, odds, snap);
+  // If games are still to play *before* this one, the table can move underneath
+  // it — so project forward through them (their odds + picks) rather than claim a
+  // bogus "100%" three rounds early. For the next match (nothing in between), the
+  // exact single-match read is honest and keeps its crisp "e.g. 2–1" examples.
+  const before = unplayedBefore(wc, match.id);
+  const useForward = before.length > 0 && !snap;
   const lines: Line[] = [];
-  if (sc.predicted === 0) {
-    lines.push({
-      icon: '🕗',
-      text: 'No predictions are in yet — they’ll shape the scenarios here.',
-    });
+  let forwardNote: string | null = null;
+
+  if (useForward) {
+    const fw = forwardScenarios(wc, match.id, { oddsByMatch: { [match.id]: odds } });
+    forwardNote = `Through the ${fw.matchesBefore} game${
+      fw.matchesBefore === 1 ? '' : 's'
+    } before it — the table can still move underneath this one.`;
+    if (fw.predictedAll === 0) {
+      lines.push({ icon: '🕗', text: 'No predictions are in yet for these games.' });
+    } else {
+      const shown = fw.outlooks.filter((o) => o.pTop >= 0.05).sort((a, b) => b.pTop - a.pTop);
+      const top = shown.slice(0, 4);
+      // Always keep the current leader on the card, even if they've slipped below 5%.
+      const leader = fw.outlooks.find((o) => o.currentRank === 1);
+      if (leader && !top.some((o) => o.predictorId === leader.predictorId)) top.push(leader);
+      top.forEach((o, i) => {
+        lines.push({
+          icon: i === 0 ? '🥇' : '🔼',
+          text: `${o.name} top by then`,
+          prob: o.pTop,
+          me: o.predictorId === meId,
+        });
+      });
+    }
   } else {
-    const leader = sc.outlooks.find((o) => o.currentRank === 1);
-    if (leader) {
+    const sc = matchScenarios(wc, match.id, odds, snap);
+    if (sc.predicted === 0) {
       lines.push({
-        icon: '🥇',
-        text: `${leader.name} stays top (on ${leader.points} pt${leader.points === 1 ? '' : 's'})`,
-        prob: leader.pTop,
-        me: leader.predictorId === meId,
+        icon: '🕗',
+        text: 'No predictions are in yet — they’ll shape the scenarios here.',
       });
-    }
-    for (const o of sc.outlooks
-      .filter((o) => o.currentRank !== 1 && o.pTop >= 0.02)
-      .sort((a, b) => b.pTop - a.pTop)) {
-      lines.push({
-        icon: '🔼',
-        text: `${o.name} (now ${ordinal(o.currentRank)}) takes 1st${o.bestExample ? ` — e.g. ${result(o.bestExample)}` : ''}`,
-        prob: o.pTop,
-        me: o.predictorId === meId,
-      });
-    }
-    for (const o of sc.outlooks.filter(
-      (o) => o.currentRank !== 1 && o.pTop < 0.02 && o.bestRank < o.currentRank,
-    )) {
-      lines.push({
-        icon: '↗️',
-        text: `${o.name} climbs to ${ordinal(o.bestRank)}${o.bestExample ? ` (e.g. ${result(o.bestExample)})` : ''}`,
-        prob: o.pUp,
-        me: o.predictorId === meId,
-      });
-    }
-    if (!sc.volatile) {
-      lines.push({ icon: '🔒', text: 'Whatever the score, the order won’t change this match.' });
+    } else {
+      const leader = sc.outlooks.find((o) => o.currentRank === 1);
+      if (leader) {
+        lines.push({
+          icon: '🥇',
+          text: `${leader.name} stays top (on ${leader.points} pt${leader.points === 1 ? '' : 's'})`,
+          prob: leader.pTop,
+          me: leader.predictorId === meId,
+        });
+      }
+      for (const o of sc.outlooks
+        .filter((o) => o.currentRank !== 1 && o.pTop >= 0.02)
+        .sort((a, b) => b.pTop - a.pTop)) {
+        lines.push({
+          icon: '🔼',
+          text: `${o.name} (now ${ordinal(o.currentRank)}) takes 1st${o.bestExample ? ` — e.g. ${result(o.bestExample)}` : ''}`,
+          prob: o.pTop,
+          me: o.predictorId === meId,
+        });
+      }
+      for (const o of sc.outlooks.filter(
+        (o) => o.currentRank !== 1 && o.pTop < 0.02 && o.bestRank < o.currentRank,
+      )) {
+        lines.push({
+          icon: '↗️',
+          text: `${o.name} climbs to ${ordinal(o.bestRank)}${o.bestExample ? ` (e.g. ${result(o.bestExample)})` : ''}`,
+          prob: o.pUp,
+          me: o.predictorId === meId,
+        });
+      }
+      if (!sc.volatile) {
+        lines.push({ icon: '🔒', text: 'Whatever the score, the order won’t change this match.' });
+      }
     }
   }
 
@@ -153,6 +187,7 @@ export function ScenariosView({
 
       <section className="wc-scn-sec">
         <div className="wc-scn-h">🔮 How it could shake up the table</div>
+        {forwardNote && <div className="muted small wc-scn-note">{forwardNote}</div>}
         <ul className="wc-scn-list">
           {lines.map((l, i) => (
             <li key={i} className={l.me ? 'is-me' : ''}>
@@ -168,9 +203,11 @@ export function ScenariosView({
       <p className="muted small" style={{ margin: 0 }}>
         {snap
           ? `Live ${snap.home}–${snap.away}${live!.minute != null ? `, ${live!.minute}'` : ''} — odds + chances update as it plays.`
-          : odds
-            ? 'From the bookmakers’ odds + everyone’s picks.'
-            : 'Estimate (odds not in yet) + everyone’s picks.'}
+          : useForward
+            ? 'Projected across every game between now and this one — odds where we have them, the model’s prior where we don’t.'
+            : odds
+              ? 'From the bookmakers’ odds + everyone’s picks.'
+              : 'Estimate (odds not in yet) + everyone’s picks.'}
       </p>
     </div>
   );

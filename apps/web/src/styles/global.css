@@ -2140,6 +2140,9 @@ label.field {
   font-weight: 800;
   font-size: 0.95rem;
 }
+.wc-scn-note {
+  margin-top: -0.2rem;
+}
 .wc-scn-bar {
   display: flex;
   height: 12px;

@@ -1,35 +1,41 @@
 import {
-  expectedGoals,
-  findPredictor,
   findTeam,
-  outcomeChances,
-  scenarioBoard,
-  scorelineChance,
+  impliedOutcome,
+  matchScenarios,
   type WcLiveSnapshot,
   type WcMatch,
   type WorldCupState,
 } from '@dap/shared';
-import { useState } from 'react';
 import { type WcLiveInfo } from '../../state/worldCupStore.js';
-import { Avatar } from './Avatar.js';
-import { ScoreStepper } from './ScoreStepper.js';
 
-/** Percent label: a whole number, or 1 dp under 10% so long shots aren't "0%". */
 function pct(p: number): string {
   const v = p * 100;
   return `${v < 10 && v > 0 ? v.toFixed(1) : Math.round(v)}%`;
 }
 
-function Movement({ n }: { n: number }) {
-  if (n > 0) return <span className="wc-move up">▲{n}</span>;
-  if (n < 0) return <span className="wc-move down">▼{-n}</span>;
-  return <span className="wc-move flat">–</span>;
+function ordinal(n: number): string {
+  const v = n % 100;
+  if (v >= 11 && v <= 13) return `${n}th`;
+  return `${n}${['th', 'st', 'nd', 'rd'][n % 10] ?? 'th'}`;
+}
+
+function result(r: { home: number; away: number } | null): string {
+  return r ? `${r.home}–${r.away}` : '';
+}
+
+interface Line {
+  icon: string;
+  text: string;
+  /** Probability of this scenario (live-conditioned); shown at the end. */
+  prob?: number;
+  me?: boolean;
 }
 
 /**
- * "What if?" tab: pick a final score for this match and see the leaderboard
- * re-rank — who climbs, who gets pipped — plus the live probability of that score
- * from the ESPN odds, conditioned on the current score + minutes left.
+ * Scenarios tab: a bookmakers read (what the market makes the match — live) plus
+ * a plain-English account of how the result could shake up the leaderboard, each
+ * line ending with its odds. Everything is driven by the ESPN odds + who picked
+ * what and conditions on the live score, so it all updates as the match plays.
  */
 export function ScenariosView({
   wc,
@@ -50,98 +56,122 @@ export function ScenariosView({
     ? { minute: live!.minute, home: live!.home!, away: live!.away ?? 0 }
     : null;
 
-  const [h, setH] = useState(() => snap?.home ?? 1);
-  const [a, setA] = useState(() => snap?.away ?? 0);
+  const frozenOdds = wc.odds?.[match.id] ?? null; // captured at kickoff
+  const liveOdds = live?.odds ?? null; // current market (when the feed has it)
+  const odds = liveOdds ?? frozenOdds;
 
-  const odds = live?.odds ?? wc.odds?.[match.id] ?? null;
-  const model = expectedGoals(odds);
-  const rows = scenarioBoard(wc, match.id, h, a);
-  const exact = scorelineChance(model, { home: h, away: a }, snap);
-  const outcome = outcomeChances(model, snap);
-  const belowLive = !!snap && (h < snap.home || a < snap.away);
-  const topName = rows[0]?.name;
+  // ── Bookmakers read ──────────────────────────────────────────────────────
+  const mkt = impliedOutcome(odds);
+  const mktKickoff = impliedOutcome(frozenOdds);
+  let trend: { up: boolean; from: number; to: number } | null = null;
+  if (inPlay && mkt && mktKickoff && Math.abs(mkt.home - mktKickoff.home) >= 0.03) {
+    trend = { up: mkt.home > mktKickoff.home, from: mktKickoff.home, to: mkt.home };
+  }
+
+  // ── Leaderboard scenarios ────────────────────────────────────────────────
+  const sc = matchScenarios(wc, match.id, odds, snap);
+  const lines: Line[] = [];
+  if (sc.predicted === 0) {
+    lines.push({
+      icon: '🕗',
+      text: 'No predictions are in yet — they’ll shape the scenarios here.',
+    });
+  } else {
+    const leader = sc.outlooks.find((o) => o.currentRank === 1);
+    if (leader) {
+      lines.push({
+        icon: '🥇',
+        text: `${leader.name} stays top (on ${leader.points} pt${leader.points === 1 ? '' : 's'})`,
+        prob: leader.pTop,
+        me: leader.predictorId === meId,
+      });
+    }
+    for (const o of sc.outlooks
+      .filter((o) => o.currentRank !== 1 && o.pTop >= 0.02)
+      .sort((a, b) => b.pTop - a.pTop)) {
+      lines.push({
+        icon: '🔼',
+        text: `${o.name} (now ${ordinal(o.currentRank)}) takes 1st${o.bestExample ? ` — e.g. ${result(o.bestExample)}` : ''}`,
+        prob: o.pTop,
+        me: o.predictorId === meId,
+      });
+    }
+    for (const o of sc.outlooks.filter(
+      (o) => o.currentRank !== 1 && o.pTop < 0.02 && o.bestRank < o.currentRank,
+    )) {
+      lines.push({
+        icon: '↗️',
+        text: `${o.name} climbs to ${ordinal(o.bestRank)}${o.bestExample ? ` (e.g. ${result(o.bestExample)})` : ''}`,
+        prob: o.pUp,
+        me: o.predictorId === meId,
+      });
+    }
+    if (!sc.volatile) {
+      lines.push({ icon: '🔒', text: 'Whatever the score, the order won’t change this match.' });
+    }
+  }
 
   return (
-    <div className="stack wc-scenarios">
-      <p className="muted small" style={{ margin: 0 }}>
-        Set a full-time score to see who climbs the leaderboard — and the live odds of it landing.
-      </p>
-
-      <div className="wc-scn-stepper">
-        <span className="wc-scn-team">
-          {home?.flag} {home?.id ?? 'Home'}
-        </span>
-        <ScoreStepper value={h} onChange={setH} label={`${home?.name ?? 'Home'} goals`} />
-        <span className="wc-dash">–</span>
-        <ScoreStepper value={a} onChange={setA} label={`${away?.name ?? 'Away'} goals`} />
-        <span className="wc-scn-team">
-          {away?.flag} {away?.id ?? 'Away'}
-        </span>
-      </div>
-
-      <div className="wc-scn-prob">
-        <div className="wc-scn-chance">
-          {belowLive ? (
-            <>
-              Can’t finish {h}–{a} — already past it.
-            </>
-          ) : (
-            <>
-              Chance of{' '}
-              <strong>
-                {h}–{a}
-              </strong>
-              : <strong>{pct(exact)}</strong>
-            </>
-          )}
-        </div>
-        <div className="wc-scn-bar" aria-hidden>
-          <span className="seg home" style={{ width: `${outcome.home * 100}%` }} />
-          <span className="seg draw" style={{ width: `${outcome.draw * 100}%` }} />
-          <span className="seg away" style={{ width: `${outcome.away * 100}%` }} />
-        </div>
-        <div className="wc-scn-legend muted small">
-          <span>
-            {home?.id} {pct(outcome.home)}
-          </span>
-          <span>Draw {pct(outcome.draw)}</span>
-          <span>
-            {away?.id} {pct(outcome.away)}
-          </span>
-        </div>
-        <p className="muted small" style={{ margin: 0 }}>
-          {snap
-            ? `Live ${snap.home}–${snap.away}${live!.minute != null ? `, ${live!.minute}'` : ''} — updates as it plays.`
-            : odds
-              ? 'From the bookmakers’ odds.'
-              : 'Rough estimate (no odds in yet).'}
-        </p>
-      </div>
-
-      <div className="wc-scn-board">
-        {rows.map((r) => (
-          <div
-            key={r.predictorId}
-            className={`wc-scn-row ${r.predictorId === meId ? 'is-me' : ''} ${
-              r.movement > 0 ? 'climbs' : r.movement < 0 ? 'slips' : ''
-            }`}
-          >
-            <span className="wc-scn-rank">{r.rank}</span>
-            <Avatar predictor={findPredictor(wc, r.predictorId)} size={22} />
-            <span className="wc-scn-name">{r.name}</span>
-            <Movement n={r.movement} />
-            <span className="wc-scn-pts">
-              {r.points}
-              {r.gain > 0 && <span className="wc-scn-gain"> +{r.gain}</span>}
+    <div className="stack wc-scn">
+      <section className="wc-scn-sec">
+        <div className="wc-scn-h">💰 What the bookies make it</div>
+        {mkt ? (
+          <>
+            <span className="wc-scn-bar" aria-hidden>
+              <span className="seg home" style={{ width: `${mkt.home * 100}%` }} />
+              <span className="seg draw" style={{ width: `${mkt.draw * 100}%` }} />
+              <span className="seg away" style={{ width: `${mkt.away * 100}%` }} />
             </span>
-          </div>
-        ))}
-      </div>
-      {topName && (
-        <p className="muted small" style={{ margin: 0, textAlign: 'center' }}>
-          🔮 {h}–{a} ⇒ <strong>{topName}</strong> leads.
-        </p>
-      )}
+            <div className="wc-scn-odds-legend muted small">
+              <span>
+                {home?.flag} {home?.id} {pct(mkt.home)}
+              </span>
+              <span>Draw {pct(mkt.draw)}</span>
+              <span>
+                {away?.flag} {away?.id} {pct(mkt.away)}
+              </span>
+            </div>
+            {(odds?.details || odds?.overUnder != null) && (
+              <div className="muted small">
+                {odds?.details ? `${odds.details}` : ''}
+                {odds?.details && odds?.overUnder != null ? ' · ' : ''}
+                {odds?.overUnder != null ? `O/U ${odds.overUnder} goals` : ''}
+                {liveOdds ? ' · live' : ''}
+              </div>
+            )}
+            {trend && (
+              <div className="wc-scn-trend">
+                {trend.up ? '📈' : '📉'} {home?.id} {trend.up ? 'shortening' : 'drifting'} —{' '}
+                {pct(trend.from)} → {pct(trend.to)} since kickoff
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="muted small">Bookmakers’ odds aren’t in for this match yet.</div>
+        )}
+      </section>
+
+      <section className="wc-scn-sec">
+        <div className="wc-scn-h">🔮 How it could shake up the table</div>
+        <ul className="wc-scn-list">
+          {lines.map((l, i) => (
+            <li key={i} className={l.me ? 'is-me' : ''}>
+              <span className="wc-scn-txt">
+                <span aria-hidden>{l.icon}</span> {l.text}
+              </span>
+              {l.prob != null && <span className="wc-scn-chance">{pct(l.prob)}</span>}
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <p className="muted small" style={{ margin: 0 }}>
+        {snap
+          ? `Live ${snap.home}–${snap.away}${live!.minute != null ? `, ${live!.minute}'` : ''} — odds + chances update as it plays.`
+          : odds
+            ? 'From the bookmakers’ odds + everyone’s picks.'
+            : 'Estimate (odds not in yet) + everyone’s picks.'}
+      </p>
     </div>
   );
 }

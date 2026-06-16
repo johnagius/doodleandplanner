@@ -2128,28 +2128,17 @@ label.field {
   white-space: nowrap;
 }
 
-/* Scenarios (what-if) tab */
-.wc-scenarios {
-  gap: 0.7rem;
+/* Scenarios tab — bookies read + leaderboard narrative */
+.wc-scn {
+  gap: 0.85rem;
 }
-.wc-scn-stepper {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-.wc-scn-team {
-  font-weight: 800;
-  font-size: 0.95rem;
-}
-.wc-scn-prob {
+.wc-scn-sec {
   display: grid;
   gap: 0.4rem;
 }
-.wc-scn-chance {
-  text-align: center;
-  font-size: 1.05rem;
+.wc-scn-h {
+  font-weight: 800;
+  font-size: 0.95rem;
 }
 .wc-scn-bar {
   display: flex;
@@ -2170,64 +2159,47 @@ label.field {
 .wc-scn-bar .seg.away {
   background: var(--danger);
 }
-.wc-scn-legend {
+.wc-scn-odds-legend {
   display: flex;
   justify-content: space-between;
+  gap: 0.5rem;
 }
-.wc-scn-board {
-  display: grid;
-  gap: 0.25rem;
+.wc-scn-trend {
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--primary-dark);
 }
-.wc-scn-row {
+.wc-scn-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
   display: grid;
-  grid-template-columns: 1.4rem auto 1fr auto auto;
+  gap: 0.35rem;
+}
+.wc-scn-list li {
+  display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.3rem 0.5rem;
+  justify-content: space-between;
+  padding: 0.4rem 0.55rem;
   border-radius: var(--radius);
-  background: var(--surface-soft, var(--surface));
+  background: var(--surface-soft, var(--primary-soft));
+  font-size: 0.92rem;
 }
-.wc-scn-row.is-me {
+.wc-scn-list li.is-me {
   outline: 2px solid var(--primary);
 }
-.wc-scn-row.climbs {
-  background: color-mix(in srgb, var(--success) 14%, transparent);
-}
-.wc-scn-row.slips {
-  background: color-mix(in srgb, var(--danger) 10%, transparent);
-}
-.wc-scn-rank {
-  font-weight: 800;
-  text-align: center;
-  color: var(--muted);
-}
-.wc-scn-name {
-  font-weight: 700;
+.wc-scn-txt {
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
-.wc-scn-pts {
+.wc-scn-chance {
+  flex: 0 0 auto;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
-}
-.wc-scn-gain {
-  color: var(--success);
-  font-size: 0.85em;
-}
-.wc-move {
-  font-size: 0.8rem;
-  font-weight: 800;
-}
-.wc-move.up {
-  color: var(--success);
-}
-.wc-move.down {
-  color: var(--danger);
-}
-.wc-move.flat {
-  color: var(--muted);
+  background: var(--surface);
+  border-radius: 999px;
+  padding: 0.1rem 0.5rem;
+  font-size: 0.85rem;
 }
 
 /* Predictor picker */

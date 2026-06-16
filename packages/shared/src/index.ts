@@ -36,3 +36,4 @@ export * from './lineup.js';
 export * from './transfermarktValues.js';
 export * from './wcAuth.js';
 export * from './wcOdds.js';
+export * from './wcScenarios.js';

@@ -88,12 +88,18 @@ export function ScenariosView({
     if (fw.predictedAll === 0) {
       lines.push({ icon: '🕗', text: 'No predictions are in yet for these games.' });
     } else {
-      const shown = fw.outlooks.filter((o) => o.pTop >= 0.05).sort((a, b) => b.pTop - a.pTop);
-      const top = shown.slice(0, 4);
-      // Always keep the current leader on the card, even if they've slipped below 5%.
-      const leader = fw.outlooks.find((o) => o.currentRank === 1);
-      if (leader && !top.some((o) => o.predictorId === leader.predictorId)) top.push(leader);
-      top.forEach((o, i) => {
+      // Everyone's odds of leading by then — not just the front two. Rank by that
+      // chance, list all who have any shot (keeping "me" on the card past the cap),
+      // and name the ones who simply can't get there through these games.
+      const ranked = fw.outlooks
+        .slice()
+        .sort((a, b) => b.pTop - a.pTop || a.currentRank - b.currentRank);
+      const contenders = ranked.filter((o) => o.pTop > 0);
+      const noShot = ranked.filter((o) => o.pTop <= 0);
+      const shown = contenders.slice(0, 10);
+      const mine = meId ? contenders.find((o) => o.predictorId === meId) : undefined;
+      if (mine && !shown.some((o) => o.predictorId === mine.predictorId)) shown.push(mine);
+      shown.forEach((o, i) => {
         lines.push({
           icon: i === 0 ? '🥇' : '🔼',
           text: `${o.name} top by then`,
@@ -101,6 +107,19 @@ export function ScenariosView({
           me: o.predictorId === meId,
         });
       });
+      const more = contenders.length - shown.length;
+      if (more > 0) {
+        lines.push({ icon: '➕', text: `${more} more with a slim chance` });
+      }
+      if (noShot.length > 0) {
+        lines.push({
+          icon: '🚫',
+          text:
+            noShot.length <= 3
+              ? `${noShot.map((o) => o.name).join(', ')} can’t reach top through these games`
+              : `${noShot.length} others can’t reach top through these games`,
+        });
+      }
     }
   } else {
     const sc = matchScenarios(wc, match.id, odds, snap);

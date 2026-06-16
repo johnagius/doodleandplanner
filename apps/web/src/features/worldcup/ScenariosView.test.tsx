@@ -72,4 +72,11 @@ describe('ScenariosView', () => {
     expect(screen.getByText(/Projected across every game between now and this one/)).toBeTruthy();
     expect(screen.queryByText(/stays top/)).toBeNull();
   });
+
+  it('shows every contender’s chance to lead, not just the front-runner', () => {
+    render(<ScenariosView wc={wc} match={matchById('m2')} meId={null} />);
+    // Both the leader (Ann) and the chaser (Bob) get their own odds-of-leading line.
+    expect(screen.getByText(/Ann top by then/)).toBeTruthy();
+    expect(screen.getByText(/Bob top by then/)).toBeTruthy();
+  });
 });

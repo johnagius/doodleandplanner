@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
   addMember,
+  bumpRev,
   createRoom,
   emptyRoomState,
   findMember,
   isMember,
   isProtected,
+  isStaleSave,
   linkGoogleAccount,
   linkGoogleProfile,
   removeMember,
@@ -13,6 +15,21 @@ import {
   rotateInviteToken,
 } from '../src/rooms.js';
 import { verifyPassword } from '../src/password.js';
+
+describe('save concurrency (rev)', () => {
+  it('bumps from 0/undefined upward', () => {
+    expect(bumpRev(undefined)).toBe(1);
+    expect(bumpRev(0)).toBe(1);
+    expect(bumpRev(7)).toBe(8);
+  });
+
+  it('rejects a stale save but only when both sides carry a rev', () => {
+    expect(isStaleSave(5, 4)).toBe(true); // client based its edit on an older rev
+    expect(isStaleSave(5, 5)).toBe(false); // up to date
+    expect(isStaleSave(undefined, 4)).toBe(false); // legacy server ⇒ no checking
+    expect(isStaleSave(5, undefined)).toBe(false); // legacy client ⇒ opt out
+  });
+});
 
 const fixedNow = () => new Date('2026-05-29T12:00:00Z');
 

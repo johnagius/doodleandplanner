@@ -27,7 +27,7 @@ import {
 import { create } from 'zustand';
 import { downscaleImage } from '../lib/image.js';
 import { LocalStorageRepository, getRepository, type Repository } from '../lib/storage/index.js';
-import { SaveLockedError } from '../lib/storage/httpRepository.js';
+import { SaveConflictError, SaveLockedError } from '../lib/storage/httpRepository.js';
 import { WORLD_CUP_SLUG, loadOrCreateWorldCup } from '../features/worldcup/worldCupRoom.js';
 import { fetchLiveScores, fetchMatchEvents } from '../features/worldcup/liveScores.js';
 
@@ -175,29 +175,54 @@ export const useWorldCupStore = create<WorldCupStore>((set, get) => {
   async function apply(updater: (state: RoomState) => RoomState): Promise<void> {
     const current = get().state;
     if (!current) return;
-    let next: RoomState;
-    try {
-      next = updater(current);
-    } catch (err) {
-      set({ error: err instanceof Error ? err.message : String(err) });
-      return;
-    }
-    set({ state: next, error: null });
-    lastSavedJson = JSON.stringify(next);
-    pendingWrites++;
-    try {
-      await repo().saveRoom(next);
-    } catch (err) {
-      const msg =
-        err instanceof SaveLockedError
-          ? '🔒 That name is protected — log in with its email (tap your name) to make changes.'
-          : err instanceof Error
-            ? err.message
-            : 'Could not save';
-      set({ state: current, error: msg });
-      return;
-    } finally {
-      pendingWrites--;
+    // Re-applies the (pure) mutation on whatever the latest state is. On a save
+    // conflict — our base revision was stale — we rebase onto the server's
+    // current state and retry, so our change *and* the change that beat us both
+    // survive. Capped so a hot room can't loop forever.
+    let base = current;
+    for (let attempt = 0; ; attempt++) {
+      let next: RoomState;
+      try {
+        next = updater(base);
+      } catch (err) {
+        set({ error: err instanceof Error ? err.message : String(err) });
+        return;
+      }
+      set({ state: next, error: null });
+      lastSavedJson = JSON.stringify(next);
+      pendingWrites++;
+      let rebaseTo: RoomState | null = null;
+      let failed = false;
+      try {
+        const saved = await repo().saveRoom(next);
+        // Adopt the server's echo (carries the new rev) so the next edit is fresh.
+        lastSavedJson = JSON.stringify(saved);
+        set({ state: saved });
+      } catch (err) {
+        if (err instanceof SaveConflictError && err.state && attempt < 3) {
+          rebaseTo = err.state;
+        } else {
+          failed = true;
+          const msg =
+            err instanceof SaveLockedError
+              ? '🔒 That name is protected — log in with its email (tap your name) to make changes.'
+              : err instanceof SaveConflictError
+                ? 'Synced with everyone else — tap again to apply your change.'
+                : err instanceof Error
+                  ? err.message
+                  : 'Could not save';
+          set({
+            state: err instanceof SaveConflictError && err.state ? err.state : current,
+            error: msg,
+          });
+        }
+      } finally {
+        pendingWrites--;
+      }
+      if (failed) return;
+      if (!rebaseTo) break; // saved cleanly
+      base = rebaseTo; // adopt the server's state and re-apply our mutation
+      set({ state: base });
     }
     if (pendingWrites === 0 && deferredRemote) {
       const remote = deferredRemote;

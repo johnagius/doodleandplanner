@@ -218,12 +218,21 @@ export function WorldCupPage() {
 
       {error && <div className="banner banner-danger no-print">{error}</div>}
 
-      {pendingCount > 0 && (
+      {lockingCount > 0 ? (
         <div className="row" style={{ marginTop: '0.75rem' }}>
-          <button className="nudge-chip" onClick={() => setTab('fixtures')}>
-            ⏳ You have {pendingCount} match{pendingCount === 1 ? '' : 'es'} to predict
+          <button className="nudge-chip nudge-urgent" onClick={() => setTab('fixtures')}>
+            ⏰ {lockingCount} game{lockingCount === 1 ? '' : 's'} kicking off soon you haven’t
+            picked — predict before lock-in
           </button>
         </div>
+      ) : (
+        pendingCount > 0 && (
+          <div className="row" style={{ marginTop: '0.75rem' }}>
+            <button className="nudge-chip" onClick={() => setTab('fixtures')}>
+              ⏳ You have {pendingCount} match{pendingCount === 1 ? '' : 'es'} to predict
+            </button>
+          </div>
+        )
       )}
 
       {needsLock && (

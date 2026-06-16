@@ -2,7 +2,14 @@
  * One Durable Object instance per room. It owns the canonical RoomState and
  * fans every change out to all connected WebSocket clients in real time.
  */
-import { authorizeWcWrite, readSessionToken, stampClaimed, type RoomState } from '@dap/shared';
+import {
+  authorizeWcWrite,
+  bumpRev,
+  isStaleSave,
+  readSessionToken,
+  stampClaimed,
+  type RoomState,
+} from '@dap/shared';
 import { emailConfigured, sendOtpEmail } from './brevo.js';
 import { RoomConflictError, RoomService, isRoomState } from './roomService.js';
 import { corsHeaders, isPresenceFrame, json, route } from './router.js';
@@ -120,23 +127,29 @@ export class RoomDurableObject {
     body: RoomState,
     cors: Record<string, string>,
   ): Promise<Response> {
+    const prev = await this.service.get();
+    // Optimistic concurrency: a save built on a stale revision is rejected with
+    // the current state, so a device that missed updates can't blindly overwrite
+    // newer changes (e.g. someone else's comment) it never received.
+    if (prev && isStaleSave(prev.rev, body.rev)) {
+      return json({ error: 'conflict', state: prev }, { status: 409 }, cors);
+    }
     let toSave: RoomState = body;
     if (this.authSvc && body.worldCup) {
       const claimed = await this.authSvc.claimedIds();
-      if (claimed.size > 0) {
-        const prev = await this.service.get();
-        if (prev?.worldCup) {
-          const token = request.headers.get('X-WC-Session');
-          const owner = token ? await readSessionToken(token, this.env.AUTH_SECRET!) : null;
-          const decision = authorizeWcWrite(prev.worldCup, body.worldCup, claimed, owner);
-          if (!decision.ok) {
-            return json({ error: 'locked', lockedId: decision.lockedId }, { status: 403 }, cors);
-          }
+      if (claimed.size > 0 && prev?.worldCup) {
+        const token = request.headers.get('X-WC-Session');
+        const owner = token ? await readSessionToken(token, this.env.AUTH_SECRET!) : null;
+        const decision = authorizeWcWrite(prev.worldCup, body.worldCup, claimed, owner);
+        if (!decision.ok) {
+          return json({ error: 'locked', lockedId: decision.lockedId }, { status: 403 }, cors);
         }
       }
       const stampedWc = stampClaimed(body.worldCup, claimed);
       if (stampedWc !== body.worldCup) toSave = { ...body, worldCup: stampedWc };
     }
+    // Stamp the next revision so clients move forward in lock-step.
+    toSave = { ...toSave, rev: bumpRev(prev?.rev) };
     const saved = await this.service.save(toSave);
     this.broadcast(saved);
     return json(saved, {}, cors);

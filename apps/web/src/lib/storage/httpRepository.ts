@@ -11,6 +11,15 @@ export class SaveLockedError extends Error {
   }
 }
 
+/** Thrown when the Worker rejects a save built on a stale revision. Carries the
+ * server's current state so the caller can rebase its change and retry. */
+export class SaveConflictError extends Error {
+  constructor(readonly state: RoomState | null) {
+    super('conflict');
+    this.name = 'SaveConflictError';
+  }
+}
+
 type Listener = (state: RoomState) => void;
 
 /** Minimal WebSocket surface so a fake can be injected in tests. */
@@ -84,6 +93,12 @@ export class HttpRepository implements Repository {
       body: JSON.stringify(state),
     });
     if (res.status === 403) throw new SaveLockedError();
+    if (res.status === 409) {
+      const body = (await res.json().catch(() => null)) as { state?: unknown } | null;
+      const serverState = body?.state ? migrateRoomState(body.state) : null;
+      if (serverState) this.remember(serverState);
+      throw new SaveConflictError(serverState);
+    }
     if (!res.ok) throw new Error(`Could not save room (${res.status})`);
     const saved = (await res.json()) as RoomState;
     this.remember(saved);

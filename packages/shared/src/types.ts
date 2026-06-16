@@ -302,6 +302,10 @@ export type AvailabilityGrid = Record<string, string[]>;
 export interface RoomState {
   /** Schema version this state was last normalised to. Absent ⇒ legacy (0). */
   schemaVersion?: number;
+  /** Optimistic-concurrency revision, bumped by the server on every accepted
+   * save. A save carrying a stale `rev` is rejected (409) so it can't clobber
+   * newer changes it never saw. Absent ⇒ legacy client/server (no checking). */
+  rev?: number;
   room: Room;
   polls: SchedulePoll[];
   inventory: InventoryItem[];

@@ -156,3 +156,18 @@ export function removeMember(room: Room, memberId: string): Room {
 export function rotateInviteToken(room: Room): Room {
   return { ...room, inviteToken: generateToken() };
 }
+
+/**
+ * Optimistic-concurrency helpers for room saves. The server bumps `rev` on every
+ * accepted save; a client save carrying a stale `rev` is rejected so it can't
+ * blindly overwrite newer changes (comments, picks) it never received.
+ */
+export function bumpRev(prevRev: number | undefined): number {
+  return (prevRev ?? 0) + 1;
+}
+
+/** Whether an incoming save is built on a stale revision and must be rejected.
+ * Only enforced when both sides carry a `rev` (legacy states opt out). */
+export function isStaleSave(prevRev: number | undefined, incomingRev: number | undefined): boolean {
+  return typeof prevRev === 'number' && typeof incomingRev === 'number' && incomingRev !== prevRev;
+}

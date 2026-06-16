@@ -1066,6 +1066,22 @@ label.field {
 .nudge-chip:hover {
   filter: brightness(0.97);
 }
+/* Urgent variant — matches kicking off soon you still haven't picked. */
+.nudge-chip.nudge-urgent {
+  border-color: color-mix(in srgb, var(--danger) 55%, var(--border));
+  background: color-mix(in srgb, var(--danger) 14%, var(--surface));
+  color: var(--danger);
+  animation: nudge-pulse 1.6s ease-in-out infinite;
+}
+@keyframes nudge-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+  50% {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 22%, transparent);
+  }
+}
 
 /* Availability grid (Doodle-style matrix) */
 .grid-scroll {

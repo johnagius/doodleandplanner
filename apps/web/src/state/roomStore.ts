@@ -73,6 +73,7 @@ import {
 } from '@dap/shared';
 import { create } from 'zustand';
 import { getIdentity, getRepository, setIdentity } from '../lib/storage/index.js';
+import { SaveConflictError } from '../lib/storage/httpRepository.js';
 import { useGoogleStore } from './googleStore.js';
 
 /**
@@ -288,28 +289,52 @@ export const useRoomStore = create<RoomStore>((set, get) => {
     lastSavedJson = null;
   }
 
-  /** Apply a pure update to the current room and persist it. */
+  /** Apply a pure update to the current room and persist it. On a save conflict
+   * (our revision was stale) we rebase the mutation onto the server's current
+   * state and retry, so concurrent edits don't clobber each other. */
   async function apply(updater: (state: RoomState) => RoomState): Promise<void> {
     const current = get().state;
     if (!current) return;
-    let next: RoomState;
-    try {
-      next = updater(current);
-    } catch (err) {
-      set({ error: err instanceof Error ? err.message : String(err) });
-      return;
-    }
-    set({ state: next, error: null });
-    lastSavedJson = JSON.stringify(next);
-    pendingWrites++;
-    try {
-      await repo().saveRoom(next);
-    } catch (err) {
-      // Roll back the optimistic change so the UI matches reality.
-      set({ state: current, error: err instanceof Error ? err.message : 'Could not save' });
-      return;
-    } finally {
-      pendingWrites--;
+    let base = current;
+    for (let attempt = 0; ; attempt++) {
+      let next: RoomState;
+      try {
+        next = updater(base);
+      } catch (err) {
+        set({ error: err instanceof Error ? err.message : String(err) });
+        return;
+      }
+      set({ state: next, error: null });
+      lastSavedJson = JSON.stringify(next);
+      pendingWrites++;
+      let rebaseTo: RoomState | null = null;
+      let failed = false;
+      try {
+        const saved = await repo().saveRoom(next);
+        lastSavedJson = JSON.stringify(saved);
+        set({ state: saved });
+      } catch (err) {
+        if (err instanceof SaveConflictError && err.state && attempt < 3) {
+          rebaseTo = err.state;
+        } else {
+          failed = true;
+          set({
+            state: err instanceof SaveConflictError && err.state ? err.state : current,
+            error:
+              err instanceof SaveConflictError
+                ? 'Synced with everyone else — try that again.'
+                : err instanceof Error
+                  ? err.message
+                  : 'Could not save',
+          });
+        }
+      } finally {
+        pendingWrites--;
+      }
+      if (failed) return;
+      if (!rebaseTo) break;
+      base = rebaseTo;
+      set({ state: base });
     }
     // Once writes settle, apply a deferred remote update only if it's genuinely
     // different from what we just saved (i.e. not merely our own echo).

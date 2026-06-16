@@ -22,6 +22,9 @@ export type ApiRoute =
   | { kind: 'get'; slug: string }
   | { kind: 'save'; slug: string }
   | { kind: 'ws'; slug: string }
+  | { kind: 'wc-auth-request'; slug: string }
+  | { kind: 'wc-auth-verify'; slug: string }
+  | { kind: 'wc-auth-release'; slug: string }
   | { kind: 'photo-put'; slug: string; photoId: string }
   | { kind: 'photo-get'; slug: string; photoId: string }
   | { kind: 'photo-del'; slug: string; photoId: string }
@@ -68,6 +71,12 @@ export function route(method: string, pathname: string): ApiRoute {
   if (parts.length === 4 && parts[3] === 'ws' && m === 'GET') {
     return { kind: 'ws', slug };
   }
+  if (parts.length === 5 && parts[3] === 'wc-auth' && m === 'POST') {
+    if (parts[4] === 'request') return { kind: 'wc-auth-request', slug };
+    if (parts[4] === 'verify') return { kind: 'wc-auth-verify', slug };
+    if (parts[4] === 'release') return { kind: 'wc-auth-release', slug };
+    return { kind: 'not-found' };
+  }
   if (parts.length === 5 && parts[3] === 'photos') {
     const photoId = decodeURIComponent(parts[4] ?? '');
     if (!photoId) return { kind: 'not-found' };
@@ -86,7 +95,7 @@ export function corsHeaders(origin: string | null, allowed: string): Record<stri
   return {
     'Access-Control-Allow-Origin': allowOrigin,
     'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Headers': 'Content-Type, X-WC-Session',
     'Access-Control-Max-Age': '86400',
     Vary: 'Origin',
   };

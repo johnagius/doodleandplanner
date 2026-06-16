@@ -2,15 +2,25 @@
  * One Durable Object instance per room. It owns the canonical RoomState and
  * fans every change out to all connected WebSocket clients in real time.
  */
-import type { RoomState } from '@dap/shared';
+import { authorizeWcWrite, readSessionToken, stampClaimed, type RoomState } from '@dap/shared';
+import { emailConfigured, sendOtpEmail } from './brevo.js';
 import { RoomConflictError, RoomService, isRoomState } from './roomService.js';
 import { corsHeaders, isPresenceFrame, json, route } from './router.js';
+import { WcAuthService } from './wcAuthService.js';
 
 export interface Env {
   ROOMS: DurableObjectNamespace;
   ALLOWED_ORIGINS: string;
   /** football-data.org API token (Worker secret) for live World Cup scores. */
   FOOTBALL_DATA_TOKEN?: string;
+  /** Brevo transactional-email key + verified sender, for World Cup login codes. */
+  BREVO_API_KEY?: string;
+  AUTH_SENDER?: string;
+  AUTH_SENDER_NAME?: string;
+  /** HMAC secret for signing session tokens. Auth is inert until this is set. */
+  AUTH_SECRET?: string;
+  /** Bearer token (sent as X-WC-Admin) that authorises releasing a name's email. */
+  WC_ADMIN_TOKEN?: string;
 }
 
 /** Minimal SQLite surface used for photo blobs (typed loosely for portability). */
@@ -23,16 +33,20 @@ const MAX_PHOTO_BYTES = 6 * 1024 * 1024;
 
 export class RoomDurableObject {
   private readonly service: RoomService;
+  /** Email-login service; null until AUTH_SECRET is configured (auth stays off). */
+  private readonly authSvc: WcAuthService | null;
   private readonly sockets = new Set<WebSocket>();
 
   constructor(
     private readonly state: DurableObjectState,
     private readonly env: Env,
   ) {
-    this.service = new RoomService({
-      get: (key) => this.state.storage.get<string>(key).then((v) => v ?? null),
-      put: (key, value) => this.state.storage.put(key, value),
-    });
+    const kv = {
+      get: (key: string) => this.state.storage.get<string>(key).then((v) => v ?? null),
+      put: (key: string, value: string) => this.state.storage.put(key, value),
+    };
+    this.service = new RoomService(kv);
+    this.authSvc = env.AUTH_SECRET ? new WcAuthService(kv, env.AUTH_SECRET) : null;
     this.sql.exec(
       'CREATE TABLE IF NOT EXISTS photos (id TEXT PRIMARY KEY, mime TEXT, bytes BLOB, created_at TEXT)',
     );
@@ -74,10 +88,15 @@ export class RoomDurableObject {
       case 'save': {
         const body = await request.json().catch(() => null);
         if (!isRoomState(body)) return json({ error: 'Invalid room' }, { status: 400 }, cors);
-        const saved = await this.service.save(body);
-        this.broadcast(saved);
-        return json(saved, {}, cors);
+        return this.saveRoom(request, body as RoomState, cors);
       }
+
+      case 'wc-auth-request':
+        return this.wcAuthRequest(request, cors);
+      case 'wc-auth-verify':
+        return this.wcAuthVerify(request, cors);
+      case 'wc-auth-release':
+        return this.wcAuthRelease(request, cors);
 
       case 'photo-put':
         return this.putPhoto(request, r.photoId, cors);
@@ -90,6 +109,106 @@ export class RoomDurableObject {
       default:
         return json({ error: 'Not found' }, { status: 404 }, cors);
     }
+  }
+
+  /** Persist a full-state save, enforcing the per-name lock: once a predictor is
+   * claimed, only its verified owner (proven by the X-WC-Session token) may change
+   * its picks. Until anyone claims, every save passes unchanged. The server also
+   * stamps the authoritative `claimed` flags so clients can't forge them. */
+  private async saveRoom(
+    request: Request,
+    body: RoomState,
+    cors: Record<string, string>,
+  ): Promise<Response> {
+    let toSave: RoomState = body;
+    if (this.authSvc && body.worldCup) {
+      const claimed = await this.authSvc.claimedIds();
+      if (claimed.size > 0) {
+        const prev = await this.service.get();
+        if (prev?.worldCup) {
+          const token = request.headers.get('X-WC-Session');
+          const owner = token ? await readSessionToken(token, this.env.AUTH_SECRET!) : null;
+          const decision = authorizeWcWrite(prev.worldCup, body.worldCup, claimed, owner);
+          if (!decision.ok) {
+            return json({ error: 'locked', lockedId: decision.lockedId }, { status: 403 }, cors);
+          }
+        }
+      }
+      const stampedWc = stampClaimed(body.worldCup, claimed);
+      if (stampedWc !== body.worldCup) toSave = { ...body, worldCup: stampedWc };
+    }
+    const saved = await this.service.save(toSave);
+    this.broadcast(saved);
+    return json(saved, {}, cors);
+  }
+
+  /** Re-stamp `claimed` flags into the stored state and broadcast, so every device
+   * sees a lock appear/disappear the instant a name is claimed or released. */
+  private async restampAndBroadcast(): Promise<void> {
+    if (!this.authSvc) return;
+    const room = await this.service.get();
+    if (!room?.worldCup) return;
+    const claimed = await this.authSvc.claimedIds();
+    const stampedWc = stampClaimed(room.worldCup, claimed);
+    if (stampedWc !== room.worldCup) {
+      this.broadcast(await this.service.save({ ...room, worldCup: stampedWc }));
+    }
+  }
+
+  /** POST /wc-auth/request — email a login code for a name (frugally). */
+  private async wcAuthRequest(request: Request, cors: Record<string, string>): Promise<Response> {
+    if (!this.authSvc) return json({ error: 'auth-not-configured' }, { status: 503 }, cors);
+    if (!emailConfigured(this.env)) {
+      return json({ error: 'email-not-configured' }, { status: 503 }, cors);
+    }
+    const body = (await request.json().catch(() => null)) as {
+      predictorId?: string;
+      email?: string;
+    } | null;
+    if (!body?.predictorId || !body?.email) {
+      return json({ error: 'bad-request' }, { status: 400 }, cors);
+    }
+    const room = await this.service.get();
+    if (!room?.worldCup?.predictors.some((p) => p.id === body.predictorId)) {
+      return json({ error: 'unknown-predictor' }, { status: 404 }, cors);
+    }
+    try {
+      const r = await this.authSvc.requestCode(body.predictorId, body.email, (to, code) =>
+        sendOtpEmail(this.env, to, code),
+      );
+      return json(r.body, { status: r.status }, cors);
+    } catch {
+      return json({ error: 'send-failed' }, { status: 502 }, cors);
+    }
+  }
+
+  /** POST /wc-auth/verify — check a code, bind the email, return a session token. */
+  private async wcAuthVerify(request: Request, cors: Record<string, string>): Promise<Response> {
+    if (!this.authSvc) return json({ error: 'auth-not-configured' }, { status: 503 }, cors);
+    const body = (await request.json().catch(() => null)) as {
+      predictorId?: string;
+      code?: string;
+    } | null;
+    if (!body?.predictorId || !body?.code) {
+      return json({ error: 'bad-request' }, { status: 400 }, cors);
+    }
+    const r = await this.authSvc.verifyCode(body.predictorId, body.code);
+    if (r.status === 200 && r.claimedChanged) await this.restampAndBroadcast();
+    return json(r.body, { status: r.status }, cors);
+  }
+
+  /** POST /wc-auth/release — organiser-only (X-WC-Admin) unbind, so a wrongly
+   * claimed name can be re-claimed. */
+  private async wcAuthRelease(request: Request, cors: Record<string, string>): Promise<Response> {
+    if (!this.authSvc) return json({ error: 'auth-not-configured' }, { status: 503 }, cors);
+    if (!this.env.WC_ADMIN_TOKEN || request.headers.get('X-WC-Admin') !== this.env.WC_ADMIN_TOKEN) {
+      return json({ error: 'forbidden' }, { status: 403 }, cors);
+    }
+    const body = (await request.json().catch(() => null)) as { predictorId?: string } | null;
+    if (!body?.predictorId) return json({ error: 'bad-request' }, { status: 400 }, cors);
+    const released = await this.authSvc.release(body.predictorId);
+    await this.restampAndBroadcast();
+    return json({ ok: true, released }, {}, cors);
   }
 
   private async putPhoto(

@@ -79,9 +79,11 @@ export function ScenariosView({
   const useForward = before.length > 0 && !snap;
   const lines: Line[] = [];
   let forwardNote: string | null = null;
+  let assumedPicks = 0;
 
   if (useForward) {
     const fw = forwardScenarios(wc, match.id, { oddsByMatch: { [match.id]: odds } });
+    assumedPicks = fw.assumedPicks;
     forwardNote = `Through the ${fw.matchesBefore} game${
       fw.matchesBefore === 1 ? '' : 's'
     } before it — the table can still move underneath this one.`;
@@ -223,7 +225,11 @@ export function ScenariosView({
         {snap
           ? `Live ${snap.home}–${snap.away}${live!.minute != null ? `, ${live!.minute}'` : ''} — odds + chances update as it plays.`
           : useForward
-            ? 'Projected across every game between now and this one — odds where we have them, the model’s prior where we don’t.'
+            ? `Projected across every game between now and this one — odds where we have them, the model’s prior where we don’t.${
+                assumedPicks > 0
+                  ? ' Players who haven’t picked an upcoming game yet are projected as an average picker — get your picks in to firm up your own odds.'
+                  : ''
+              }`
             : odds
               ? 'From the bookmakers’ odds + everyone’s picks.'
               : 'Estimate (odds not in yet) + everyone’s picks.'}

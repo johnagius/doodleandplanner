@@ -99,4 +99,53 @@ describe('forwardScenarios', () => {
     const b = forwardScenarios(base, 'm2', { trials: 1500 });
     expect(JSON.stringify(a.outlooks)).toBe(JSON.stringify(b.outlooks));
   });
+
+  it('assumes non-pickers play on, so they aren’t frozen at zero', () => {
+    // Ann leads; Bob (2nd) makes a wild pick for the upcoming game; Cara (3rd,
+    // level with Bob) hasn't picked it at all. Without "assume everyone plays
+    // on" Cara scores nothing and can never climb — with it she gets a plausible
+    // stand-in and can overhaul Bob's no-hoper.
+    const s: WorldCupState = {
+      season: '2026',
+      title: 'T',
+      teams: [],
+      matches: [
+        {
+          id: 'q0',
+          stage: 'group',
+          order: 0,
+          kickoff: '2026-06-11T00:00:00Z',
+          homeId: 'A',
+          awayId: 'B',
+          result: { home: 1, away: 0 },
+        },
+        {
+          id: 'q1',
+          stage: 'group',
+          order: 1,
+          kickoff: '2026-06-12T00:00:00Z',
+          homeId: 'C',
+          awayId: 'D',
+        },
+      ],
+      predictors: [
+        { id: 'ann', name: 'Ann' },
+        { id: 'bob', name: 'Bob' },
+        { id: 'cara', name: 'Cara' },
+      ],
+      predictions: [
+        { predictorId: 'ann', matchId: 'q0', home: 1, away: 0, updatedAt: 'x' }, // exact ⇒ leads
+        { predictorId: 'bob', matchId: 'q0', home: 2, away: 1, updatedAt: 'x' }, // right result
+        { predictorId: 'cara', matchId: 'q0', home: 2, away: 0, updatedAt: 'x' }, // right result, level with Bob
+        { predictorId: 'ann', matchId: 'q1', home: 1, away: 0, updatedAt: 'x' },
+        { predictorId: 'bob', matchId: 'q1', home: 9, away: 0, updatedAt: 'x' }, // wild — almost never scores
+        // Cara has NOT picked q1 → her stand-in keeps her in the race.
+      ],
+      createdAt: '2026-01-01T00:00:00.000Z',
+    };
+    const r = forwardScenarios(s, 'q1', { trials: 4000 });
+    expect(r.assumedPicks).toBe(1); // only Cara's missing q1 pick was stood in
+    const cara = r.outlooks.find((o) => o.name === 'Cara')!;
+    expect(cara.pUp).toBeGreaterThan(0); // she can score on q1 and climb, not stuck at 0
+  });
 });

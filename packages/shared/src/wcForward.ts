@@ -12,6 +12,13 @@
  * match sits, because all the games in between can reshuffle the board — no more
  * "100% three rounds early".
  *
+ * "Assume everyone plays on": a predictor who hasn't entered a pick for an
+ * upcoming game is projected making a plausible scoreline drawn from that game's
+ * odds model — an *average* picker, not an optimal one — so the field competes
+ * on the standings rather than freezing anyone who simply hasn't filled in the
+ * run-in yet, and without handing non-pickers an unfair best-case strategy.
+ * Differentiation still comes from the games they *have* picked.
+ *
  * Pure + deterministic: a seeded RNG (FNV-1a → mulberry32) means the same board
  * yields the same numbers on every device and in tests. Matches with no captured
  * odds fall back to the model's neutral prior, so a far-off game just reads as
@@ -56,6 +63,9 @@ export interface WcForwardScenarios {
   predicted: number;
   /** Predictions in across every simulated match (target + the ones before). */
   predictedAll: number;
+  /** Stand-in picks folded in for games a predictor hadn't entered ("assume
+   * everyone plays on"). 0 ⇒ every simulated game was actually predicted. */
+  assumedPicks: number;
   leaderName: string | null;
   /** Monte-Carlo iterations run (exposed for callers/tests). */
   trials: number;
@@ -163,12 +173,17 @@ export function forwardScenarios(
   const oddsFor = (m: WcMatch): WcMatchOdds | null | undefined =>
     opts?.oddsByMatch?.[m.id] ?? state.odds?.[m.id];
 
-  // Per simulated match: its goal model and the picks riding on it.
-  const simData = sims.map((m) => ({
-    model: expectedGoals(oddsFor(m)),
-    picks: state.predictions.filter((p) => p.matchId === m.id),
-  }));
+  // Per simulated match: its goal model, the picks riding on it, and — for
+  // anyone who hasn't picked yet — a stand-in of the bookies' favourite scoreline
+  // (rounded expected goals) so they're projected as playing on, not frozen.
+  const simData = sims.map((m) => {
+    const model = expectedGoals(oddsFor(m));
+    const picks = state.predictions.filter((p) => p.matchId === m.id);
+    const picked = new Set(picks.map((p) => p.predictorId));
+    return { model, picks, missing: ids.filter((id) => !picked.has(id)) };
+  });
   const predictedAll = simData.reduce((s, d) => s + d.picks.length, 0);
+  const assumedPicks = simData.reduce((s, d) => s + d.missing.length, 0);
   const predicted = state.predictions.filter((p) => p.matchId === matchId).length;
 
   const top = new Map(ids.map((id) => [id, 0]));
@@ -184,7 +199,6 @@ export function forwardScenarios(
     const pts = new Map(basePts);
     const exact = new Map(baseExact);
     for (const sm of simData) {
-      if (sm.picks.length === 0) continue;
       const h = samplePoisson(sm.model.home, rng);
       const a = samplePoisson(sm.model.away, rng);
       for (const pick of sm.picks) {
@@ -192,6 +206,18 @@ export function forwardScenarios(
         pts.set(pick.predictorId, (pts.get(pick.predictorId) ?? 0) + sp.points);
         if (sp.category === 'exact') {
           exact.set(pick.predictorId, (exact.get(pick.predictorId) ?? 0) + 1);
+        }
+      }
+      // "Assume everyone plays on": anyone yet to pick is projected making a
+      // plausible scoreline drawn from the same odds model (an average, not
+      // optimal, picker), scored against this trial's result.
+      if (sm.missing.length > 0) {
+        const ph = samplePoisson(sm.model.home, rng);
+        const pa = samplePoisson(sm.model.away, rng);
+        const sp = scorePrediction({ home: ph, away: pa }, { home: h, away: a });
+        for (const id of sm.missing) {
+          pts.set(id, (pts.get(id) ?? 0) + sp.points);
+          if (sp.category === 'exact') exact.set(id, (exact.get(id) ?? 0) + 1);
         }
       }
     }
@@ -238,6 +264,7 @@ export function forwardScenarios(
     matchesBefore: before.length,
     predicted,
     predictedAll,
+    assumedPicks,
     leaderName: base[0]?.name ?? null,
     trials,
   };

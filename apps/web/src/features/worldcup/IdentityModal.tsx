@@ -5,7 +5,7 @@ import { useToast } from '../../components/Toast.js';
 import { isRealtimeBackend } from '../../lib/storage/index.js';
 import { useWorldCupStore } from '../../state/worldCupStore.js';
 import { Avatar } from './Avatar.js';
-import { hasSession, requestCode, verifyCode } from './wcAuthClient.js';
+import { hasSession, isSessionPersisted, requestCode, verifyCode } from './wcAuthClient.js';
 import { WORLD_CUP_SLUG } from './worldCupRoom.js';
 
 type Step = { id: string; name: string; phase: 'email' | 'code' };
@@ -109,15 +109,14 @@ export function IdentityModal({
     setBusy(false);
     if (res.ok) {
       selectPredictor(step.id);
-      // If the token didn't actually persist, the browser is blocking storage
-      // (private mode / strict privacy) — tell them rather than silently failing.
-      if (hasSession(step.id)) {
-        show(`You’re verified as ${step.name} ✓`);
-      } else {
-        show(
-          'Logged in, but your browser blocked saving it — turn off private mode / allow site storage, or you’ll be asked again.',
-        );
-      }
+      // The session works now (held in memory + cookie even if localStorage is
+      // blocked). Only warn if nothing will survive a reload — i.e. open it in a
+      // real browser rather than a chat app's in-app view to stay logged in.
+      show(
+        isSessionPersisted(step.id)
+          ? `You’re verified as ${step.name} ✓`
+          : `Verified ✓ — to stay logged in next time, open this link in Safari/Chrome (not inside a chat app).`,
+      );
       close();
     } else if (res.error === 'wrong-code') {
       setErr(`Wrong code${typeof res.left === 'number' ? ` — ${res.left} tries left` : ''}.`);

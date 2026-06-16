@@ -53,7 +53,7 @@ export function PredictorBar({ wc }: { wc: WorldCupState }) {
               onClick={() => selectPredictor(p.id)}
               aria-pressed={p.id === meId}
             >
-              <Avatar predictor={p} size={20} />
+              <Avatar predictor={p} size={28} />
               <span>{p.name}</span>
             </button>
             {admin && wc.predictors.length > 1 && (

@@ -132,7 +132,7 @@ export function Leaderboard({ wc }: { wc: WorldCupState }) {
                   <Movement n={r.movement} />
                 </span>
                 <span className="wc-leader-name">
-                  <Avatar predictor={findPredictor(wc, r.predictorId)} size={24} />
+                  <Avatar predictor={findPredictor(wc, r.predictorId)} size={32} />
                   {r.name}
                   {badges.map((b) => (
                     <span key={b.id} className="wc-badge" title={b.label} aria-label={b.label}>

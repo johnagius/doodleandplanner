@@ -30,6 +30,7 @@ import {
 import { useState } from 'react';
 import { useToast } from '../../components/Toast.js';
 import { useWorldCupStore, type WcLiveInfo } from '../../state/worldCupStore.js';
+import { Avatar } from './Avatar.js';
 import { Countdown } from './Countdown.js';
 import { useHeadToHead, type H2HState } from './h2h.js';
 import { LineupView } from './LineupView.js';
@@ -914,7 +915,8 @@ function PickChip({
 }) {
   const { reactPick } = useWorldCupStore();
   const [picker, setPicker] = useState(false);
-  const name = wc.predictors.find((x) => x.id === pick.predictorId)?.name ?? '?';
+  const predictor = wc.predictors.find((x) => x.id === pick.predictorId) ?? null;
+  const name = predictor?.name ?? '?';
   // Provisional points while a game is in play; real points once it's finished.
   const provisional = !match.result && !!liveScore;
   const scored = match.result
@@ -938,6 +940,7 @@ function PickChip({
               : 'Prediction'
         }
       >
+        <Avatar predictor={predictor} size={22} />
         {crowned && (
           <span
             className="wc-pick-crown"

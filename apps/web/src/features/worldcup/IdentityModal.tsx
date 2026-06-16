@@ -224,7 +224,7 @@ export function IdentityModal({
                 className="wc-identity-name"
                 onClick={() => pick(p.id, p.name)}
               >
-                <Avatar predictor={p} size={26} />
+                <Avatar predictor={p} size={44} />
                 {p.name}
                 {p.claimed && (
                   <span className="wc-lock" aria-label="protected" title="Protected by email">

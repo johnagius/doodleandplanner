@@ -2,6 +2,7 @@ import { REACTION_EMOJI, type Message } from '@dap/shared';
 import { useState, type FormEvent } from 'react';
 import { useToast } from '../../components/Toast.js';
 import { useWorldCupStore } from '../../state/worldCupStore.js';
+import { Avatar } from './Avatar.js';
 
 /** A collapsible per-match comment thread — banter right in the hot zone, under
  * each match card. Reuses the pure chat helpers (and chat CSS), authored by the
@@ -16,7 +17,7 @@ export function MatchComments({ matchId }: { matchId: string }) {
   const [text, setText] = useState('');
 
   const thread = (messages ?? []).filter((m) => m.matchId === matchId);
-  const nameOf = (id: string) => predictors.find((p) => p.id === id)?.name ?? 'Someone';
+  const predictorOf = (id: string) => predictors.find((p) => p.id === id) ?? null;
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -51,7 +52,7 @@ export function MatchComments({ matchId }: { matchId: string }) {
                 <CommentMessage
                   key={m.id}
                   message={m}
-                  name={nameOf(m.authorId)}
+                  predictor={predictorOf(m.authorId)}
                   meId={meId}
                   onReact={(emoji) => {
                     if (meId) void reactComment(m.id, emoji);
@@ -87,13 +88,13 @@ export function MatchComments({ matchId }: { matchId: string }) {
 
 function CommentMessage({
   message,
-  name,
+  predictor,
   meId,
   onReact,
   onDelete,
 }: {
   message: Message;
-  name: string;
+  predictor: { name: string; avatarPhotoId?: string } | null;
   meId: string | null;
   onReact: (emoji: string) => void;
   onDelete: () => void;
@@ -101,9 +102,11 @@ function CommentMessage({
   const [picker, setPicker] = useState(false);
   const mine = !!meId && message.authorId === meId;
   const reactions = Object.entries(message.reactions ?? {});
+  const name = predictor?.name ?? 'Someone';
 
   return (
     <div className="chat-msg">
+      <Avatar predictor={predictor} size={40} />
       <div className="chat-bubble">
         <div className="row spread" style={{ gap: '0.5rem' }}>
           <strong className="small">{name}</strong>

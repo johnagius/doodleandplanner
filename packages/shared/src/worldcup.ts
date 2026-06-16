@@ -89,10 +89,17 @@ export interface WcPrediction {
   reactions?: Record<string, string[]>;
 }
 
-/** A person making predictions (no login — just a name). */
+/** A person making predictions. A name is "claimed" once someone verifies an
+ * email for it; after that only that email's verified device may edit its picks.
+ * The email itself never lives here — it stays in the Worker's private storage,
+ * since the whole state is broadcast to every device. */
 export interface WcPredictor {
   id: string;
   name: string;
+  /** Server-set: true once an email has been verified for this name. Clients can
+   * read it (to show a lock) but cannot forge it — the Worker recomputes it on
+   * every save from its private bindings. */
+  claimed?: boolean;
 }
 
 /** The complete, serialisable World Cup state. */

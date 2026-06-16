@@ -2047,6 +2047,23 @@ label.field {
 .wc-identity-name:active {
   transform: scale(0.97);
 }
+.wc-lock {
+  font-size: 0.85em;
+  opacity: 0.85;
+}
+.wc-auth-err {
+  margin: 0;
+  color: var(--danger);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.wc-code-input {
+  font-size: 1.8rem;
+  font-weight: 800;
+  letter-spacing: 0.4em;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
 
 /* Predictor picker */
 .wc-predictor-bar {

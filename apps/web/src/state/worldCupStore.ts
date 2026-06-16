@@ -24,6 +24,7 @@ import {
 } from '@dap/shared';
 import { create } from 'zustand';
 import { LocalStorageRepository, getRepository, type Repository } from '../lib/storage/index.js';
+import { SaveLockedError } from '../lib/storage/httpRepository.js';
 import { WORLD_CUP_SLUG, loadOrCreateWorldCup } from '../features/worldcup/worldCupRoom.js';
 import { fetchLiveScores, fetchMatchEvents } from '../features/worldcup/liveScores.js';
 
@@ -182,7 +183,13 @@ export const useWorldCupStore = create<WorldCupStore>((set, get) => {
     try {
       await repo().saveRoom(next);
     } catch (err) {
-      set({ state: current, error: err instanceof Error ? err.message : 'Could not save' });
+      const msg =
+        err instanceof SaveLockedError
+          ? '🔒 That name is protected — log in with its email (tap your name) to make changes.'
+          : err instanceof Error
+            ? err.message
+            : 'Could not save';
+      set({ state: current, error: msg });
       return;
     } finally {
       pendingWrites--;

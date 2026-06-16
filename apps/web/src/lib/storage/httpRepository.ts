@@ -1,5 +1,15 @@
 import { migrateRoomState, type RoomState } from '@dap/shared';
 import { type Repository, RoomExistsError, type RoomSummary } from './repository.js';
+import { saveHeaders } from './saveHeaders.js';
+
+/** Thrown when the Worker rejects a save because it would change a claimed name's
+ * picks without that name's verified session (someone else's, or an expired one). */
+export class SaveLockedError extends Error {
+  constructor() {
+    super('locked');
+    this.name = 'SaveLockedError';
+  }
+}
 
 type Listener = (state: RoomState) => void;
 
@@ -70,9 +80,10 @@ export class HttpRepository implements Repository {
   async saveRoom(state: RoomState): Promise<RoomState> {
     const res = await this.fetchFn(this.url(`/api/rooms/${encodeURIComponent(state.room.slug)}`), {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...saveHeaders() },
       body: JSON.stringify(state),
     });
+    if (res.status === 403) throw new SaveLockedError();
     if (!res.ok) throw new Error(`Could not save room (${res.status})`);
     const saved = (await res.json()) as RoomState;
     this.remember(saved);

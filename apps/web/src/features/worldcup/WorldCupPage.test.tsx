@@ -367,7 +367,6 @@ describe('WorldCupPage', () => {
     // Confirm who I am via the first-run prompt, then predict for the match.
     const dialog = await screen.findByRole('dialog');
     await user.click(within(dialog).getByRole('button', { name: 'John' }));
-    await user.click(screen.getByRole('button', { name: 'Yes, this is me' }));
     await user.click(await screen.findByRole('button', { name: 'Aland goals: one more' }));
 
     await waitFor(() => {
@@ -406,7 +405,6 @@ describe('WorldCupPage', () => {
     await screen.findByRole('heading', { name: /World Cup 2026 Predictions/ });
     const dialog = await screen.findByRole('dialog');
     await user.click(within(dialog).getByRole('button', { name: 'John' }));
-    await user.click(screen.getByRole('button', { name: 'Yes, this is me' }));
 
     // Before kickoff: Daniel's pick is hidden behind a summary.
     await waitFor(() => {
@@ -442,7 +440,6 @@ describe('WorldCupPage', () => {
     await screen.findByRole('heading', { name: /World Cup 2026 Predictions/ });
     const dialog = await screen.findByRole('dialog');
     await user.click(within(dialog).getByRole('button', { name: 'John' }));
-    await user.click(screen.getByRole('button', { name: 'Yes, this is me' }));
 
     // The pulse reports participation (1 of 2) but never Daniel's scoreline.
     expect(await screen.findByText(/1 of 2 predicted/)).toBeInTheDocument();
@@ -459,7 +456,6 @@ describe('WorldCupPage', () => {
     await screen.findByRole('heading', { name: /World Cup 2026 Predictions/ });
     const dialog = await screen.findByRole('dialog');
     await user.click(within(dialog).getByRole('button', { name: 'John' }));
-    await user.click(screen.getByRole('button', { name: 'Yes, this is me' }));
     await user.click(await screen.findByRole('button', { name: 'Aland goals: one more' }));
 
     // Enter the matching result; John's exact pick earns the 🎯 crown.
@@ -488,7 +484,6 @@ describe('WorldCupPage', () => {
     await screen.findByRole('heading', { name: /World Cup 2026 Predictions/ });
     const dialog = await screen.findByRole('dialog');
     await user.click(within(dialog).getByRole('button', { name: 'John' }));
-    await user.click(screen.getByRole('button', { name: 'Yes, this is me' }));
 
     // Before kickoff Daniel's pick is hidden — nothing to react to.
     expect(screen.queryByRole('button', { name: /React to/ })).toBeNull();
@@ -516,7 +511,6 @@ describe('WorldCupPage', () => {
     await screen.findByRole('heading', { name: /World Cup 2026 Predictions/ });
     const dialog = await screen.findByRole('dialog');
     await user.click(within(dialog).getByRole('button', { name: 'John' }));
-    await user.click(screen.getByRole('button', { name: 'Yes, this is me' }));
 
     const fire = await screen.findByRole('button', { name: 'React 🔥' });
     await user.click(fire);
@@ -615,7 +609,6 @@ describe('WorldCupPage', () => {
     await screen.findByRole('heading', { name: /World Cup 2026 Predictions/ });
     const dialog = await screen.findByRole('dialog');
     await user.click(within(dialog).getByRole('button', { name: 'John' }));
-    await user.click(screen.getByRole('button', { name: 'Yes, this is me' }));
 
     // Simulate the live feed: g-A-1 in play at 1-0.
     act(() => {
@@ -639,7 +632,6 @@ describe('WorldCupPage', () => {
     await screen.findByRole('heading', { name: /World Cup 2026 Predictions/ });
     const dialog = await screen.findByRole('dialog');
     await user.click(within(dialog).getByRole('button', { name: 'John' }));
-    await user.click(screen.getByRole('button', { name: 'Yes, this is me' }));
 
     await user.click(screen.getByRole('tab', { name: /Bracket/ }));
     await user.selectOptions(await screen.findByLabelText('Your winner:'), 'AAA');
@@ -658,7 +650,6 @@ describe('WorldCupPage', () => {
     await screen.findByRole('heading', { name: /World Cup 2026 Predictions/ });
     const dialog = await screen.findByRole('dialog');
     await user.click(within(dialog).getByRole('button', { name: 'John' }));
-    await user.click(screen.getByRole('button', { name: 'Yes, this is me' }));
 
     // The thread is collapsed by default — open it, then post.
     await user.click(await screen.findByRole('button', { name: /Comment/ }));

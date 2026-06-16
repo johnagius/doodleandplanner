@@ -22,6 +22,7 @@ import { PerformanceView } from './PerformanceView.js';
 import { PredictorBar } from './PredictorBar.js';
 import { ScoringLegend } from './ScoringLegend.js';
 import { TimelineView } from './TimelineView.js';
+import { hasSession, installWcSaveAuth } from './wcAuthClient.js';
 import { formatDayLong } from './wcFormat.js';
 
 type Tab =
@@ -55,6 +56,13 @@ export function WorldCupPage() {
   const meId = useWorldCupStore((s) => s.meId);
   const [tab, setTab] = useState<Tab>('fixtures');
   const [identityAsked, setIdentityAsked] = useState(false);
+  const [identityOpen, setIdentityOpen] = useState(false);
+  const [verifyId, setVerifyId] = useState<string | null>(null);
+
+  // Attach the current name's verified session token to every room save.
+  useEffect(() => {
+    installWcSaveAuth(() => useWorldCupStore.getState().meId);
+  }, []);
 
   useEffect(() => {
     void load();
@@ -126,12 +134,26 @@ export function WorldCupPage() {
   // How many matches I still need to pick (nudge chip).
   const pendingCount = meId ? pendingForMe(wc, meId, new Date()).length : 0;
 
+  // Nudge to lock your name: realtime backend, you've picked a name, but this
+  // browser isn't verified for it yet (so anyone could still edit your picks).
+  const myPredictor = meId ? wc.predictors.find((p) => p.id === meId) : undefined;
+  const needsLock = !!myPredictor && isRealtimeBackend() && !offline && !hasSession(myPredictor.id);
+  const openVerify = (id: string) => {
+    setVerifyId(id);
+    setIdentityOpen(true);
+  };
+
   return (
     <div className="container">
       <IdentityModal
-        open={!meId && !identityAsked}
-        onClose={() => setIdentityAsked(true)}
+        open={(!meId && !identityAsked) || identityOpen}
+        onClose={() => {
+          setIdentityAsked(true);
+          setIdentityOpen(false);
+          setVerifyId(null);
+        }}
         wc={wc}
+        initialId={verifyId}
       />
 
       <section className="wc-hero">
@@ -199,6 +221,16 @@ export function WorldCupPage() {
         <div className="row" style={{ marginTop: '0.75rem' }}>
           <button className="nudge-chip" onClick={() => setTab('fixtures')}>
             ⏳ You have {pendingCount} match{pendingCount === 1 ? '' : 'es'} to predict
+          </button>
+        </div>
+      )}
+
+      {needsLock && (
+        <div className="row" style={{ marginTop: '0.75rem' }}>
+          <button className="nudge-chip" onClick={() => openVerify(myPredictor!.id)}>
+            {myPredictor!.claimed
+              ? `🔒 Log in as ${myPredictor!.name} to edit your picks`
+              : `🔒 Lock “${myPredictor!.name}” with your email so only you can edit`}
           </button>
         </div>
       )}

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { liveSweat } from '../src/wcForward.js';
 import { liveRankFlips, minuteValue } from '../src/wcLiveFlips.js';
 import type { WcMatchEvent, WorldCupState } from '../src/worldcup.js';
 
@@ -68,5 +69,26 @@ describe('liveRankFlips', () => {
   it('orders stoppage-time minutes correctly', () => {
     expect(minuteValue("45'+2'")).toBeGreaterThan(minuteValue("45'"));
     expect(minuteValue("90'")).toBeGreaterThan(minuteValue("45'+2'"));
+  });
+});
+
+describe('liveSweat', () => {
+  it('reads 0 once there is no time left to change anything', () => {
+    const s = liveSweat(state, 'm1', { odds: null, live: { home: 0, away: 0, minute: 90 } });
+    expect(s.index).toBe(0);
+    expect(s.pLeadChange).toBe(0);
+  });
+
+  it('is volatile early when picks diverge', () => {
+    const s = liveSweat(state, 'm1', { odds: null, live: { home: 0, away: 0, minute: 1 } });
+    expect(s.index).toBeGreaterThan(0);
+    expect(s.pLeadChange).toBeGreaterThan(0);
+    expect(s.leaderName).toBe('Ann'); // provisional leader at 0–0 right now
+  });
+
+  it('is deterministic for the same live state', () => {
+    const a = liveSweat(state, 'm1', { odds: null, live: { home: 1, away: 0, minute: 30 } });
+    const b = liveSweat(state, 'm1', { odds: null, live: { home: 1, away: 0, minute: 30 } });
+    expect(a).toEqual(b);
   });
 });

@@ -269,3 +269,105 @@ export function forwardScenarios(
     trials,
   };
 }
+
+export interface WcSweat {
+  /** 0..1 — expected share of predictors whose rank still changes by full time. */
+  index: number;
+  /** Probability the current (provisional) leader is overtaken by full time. */
+  pLeadChange: number;
+  /** The provisional leader's name right now. */
+  leaderName: string | null;
+  /** Iterations run (0 ⇒ not enough data to read). */
+  trials: number;
+}
+
+export interface WcSweatOptions {
+  odds?: WcMatchOdds | null;
+  /** Current live score + minute; omitted ⇒ treated as 0–0 with the full match ahead. */
+  live?: { home: number; away: number; minute?: number | null };
+  trials?: number;
+  salt?: string;
+}
+
+/**
+ * "Sweat-o-meter": how much this single match can still reshuffle the overall
+ * table before full time. Samples the remaining goals from the match's odds
+ * model (scaled by the time left), re-ranks the board for each outcome, and
+ * measures how often — and how widely — the standings move from where they sit
+ * right now. 0 = settled (no time left, or no result can change anyone's rank);
+ * 1 = wide open.
+ */
+export function liveSweat(state: WorldCupState, matchId: string, opts?: WcSweatOptions): WcSweat {
+  const match = findMatch(state, matchId);
+  if (!match) return { index: 0, pLeadChange: 0, leaderName: null, trials: 0 };
+
+  const liveState: WorldCupState = match.result
+    ? {
+        ...state,
+        matches: state.matches.map((m) => (m.id === matchId ? { ...m, result: undefined } : m)),
+      }
+    : state;
+  const base = leaderboard(liveState);
+  if (base.length < 2) {
+    return { index: 0, pLeadChange: 0, leaderName: base[0]?.name ?? null, trials: 0 };
+  }
+
+  const basePts = new Map(base.map((r) => [r.predictorId, r.points]));
+  const baseExact = new Map(base.map((r) => [r.predictorId, r.exact]));
+  const nameOf = new Map(base.map((r) => [r.predictorId, r.name]));
+  const ids = base.map((r) => r.predictorId);
+  const pickOf = new Map(
+    state.predictions.filter((p) => p.matchId === matchId).map((p) => [p.predictorId, p]),
+  );
+
+  const orderAt = (home: number, away: number): string[] => {
+    const pts = new Map<string, number>();
+    const exa = new Map<string, number>();
+    for (const id of ids) {
+      const pick = pickOf.get(id);
+      const sp = pick ? scorePrediction(pick, { home, away }) : null;
+      pts.set(id, (basePts.get(id) ?? 0) + (sp?.points ?? 0));
+      exa.set(id, (baseExact.get(id) ?? 0) + (sp?.category === 'exact' ? 1 : 0));
+    }
+    return ids
+      .slice()
+      .sort(
+        (x, y) =>
+          pts.get(y)! - pts.get(x)! ||
+          exa.get(y)! - exa.get(x)! ||
+          (nameOf.get(x) ?? '').localeCompare(nameOf.get(y) ?? ''),
+      );
+  };
+
+  const curHome = opts?.live?.home ?? 0;
+  const curAway = opts?.live?.away ?? 0;
+  const minute = opts?.live?.minute ?? 0;
+  const remaining = Math.min(1, Math.max(0, (90 - minute) / 90));
+  const model = expectedGoals(opts?.odds);
+  const lamH = model.home * remaining;
+  const lamA = model.away * remaining;
+
+  const nowOrder = orderAt(curHome, curAway);
+  const nowRank = new Map(nowOrder.map((id, i) => [id, i]));
+  const nowLeader = nowOrder[0]!;
+
+  const trials = Math.max(1, Math.floor(opts?.trials ?? 1500));
+  const rng = mulberry32(seedHash(`wcsweat|${matchId}|${curHome}-${curAway}|${opts?.salt ?? ''}`));
+  let changeShare = 0;
+  let leadChanges = 0;
+  for (let t = 0; t < trials; t++) {
+    const fh = curHome + samplePoisson(lamH, rng);
+    const fa = curAway + samplePoisson(lamA, rng);
+    const order = orderAt(fh, fa);
+    let moved = 0;
+    for (let i = 0; i < order.length; i++) if (nowRank.get(order[i]!) !== i) moved++;
+    changeShare += moved / ids.length;
+    if (order[0] !== nowLeader) leadChanges++;
+  }
+  return {
+    index: changeShare / trials,
+    pLeadChange: leadChanges / trials,
+    leaderName: nameOf.get(nowLeader) ?? null,
+    trials,
+  };
+}

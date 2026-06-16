@@ -2997,6 +2997,47 @@ label.field {
 .wc-ev-flip .wc-ev-player {
   white-space: normal;
 }
+/* Live "sweat-o-meter" — how much this match can still shake the table. */
+.wc-sweat {
+  margin-top: 0.5rem;
+  display: grid;
+  gap: 0.3rem;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+.wc-sweat-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 800;
+  font-size: 0.85rem;
+}
+.wc-sweat-bar {
+  height: 9px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--border) 60%, transparent);
+  overflow: hidden;
+}
+.wc-sweat-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.5s ease;
+}
+.wc-sweat.is-cool .wc-sweat-fill {
+  background: #22c55e;
+}
+.wc-sweat.is-warm .wc-sweat-fill {
+  background: #eab308;
+}
+.wc-sweat.is-hot .wc-sweat-fill {
+  background: #f97316;
+}
+.wc-sweat.is-boiling .wc-sweat-fill {
+  background: #ef4444;
+}
 .wc-live-banner {
   background: color-mix(in srgb, var(--danger) 12%, var(--surface));
   border-color: color-mix(in srgb, var(--danger) 35%, var(--border));

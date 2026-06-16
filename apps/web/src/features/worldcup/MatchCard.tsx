@@ -10,6 +10,7 @@ import {
   fifaRankOf,
   findTeam,
   liveRankFlips,
+  liveSweat,
   minuteValue,
   teamClimate,
   venueClimate,
@@ -143,6 +144,50 @@ function MatchEvents({
   ].sort((a, b) => a.sort - b.sort);
 
   return <ul className="wc-events">{items.map((it) => it.el)}</ul>;
+}
+
+/** Live "how much can this still shake the table" gauge — Monte-Carlo over the
+ *  match's remaining goals (scaled by time left), measuring how far the overall
+ *  standings could still move from where they sit right now. */
+function SweatMeter({ wc, match, live }: { wc: WorldCupState; match: WcMatch; live: WcLiveInfo }) {
+  const odds = live.odds ?? wc.odds?.[match.id] ?? null;
+  const sweat = useMemo(
+    () =>
+      liveSweat(wc, match.id, {
+        odds,
+        live: { home: live.home ?? 0, away: live.away ?? 0, minute: live.minute },
+      }),
+    [wc, match.id, odds, live.home, live.away, live.minute],
+  );
+  if (sweat.trials === 0 || predictionCount(wc, match.id) === 0) return null;
+
+  const pct = Math.round(sweat.index * 100);
+  const band =
+    sweat.index >= 0.55
+      ? { cls: 'is-boiling', label: '🔥 Boiling' }
+      : sweat.index >= 0.3
+        ? { cls: 'is-hot', label: '😅 Sweaty' }
+        : sweat.index >= 0.12
+          ? { cls: 'is-warm', label: '🌤️ Simmering' }
+          : { cls: 'is-cool', label: '🧊 Settled' };
+  return (
+    <div className={`wc-sweat ${band.cls}`}>
+      <div className="wc-sweat-head">
+        <span>🌡️ Sweat-o-meter</span>
+        <span className="wc-sweat-band">{band.label}</span>
+      </div>
+      <div className="wc-sweat-bar" aria-hidden>
+        <span className="wc-sweat-fill" style={{ width: `${Math.max(5, pct)}%` }} />
+      </div>
+      <div className="muted small">
+        {sweat.pLeadChange >= 0.01 && sweat.leaderName
+          ? `${sweat.leaderName} leads for now — 1st place ${Math.round(sweat.pLeadChange * 100)}% in play`
+          : sweat.leaderName
+            ? `${sweat.leaderName} sitting tight up top`
+            : 'No predictions in yet'}
+      </div>
+    </div>
+  );
 }
 
 /** Optional extras from the live feed: the pre-match odds line and the crowd. */
@@ -343,6 +388,7 @@ export function MatchCard({ matchId }: { matchId: string }) {
                 : `⚡ Live${liveFetchedAt ? ` · score as of ${fmtClock(liveFetchedAt)}` : ''} — points if it ends now`}
             </p>
           )}
+          {isLive && live!.home != null && <SweatMeter wc={wc} match={match} live={live!} />}
           <PredictionsRow
             wc={wc}
             match={match}

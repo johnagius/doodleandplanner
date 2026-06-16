@@ -109,7 +109,15 @@ export function IdentityModal({
     setBusy(false);
     if (res.ok) {
       selectPredictor(step.id);
-      show(`You’re verified as ${step.name} ✓`);
+      // If the token didn't actually persist, the browser is blocking storage
+      // (private mode / strict privacy) — tell them rather than silently failing.
+      if (hasSession(step.id)) {
+        show(`You’re verified as ${step.name} ✓`);
+      } else {
+        show(
+          'Logged in, but your browser blocked saving it — turn off private mode / allow site storage, or you’ll be asked again.',
+        );
+      }
       close();
     } else if (res.error === 'wrong-code') {
       setErr(`Wrong code${typeof res.left === 'number' ? ` — ${res.left} tries left` : ''}.`);

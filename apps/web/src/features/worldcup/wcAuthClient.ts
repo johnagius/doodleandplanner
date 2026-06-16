@@ -42,8 +42,8 @@ export function hasSession(predictorId: string): boolean {
   const token = getSessionToken(predictorId);
   if (!token) return false;
   try {
-    const payload = token.split('.')[0]!;
-    const json = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
+    const b64 = token.split('.')[0]!.replace(/-/g, '+').replace(/_/g, '/');
+    const json = atob(b64 + '='.repeat((4 - (b64.length % 4)) % 4));
     const data = JSON.parse(json) as { e?: number };
     return typeof data.e === 'number' ? data.e > Date.now() : true;
   } catch {

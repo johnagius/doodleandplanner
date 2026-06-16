@@ -193,7 +193,16 @@ export class RoomDurableObject {
       return json({ error: 'bad-request' }, { status: 400 }, cors);
     }
     const r = await this.authSvc.verifyCode(body.predictorId, body.code);
-    if (r.status === 200 && r.claimedChanged) await this.restampAndBroadcast();
+    // The claimed-flag re-stamp/broadcast is cosmetic (and self-heals on the next
+    // save), so it must never break the login — otherwise the client wouldn't get
+    // its session token even though the name was just claimed.
+    if (r.status === 200 && r.claimedChanged) {
+      try {
+        await this.restampAndBroadcast();
+      } catch {
+        /* ignore — the token return below is what matters */
+      }
+    }
     return json(r.body, { status: r.status }, cors);
   }
 

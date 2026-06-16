@@ -61,7 +61,16 @@ export function liveRankFlips(
   const match = findMatch(state, matchId);
   if (!match || !events || events.length === 0) return [];
 
-  const base = leaderboard(state);
+  // Layer this match's running score on a base that excludes it — whether it's
+  // live (no result yet) or just finished (strip the result for the calc, else
+  // its final points would be double-counted into the provisional totals).
+  const liveState: WorldCupState = match.result
+    ? {
+        ...state,
+        matches: state.matches.map((m) => (m.id === matchId ? { ...m, result: undefined } : m)),
+      }
+    : state;
+  const base = leaderboard(liveState);
   if (base.length < 2) return [];
   const basePts = new Map(base.map((r) => [r.predictorId, r.points]));
   const baseExact = new Map(base.map((r) => [r.predictorId, r.exact]));

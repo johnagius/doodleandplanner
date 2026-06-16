@@ -227,8 +227,19 @@ function SweatMeter({ wc, match, live }: { wc: WorldCupState; match: WcMatch; li
 }
 
 /** Live race for this match's 🎯 crown (closest pick), via the same odds-driven
- *  simulation as the sweat-o-meter. Shows the top few contenders' chances. */
-function CrownRace({ wc, match, live }: { wc: WorldCupState; match: WcMatch; live: WcLiveInfo }) {
+ *  simulation as the sweat-o-meter. Shows the top few — and always keeps you on
+ *  it, even when you're outside the leaders, so you can see your own chance. */
+function CrownRace({
+  wc,
+  match,
+  live,
+  meId,
+}: {
+  wc: WorldCupState;
+  match: WcMatch;
+  live: WcLiveInfo;
+  meId: string | null;
+}) {
   const odds = live.odds ?? wc.odds?.[match.id] ?? null;
   const race = useMemo(
     () =>
@@ -239,14 +250,28 @@ function CrownRace({ wc, match, live }: { wc: WorldCupState; match: WcMatch; liv
     [wc, match.id, odds, live.home, live.away, live.minute],
   );
   if (race.length === 0) return null;
+  const top = race.slice(0, 3);
+  const myRank = meId ? race.findIndex((c) => c.predictorId === meId) : -1;
+  const showMe = myRank >= top.length; // you're in the race but below the shown leaders
   return (
     <div className="wc-crownrace">
       <span className="wc-crownrace-tag">🎯 Crown race</span>
-      {race.slice(0, 3).map((c) => (
-        <span key={c.predictorId} className="wc-crownrace-item">
+      {top.map((c) => (
+        <span
+          key={c.predictorId}
+          className={`wc-crownrace-item${c.predictorId === meId ? ' is-me' : ''}`}
+        >
           {c.name} <strong>{Math.round(c.p * 100)}%</strong>
         </span>
       ))}
+      {showMe && (
+        <span
+          className="wc-crownrace-item is-me"
+          title={`You're ${POS_LABEL(myRank + 1)} of ${race.length}`}
+        >
+          You <strong>{Math.round(race[myRank]!.p * 100)}%</strong>
+        </span>
+      )}
     </div>
   );
 }
@@ -453,7 +478,9 @@ export function MatchCard({ matchId }: { matchId: string }) {
             </p>
           )}
           {isLive && live!.home != null && <SweatMeter wc={wc} match={match} live={live!} />}
-          {isLive && live!.home != null && <CrownRace wc={wc} match={match} live={live!} />}
+          {isLive && live!.home != null && (
+            <CrownRace wc={wc} match={match} live={live!} meId={meId} />
+          )}
           <PredictionsRow
             wc={wc}
             match={match}

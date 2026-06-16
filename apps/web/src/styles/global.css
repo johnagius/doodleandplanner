@@ -3077,6 +3077,10 @@ label.field {
   border: 1px solid var(--border);
   background: var(--surface-2);
 }
+.wc-crownrace-item.is-me {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 1px var(--primary-soft);
+}
 .wc-live-banner {
   background: color-mix(in srgb, var(--danger) 12%, var(--surface));
   border-color: color-mix(in srgb, var(--danger) 35%, var(--border));

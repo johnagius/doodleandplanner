@@ -6,9 +6,10 @@ Guidance for Claude when working in this repository.
 
 - **This project's production is in Claude's hands.** Improve it continuously:
   add features, harden, polish, keep it deployable.
-- **Commit directly to `main` with each update.** Small, focused, descriptive
-  commits. No feature branch is required (the owner gave explicit permission to
-  use `main`). Push after every commit.
+- **Always push straight to `main` — every commit, no exceptions.** The owner has
+  given standing permission; never pause to ask or park work on a feature branch.
+  Small, focused, descriptive commits, pushed immediately. Pushing to `main` **is**
+  the deploy (see Deployment), so a change isn't done until it's on `main`.
 - **Never break `main`.** Every commit must pass the full quality gate below.
 - **Test everything** along the way — Vitest (unit/component), Playwright
   (E2E + `@smoke`). New behaviour ⇒ new tests.
@@ -105,6 +106,19 @@ doodleandplanner --branch main`. The realtime Worker URL is committed in
   them to rotate secrets.
 - `.github/workflows/ci.yml` runs lint/typecheck/unit/build + Playwright E2E on
   PRs and pushes to `main`.
+- **What actually serves `doodleandplanner.pages.dev`, and how to know a deploy is
+  live:** production is built by the Cloudflare Pages **Git integration** (auto-builds
+  on push to `main`), **not** by `deploy-cloudflare.yml`. That Action is gated on the
+  `CLOUDFLARE_API_TOKEN`/`CLOUDFLARE_ACCOUNT_ID` secrets and **skips cleanly when they
+  are unset**, so a green "Deploy to Cloudflare Pages" run is usually a _skip, not a
+  deploy_. Production goes live a minute or two **after** the push, once Cloudflare's
+  own build finishes — **the GitHub checkmark does not mean it's live.** Verify with
+  the **build stamp** in the app footer (the World Cup page shows `build <sha> · <time>`,
+  linking to the commit): it's baked in at build time from `CF_PAGES_COMMIT_SHA`
+  (Cloudflare) / `GITHUB_SHA` (Actions) / `dev` (local) via `vite.config.ts`. When the
+  stamp shows the latest `main` SHA, that build is live. Scripted check: fetch the site,
+  read the `assets/index-*.js` it references, and grep that bundle for a string from
+  your change.
 
 ## Testing map
 

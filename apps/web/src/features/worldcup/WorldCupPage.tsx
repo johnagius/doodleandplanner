@@ -1,4 +1,5 @@
 import {
+  WC_TIMEZONE,
   defaultDay,
   lockingSoon,
   matchesOn,
@@ -268,7 +269,42 @@ export function WorldCupPage() {
         {tab === 'cards' && <CardsView wc={wc} />}
         {tab === 'bets' && <BettingView wc={wc} />}
       </div>
+
+      <BuildStamp />
     </div>
+  );
+}
+
+/** Which commit is live — baked in at build time so a deploy is verifiable at a
+ * glance (no more guessing whether a push has propagated). The SHA links to the
+ * commit; 'dev' shows for a local build with no CI commit env. */
+function BuildStamp() {
+  const sha = __APP_VERSION__;
+  let when = __BUILD_TIME__;
+  try {
+    when = new Date(__BUILD_TIME__).toLocaleString('en-GB', {
+      timeZone: WC_TIMEZONE,
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    });
+  } catch {
+    // keep the raw ISO string if the runtime can't format it
+  }
+  return (
+    <footer className="wc-build muted small">
+      {sha === 'dev' ? (
+        <span>build dev</span>
+      ) : (
+        <a
+          href={`https://github.com/johnagius/doodleandplanner/commit/${sha}`}
+          target="_blank"
+          rel="noreferrer"
+        >
+          build {sha}
+        </a>
+      )}{' '}
+      · {when}
+    </footer>
   );
 }
 

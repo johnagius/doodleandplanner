@@ -1362,6 +1362,266 @@ export function badgesFor(state: WorldCupState, predictorId: string): WcBadge[] 
   return badges;
 }
 
+// --- Achievements / trophy cabinet -----------------------------------------
+
+export type WcTrophyTier = 'bronze' | 'silver' | 'gold';
+
+export interface WcAchievement {
+  id: string;
+  emoji: string;
+  label: string;
+  /** How to earn it, shown under the trophy. */
+  desc: string;
+  tier: WcTrophyTier;
+  /** Progress so far and the target; `earned === have >= need`. */
+  have: number;
+  need: number;
+  earned: boolean;
+}
+
+/** Longest run of consecutive *resolved* picks the predictor got the result
+ * right (exact / margin / outcome). Unresolved picks are skipped, not breaks.
+ * Monotonic — a past streak can never be lost — so it's safe as a trophy. */
+function longestResultStreak(state: WorldCupState, predictorId: string): number {
+  let best = 0;
+  let run = 0;
+  for (const e of playerGameLog(state, predictorId)) {
+    if (!e.category) continue;
+    if (e.category === 'exact' || e.category === 'goalDiff' || e.category === 'outcome') {
+      run += 1;
+      if (run > best) best = run;
+    } else {
+      run = 0;
+    }
+  }
+  return best;
+}
+
+/** Resolved matches where the predictor backed the winner AND that winner was a
+ * genuine FIFA-ranking underdog (ranked ≥ `gap` places below the loser). */
+function upsetCalls(state: WorldCupState, predictorId: string, gap = 10): number {
+  let n = 0;
+  for (const m of state.matches) {
+    if (!m.result || !m.homeId || !m.awayId) continue;
+    const w = winnerOf(m);
+    if (!w) continue; // drawn-without-advance or unplayed
+    const loserId = w === m.homeId ? m.awayId : m.homeId;
+    const wr = fifaRankOf(w);
+    const lr = fifaRankOf(loserId);
+    if (wr == null || lr == null || wr - lr < gap) continue; // not a clear upset
+    const pred = state.predictions.find((p) => p.matchId === m.id && p.predictorId === predictorId);
+    if (!pred) continue;
+    const predWinner =
+      pred.home > pred.away ? m.homeId : pred.away > pred.home ? m.awayId : undefined;
+    if (predWinner === w) n += 1;
+  }
+  return n;
+}
+
+/** Exact scores the predictor nailed that no one else called (same scoreline). */
+function maverickWins(state: WorldCupState, predictorId: string): number {
+  let n = 0;
+  for (const m of state.matches) {
+    if (!m.result) continue;
+    const mine = state.predictions.find((p) => p.matchId === m.id && p.predictorId === predictorId);
+    if (!mine || scorePrediction(mine, m.result).category !== 'exact') continue;
+    const shared = state.predictions.some(
+      (p) =>
+        p.matchId === m.id &&
+        p.predictorId !== predictorId &&
+        p.home === mine.home &&
+        p.away === mine.away,
+    );
+    if (!shared) n += 1;
+  }
+  return n;
+}
+
+/** Distinct groups the predictor has predicted at least one match in. */
+function groupsPredicted(state: WorldCupState, predictorId: string): number {
+  const groups = new Set<string>();
+  for (const p of state.predictions) {
+    if (p.predictorId !== predictorId) continue;
+    const m = findMatch(state, p.matchId);
+    if (m?.stage === 'group' && m.group) groups.add(m.group);
+  }
+  return groups.size;
+}
+
+/** Reactions other players have left on this predictor's revealed picks. */
+function reactionsReceived(state: WorldCupState, predictorId: string): number {
+  let n = 0;
+  for (const p of state.predictions) {
+    if (p.predictorId !== predictorId || !p.reactions) continue;
+    for (const ids of Object.values(p.reactions)) n += ids.length;
+  }
+  return n;
+}
+
+/**
+ * The full achievement set for a predictor — every trophy, earned or still
+ * locked, each with progress (have/need). Purely a recognition layer derived
+ * from results: it awards **no points** and never affects the standings. The
+ * Trophy Cabinet renders this, and newly-earned trophies pop a celebration.
+ *
+ * Where a trophy shares a name with the compact leaderboard {@link badgesFor}
+ * badges (eagle-eye, oracle, centurion) the threshold matches, so the two views
+ * agree. Conditions are chosen to be monotonic — a won trophy stays won.
+ */
+export function achievements(state: WorldCupState, predictorId: string): WcAchievement[] {
+  const s = playerStats(state, predictorId);
+  const daysWon =
+    wcTimeline(state).players.find((p) => p.predictorId === predictorId)?.daysWon ?? 0;
+  const streak = longestResultStreak(state, predictorId);
+  const upsets = upsetCalls(state, predictorId);
+  const mavericks = maverickWins(state, predictorId);
+  const groups = groupsPredicted(state, predictorId);
+  const reactions = reactionsReceived(state, predictorId);
+
+  const defs: Array<Omit<WcAchievement, 'earned'>> = [
+    {
+      id: 'off-the-mark',
+      emoji: '🎉',
+      label: 'Off the mark',
+      desc: 'Score your first points',
+      tier: 'bronze',
+      have: s.points > 0 ? 1 : 0,
+      need: 1,
+    },
+    {
+      id: 'eagle-eye',
+      emoji: '🎯',
+      label: 'Eagle eye',
+      desc: 'Land 3 exact scorelines',
+      tier: 'bronze',
+      have: s.exact,
+      need: 3,
+    },
+    {
+      id: 'oracle',
+      emoji: '🔮',
+      label: 'Oracle',
+      desc: 'Land 5 exact scorelines',
+      tier: 'silver',
+      have: s.exact,
+      need: 5,
+    },
+    {
+      id: 'sharpshooter',
+      emoji: '🏹',
+      label: 'Sharpshooter',
+      desc: 'Land 10 exact scorelines',
+      tier: 'gold',
+      have: s.exact,
+      need: 10,
+    },
+    {
+      id: 'centurion',
+      emoji: '💯',
+      label: 'Centurion',
+      desc: 'Reach 50 points',
+      tier: 'silver',
+      have: s.points,
+      need: 50,
+    },
+    {
+      id: 'maestro',
+      emoji: '🏆',
+      label: 'Maestro',
+      desc: 'Reach 100 points',
+      tier: 'gold',
+      have: s.points,
+      need: 100,
+    },
+    {
+      id: 'on-form',
+      emoji: '🔥',
+      label: 'On fire',
+      desc: 'Get the result right 3 picks running',
+      tier: 'bronze',
+      have: streak,
+      need: 3,
+    },
+    {
+      id: 'red-hot',
+      emoji: '🌋',
+      label: 'Red hot',
+      desc: 'Get the result right 5 picks running',
+      tier: 'silver',
+      have: streak,
+      need: 5,
+    },
+    {
+      id: 'day-winner',
+      emoji: '👑',
+      label: 'Day winner',
+      desc: 'Top a match day',
+      tier: 'silver',
+      have: daysWon,
+      need: 1,
+    },
+    {
+      id: 'day-dominator',
+      emoji: '🦁',
+      label: 'Day dominator',
+      desc: 'Win 3 match days',
+      tier: 'gold',
+      have: daysWon,
+      need: 3,
+    },
+    {
+      id: 'giant-killer',
+      emoji: '🪓',
+      label: 'Giant killer',
+      desc: 'Back a winner ranked 10+ FIFA places below their rival',
+      tier: 'silver',
+      have: upsets,
+      need: 1,
+    },
+    {
+      id: 'globetrotter',
+      emoji: '🌍',
+      label: 'Globetrotter',
+      desc: 'Predict a match in all 12 groups',
+      tier: 'silver',
+      have: groups,
+      need: 12,
+    },
+    {
+      id: 'maverick',
+      emoji: '🃏',
+      label: 'Maverick',
+      desc: 'Nail an exact score nobody else called',
+      tier: 'gold',
+      have: mavericks,
+      need: 1,
+    },
+    {
+      id: 'crowd-favourite',
+      emoji: '❤️',
+      label: 'Crowd favourite',
+      desc: 'Collect 10 reactions on your picks',
+      tier: 'silver',
+      have: reactions,
+      need: 10,
+    },
+  ];
+
+  return defs.map((d) => ({ ...d, earned: d.have >= d.need }));
+}
+
+/** How many trophies a predictor has unlocked, and out of how many. */
+export function trophyCount(
+  state: WorldCupState,
+  predictorId: string,
+): {
+  earned: number;
+  total: number;
+} {
+  const all = achievements(state, predictorId);
+  return { earned: all.filter((a) => a.earned).length, total: all.length };
+}
+
 export interface WcHeadToHead {
   rows: Array<{ matchId: string; aPoints: number; bPoints: number }>;
   aTotal: number;

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   WC_POINTS,
+  achievements,
   addPredictor,
   adminSetPrediction,
   allGroupsComplete,
@@ -61,6 +62,7 @@ import {
   sourceLabel,
   thirdPlacedRanking,
   tournamentDays,
+  trophyCount,
   wcTimeline,
   winnerOf,
   type WorldCupState,
@@ -770,6 +772,95 @@ describe('rivalry', () => {
 
   it('returns null for an unknown predictor', () => {
     expect(rivalry(seed(), 'nope')).toBeNull();
+  });
+});
+
+describe('achievements', () => {
+  const find = (s: WorldCupState, id: string, ach: string) =>
+    achievements(s, id).find((a) => a.id === ach)!;
+
+  it('starts every trophy locked, with a full cabinet count', () => {
+    const s = seed();
+    const john = s.predictors[0]!;
+    expect(achievements(s, john.id).every((a) => !a.earned && a.have === 0)).toBe(true);
+    expect(trophyCount(s, john.id)).toEqual({ earned: 0, total: 14 });
+  });
+
+  it('unlocks the basics: first points, then the exact-score tiers', () => {
+    let s = seed();
+    const john = s.predictors[0]!;
+    for (const id of ['g-A-1', 'g-A-2', 'g-A-3']) {
+      s = setPrediction(s, { matchId: id, predictorId: john.id, home: 2, away: 0, now: NOW });
+      s = setResult(s, { matchId: id, home: 2, away: 0 }); // three exacts in a row
+    }
+    expect(find(s, john.id, 'off-the-mark').earned).toBe(true);
+    expect(find(s, john.id, 'eagle-eye')).toMatchObject({ earned: true, have: 3, need: 3 });
+    expect(find(s, john.id, 'oracle')).toMatchObject({ earned: false, have: 3, need: 5 });
+    expect(find(s, john.id, 'on-form').earned).toBe(true); // 3 results right running
+    expect(find(s, john.id, 'red-hot').earned).toBe(false); // needs 5
+  });
+
+  it('awards Giant killer for backing a ranked underdog winner', () => {
+    let s = seed();
+    const john = s.predictors[0]!;
+    // g-A-1 is MEX (FIFA 14) v RSA (FIFA 60). John backs RSA; RSA win is an upset.
+    s = setPrediction(s, { matchId: 'g-A-1', predictorId: john.id, home: 0, away: 2, now: NOW });
+    s = setResult(s, { matchId: 'g-A-1', home: 0, away: 2 });
+    expect(find(s, john.id, 'giant-killer')).toMatchObject({ earned: true, have: 1 });
+  });
+
+  it('awards Maverick only for an exact nobody else called', () => {
+    let s = seed();
+    const [john, daniel] = s.predictors as [(typeof s.predictors)[0], (typeof s.predictors)[0]];
+    s = setPrediction(s, { matchId: 'g-A-1', predictorId: john.id, home: 3, away: 1, now: NOW });
+    s = setPrediction(s, { matchId: 'g-A-1', predictorId: daniel.id, home: 2, away: 0, now: NOW });
+    s = setResult(s, { matchId: 'g-A-1', home: 3, away: 1 });
+    expect(find(s, john.id, 'maverick').earned).toBe(true);
+
+    // Same scoreline shared with someone else → not a maverick.
+    let t = seed();
+    const [a, b] = t.predictors as [(typeof t.predictors)[0], (typeof t.predictors)[0]];
+    t = setPrediction(t, { matchId: 'g-A-1', predictorId: a.id, home: 2, away: 0, now: NOW });
+    t = setPrediction(t, { matchId: 'g-A-1', predictorId: b.id, home: 2, away: 0, now: NOW });
+    t = setResult(t, { matchId: 'g-A-1', home: 2, away: 0 });
+    expect(find(t, a.id, 'maverick').earned).toBe(false);
+  });
+
+  it('tracks Globetrotter progress across the 12 groups', () => {
+    let s = seed();
+    const john = s.predictors[0]!;
+    const groups = [...new Set(s.teams.map((t) => t.group))]; // A..L
+    groups.forEach((g, i) => {
+      // The first match of each group is g-<G>-1.
+      if (i < 11) {
+        s = setPrediction(s, {
+          matchId: `g-${g}-1`,
+          predictorId: john.id,
+          home: 1,
+          away: 0,
+          now: NOW,
+        });
+      }
+    });
+    expect(find(s, john.id, 'globetrotter')).toMatchObject({ earned: false, have: 11, need: 12 });
+    s = setPrediction(s, {
+      matchId: `g-${groups[11]}-1`,
+      predictorId: john.id,
+      home: 1,
+      away: 0,
+      now: NOW,
+    });
+    expect(find(s, john.id, 'globetrotter')).toMatchObject({ earned: true, have: 12 });
+  });
+
+  it('awards Crowd favourite once 10 reactions land on your picks', () => {
+    let s = seed();
+    const john = s.predictors[0]!;
+    s = setPrediction(s, { matchId: 'g-A-1', predictorId: john.id, home: 1, away: 0, now: NOW });
+    for (let i = 0; i < 10; i++) {
+      s = togglePickReaction(s, 'g-A-1', john.id, '🔥', `fan-${i}`);
+    }
+    expect(find(s, john.id, 'crowd-favourite')).toMatchObject({ earned: true, have: 10 });
   });
 });
 

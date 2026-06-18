@@ -1,5 +1,6 @@
 import {
   WC_TIMEZONE,
+  achievements,
   defaultDay,
   findTeam,
   lockingSoon,
@@ -118,6 +119,7 @@ export function WorldCupPage() {
     [toast],
   );
   useExactCelebration(wc, meId, celebrate);
+  useTrophyCelebration(wc, meId, celebrate);
 
   if (loading && !wc) {
     return (
@@ -348,6 +350,44 @@ function useExactCelebration(
       onCelebrate(`🎯 Spot on! ${m ? matchScoreLabel(wc, m.id) : 'Exact score'} (+5)`);
     } else if (fresh.length > 1) {
       onCelebrate(`🎯 ${fresh.length} exact scores! +${fresh.length * 5}`);
+    }
+  }, [wc, meId, onCelebrate]);
+}
+
+/**
+ * Fire `onCelebrate` when the current player unlocks a new trophy this session.
+ * Baselines the earned set silently on first load and on identity change, so a
+ * fresh unlock pops the confetti — never the whole cabinet on load.
+ */
+function useTrophyCelebration(
+  wc: WorldCupState | null,
+  meId: string | null,
+  onCelebrate: (message: string) => void,
+) {
+  const seen = useRef<Set<string> | null>(null);
+  const lastMe = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!wc || !meId) {
+      seen.current = null;
+      lastMe.current = meId;
+      return;
+    }
+    if (lastMe.current !== meId) {
+      seen.current = null;
+      lastMe.current = meId;
+    }
+    const earned = achievements(wc, meId).filter((a) => a.earned);
+    if (seen.current === null) {
+      seen.current = new Set(earned.map((a) => a.id)); // baseline silently
+      return;
+    }
+    const fresh = earned.filter((a) => !seen.current!.has(a.id));
+    for (const a of fresh) seen.current.add(a.id);
+    if (fresh.length === 1) {
+      onCelebrate(`🏅 Trophy unlocked: ${fresh[0]!.label}!`);
+    } else if (fresh.length > 1) {
+      onCelebrate(`🏅 ${fresh.length} trophies unlocked!`);
     }
   }, [wc, meId, onCelebrate]);
 }

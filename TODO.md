@@ -125,6 +125,12 @@ A standalone `/world-cup` board (no login) for predicting the tournament.
       below), **confetti + a toast** the instant you nail an exact score, and a
       **shareable PNG card** of your standings (Canvas-drawn; OS share sheet with a
       download fallback). New pure `roundAwards()` / `rivalry()` in `@dap/shared`.
+- [x] **Trophy cabinet** — 14 collectible achievements derived purely from
+      results (no scoring change): exact-score tiers, points milestones, result
+      streaks, match days topped, calling a FIFA-rank upset, predicting in all 12
+      groups, an exact nobody else called, and pick reactions — each bronze/silver/
+      gold with progress. Shown on the **Performance** tab; unlocking one pops
+      confetti + a toast. New pure `achievements()` / `trophyCount()` in `@dap/shared`.
 - [ ] **Team match stats** — ESPN's per-match `summary` also has possession +
       shots; surface them on the Stats tab (no paid API needed after all).
 - [ ] Broaden the value DB beyond the squad stars (long-tail squad players still

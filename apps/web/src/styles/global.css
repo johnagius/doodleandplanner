@@ -3582,6 +3582,89 @@ label.field {
     display: none;
   }
 }
+
+/* Trophy cabinet (achievements) */
+.wc-trophies {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.5rem;
+}
+.wc-trophy {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 0.7rem;
+  background: var(--surface);
+}
+.wc-trophy.locked {
+  opacity: 0.62;
+}
+.wc-trophy.locked .wc-trophy-emoji {
+  filter: grayscale(1);
+}
+.wc-trophy.earned.tier-bronze {
+  border-color: color-mix(in srgb, #b87333 55%, var(--border));
+  background: color-mix(in srgb, #b87333 12%, var(--surface));
+}
+.wc-trophy.earned.tier-silver {
+  border-color: color-mix(in srgb, #9aa3ad 60%, var(--border));
+  background: color-mix(in srgb, #9aa3ad 14%, var(--surface));
+}
+.wc-trophy.earned.tier-gold {
+  border-color: color-mix(in srgb, #e3b341 65%, var(--border));
+  background: color-mix(in srgb, #e3b341 16%, var(--surface));
+  box-shadow: 0 0 0 1px color-mix(in srgb, #e3b341 30%, transparent);
+}
+.wc-trophy-emoji {
+  font-size: 1.7rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.wc-trophy-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+.wc-trophy-label {
+  font-weight: 700;
+}
+.wc-trophy-desc {
+  line-height: 1.25;
+}
+.wc-trophy-tag {
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--success);
+}
+.wc-trophy-tag.muted {
+  color: var(--muted);
+  font-weight: 600;
+}
+.wc-trophy-prog {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.1rem;
+}
+.wc-trophy-prog-track {
+  flex: 1;
+  height: 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--muted) 30%, transparent);
+  overflow: hidden;
+}
+.wc-trophy-prog-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--primary);
+}
 .wc-move {
   display: block;
   font-size: 0.62rem;

@@ -1,6 +1,7 @@
 import {
   WC_SCORE_LABEL,
   WC_STAGE_LABEL,
+  achievements,
   colorForIndex,
   findMatch,
   findTeam,
@@ -8,6 +9,7 @@ import {
   playerGameLog,
   playerStats,
   wcTimeline,
+  type WcAchievement,
   type WcGameLogEntry,
   type WcScoreBreakdown,
   type WcScoreCategory,
@@ -75,6 +77,8 @@ export function PerformanceView({ wc }: { wc: WorldCupState }) {
   const log = useMemo(() => playerGameLog(wc, selectedId), [wc, selectedId]);
   const stats = useMemo(() => playerStats(wc, selectedId), [wc, selectedId]);
   const breakdown = useMemo(() => playerBreakdown(wc, selectedId), [wc, selectedId]);
+  const trophies = useMemo(() => achievements(wc, selectedId), [wc, selectedId]);
+  const trophiesEarned = trophies.filter((a) => a.earned).length;
   const tlPlayer = t.players.find((p) => p.predictorId === selectedId) ?? null;
   const color = colorById.get(selectedId) ?? 'var(--primary)';
   const isMe = selectedId === meId;
@@ -148,11 +152,14 @@ export function PerformanceView({ wc }: { wc: WorldCupState }) {
               <Stat value={tlPlayer?.daysWon ?? 0} label="Days won" />
               <Stat value={stats.exact} label="Exact" />
               <Stat value={stats.scored ? avg.toFixed(1) : '—'} label="Avg / game" />
+              <Stat value={`${trophiesEarned}/${trophies.length}`} label="Trophies" />
               {tlPlayer && tlPlayer.streak >= 2 && (
                 <Stat value={`🔥${tlPlayer.streak}`} label="Day streak" />
               )}
             </div>
           </section>
+
+          <TrophyCabinet trophies={trophies} earned={trophiesEarned} />
 
           {stats.scored > 0 && (
             <section className="card stack wc-perf-acc-card">
@@ -261,6 +268,57 @@ export function PerformanceView({ wc }: { wc: WorldCupState }) {
         </>
       )}
     </div>
+  );
+}
+
+/** The trophy cabinet: every achievement, earned ones lit by tier, locked ones
+ * dimmed with a progress bar toward the target. Pure recognition — no points. */
+function TrophyCabinet({ trophies, earned }: { trophies: WcAchievement[]; earned: number }) {
+  return (
+    <section className="card stack">
+      <div className="row spread">
+        <h3 style={{ margin: 0 }}>🏅 Trophy cabinet</h3>
+        <span className="muted small">
+          {earned} / {trophies.length} unlocked
+        </span>
+      </div>
+      <ul className="wc-trophies">
+        {trophies.map((tr) => {
+          const pct = Math.min(100, Math.round((tr.have / tr.need) * 100));
+          return (
+            <li
+              key={tr.id}
+              className={`wc-trophy tier-${tr.tier} ${tr.earned ? 'earned' : 'locked'}`}
+            >
+              <span className="wc-trophy-emoji" aria-hidden>
+                {tr.emoji}
+              </span>
+              <span className="wc-trophy-body">
+                <span className="wc-trophy-label">{tr.label}</span>
+                <span className="wc-trophy-desc muted small">{tr.desc}</span>
+                {tr.earned ? (
+                  <span className="wc-trophy-tag">✓ Unlocked</span>
+                ) : tr.need > 1 ? (
+                  <span
+                    className="wc-trophy-prog"
+                    title={`${Math.min(tr.have, tr.need)} / ${tr.need}`}
+                  >
+                    <span className="wc-trophy-prog-track">
+                      <span className="wc-trophy-prog-fill" style={{ width: `${pct}%` }} />
+                    </span>
+                    <span className="muted small">
+                      {Math.min(tr.have, tr.need)}/{tr.need}
+                    </span>
+                  </span>
+                ) : (
+                  <span className="wc-trophy-tag muted">Locked</span>
+                )}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }
 

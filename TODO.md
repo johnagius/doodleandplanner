@@ -131,6 +131,12 @@ A standalone `/world-cup` board (no login) for predicting the tournament.
       groups, an exact nobody else called, and pick reactions — each bronze/silver/
       gold with progress. Shown on the **Performance** tab; unlocking one pops
       confetti + a toast. New pure `achievements()` / `trophyCount()` in `@dap/shared`.
+- [x] **Momentum & hype views** — an "🔥 In form" table on the Leaderboard ranking
+      everyone by points over their last 5 results (with a heating-up/cooling-off
+      trend), and a **Match of the Day** spotlight atop Fixtures: the biggest
+      upcoming fixture by stakes/FIFA-rank/closeness, with a live countdown,
+      hype-reason chips and pick buzz. New pure `formTable()` / `matchOfTheDay()`
+      in `@dap/shared`. Read-only; no scoring change.
 - [ ] **Team match stats** — ESPN's per-match `summary` also has possession +
       shots; surface them on the Stats tab (no paid API needed after all).
 - [ ] Broaden the value DB beyond the squad stars (long-tail squad players still

@@ -4,6 +4,7 @@ import {
   findMatch,
   findPredictor,
   findTeam,
+  formTable,
   headToHead,
   leaderboardWithMovement,
   playedCount,
@@ -208,6 +209,8 @@ export function Leaderboard({ wc }: { wc: WorldCupState }) {
         })}
       </ol>
 
+      <FormView wc={wc} meId={meId} />
+
       <RoundHonours wc={wc} />
 
       {openId && <PlayerModal wc={wc} predictorId={openId} onClose={() => setOpenId(null)} />}
@@ -260,6 +263,53 @@ function RivalryLine({
     <div className="banner wc-rivalry">
       {r.rank === 1 ? '👑' : '🎯'} You’re <strong>{ordinal(r.rank)}</strong> of {r.of}
       {parts.length > 0 && <> — {parts.join(' · ')}</>}
+    </div>
+  );
+}
+
+function TrendArrow({ trend }: { trend: 'up' | 'down' | 'flat' }) {
+  if (trend === 'up')
+    return (
+      <span className="wc-trend up" title="Heating up — above their average">
+        ▲
+      </span>
+    );
+  if (trend === 'down')
+    return (
+      <span className="wc-trend down" title="Cooling off — below their average">
+        ▼
+      </span>
+    );
+  return null;
+}
+
+/** A "who's hot" table: predictors ranked by points over their last 5 results —
+ * recent momentum, separate from the all-time standings. */
+function FormView({ wc, meId }: { wc: WorldCupState; meId: string | null }) {
+  const rows = formTable(wc, 5).filter((r) => r.games > 0);
+  if (rows.length === 0) return null;
+  return (
+    <div className="card stack wc-form-card">
+      <div className="row spread">
+        <h3 style={{ margin: 0 }}>🔥 In form</h3>
+        <span className="muted small">Points over the last 5 results</span>
+      </div>
+      <ol className="wc-form-table">
+        {rows.map((r, i) => (
+          <li
+            key={r.predictorId}
+            className={`wc-form-row ${r.predictorId === meId ? 'is-me' : ''}`}
+          >
+            <span className="wc-form-rank muted">{i + 1}</span>
+            <span className="wc-form-name">
+              {r.name}
+              <TrendArrow trend={r.trend} />
+            </span>
+            <FormDots form={r.form} />
+            <span className="wc-form-pts">+{r.points}</span>
+          </li>
+        ))}
+      </ol>
     </div>
   );
 }

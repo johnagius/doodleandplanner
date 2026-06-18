@@ -1805,6 +1805,133 @@ export function rivalry(
   };
 }
 
+// --- Form & momentum -------------------------------------------------------
+
+export interface WcFormRow {
+  predictorId: string;
+  name: string;
+  /** Points over the last `n` resolved picks. */
+  points: number;
+  /** Resolved picks counted in the window (≤ n). */
+  games: number;
+  /** Average points per game in the window (0 when none). */
+  avg: number;
+  /** Categories of those picks, most recent first. */
+  form: WcScoreCategory[];
+  /** Window average vs the predictor's all-time average — heating up or cooling off. */
+  trend: 'up' | 'down' | 'flat';
+}
+
+/**
+ * A "who's hot" table ranking predictors by points over their last `n` resolved
+ * picks (default 5) — recent momentum, independent of the overall standings.
+ * Pure; `trend` compares the window's average to the predictor's all-time
+ * average so a surging or fading run is visible at a glance.
+ */
+export function formTable(state: WorldCupState, n = 5): WcFormRow[] {
+  const rows: WcFormRow[] = state.predictors.map((p) => {
+    const log = playerGameLog(state, p.id).filter((e) => e.result);
+    const recent = log.slice(-n);
+    const points = recent.reduce((sum, e) => sum + e.points, 0);
+    const games = recent.length;
+    const avg = games ? points / games : 0;
+    const overallAvg = log.length ? log.reduce((sum, e) => sum + e.points, 0) / log.length : 0;
+    const eps = 0.01;
+    const trend: 'up' | 'down' | 'flat' =
+      games === 0
+        ? 'flat'
+        : avg > overallAvg + eps
+          ? 'up'
+          : avg < overallAvg - eps
+            ? 'down'
+            : 'flat';
+    const form = recent
+      .map((e) => e.category)
+      .filter((c): c is WcScoreCategory => c != null)
+      .reverse(); // most recent first
+    return { predictorId: p.id, name: p.name, points, games, avg, form, trend };
+  });
+  rows.sort(
+    (a, b) =>
+      b.points - a.points || b.avg - a.avg || b.games - a.games || a.name.localeCompare(b.name),
+  );
+  return rows;
+}
+
+// --- Match of the Day (pre-kickoff hype) -----------------------------------
+
+export interface WcMatchOfDay {
+  matchId: string;
+  /** Up to three short hype reasons (stakes, quality, how even it is). */
+  reasons: string[];
+}
+
+const HYPE_STAGE_WEIGHT: Record<WcStage, number> = {
+  group: 0,
+  r32: 30,
+  r16: 40,
+  qf: 60,
+  sf: 80,
+  third: 20,
+  final: 100,
+};
+
+/** A 0+ "hype" score for an upcoming fixture: stakes (stage) + quality (FIFA
+ * ranks of both sides) + how evenly matched two strong teams are. */
+function matchHype(m: WcMatch): number {
+  let score = HYPE_STAGE_WEIGHT[m.stage];
+  if (m.stage === 'group') score += (m.matchday ?? 0) * 3; // late-group deciders edge up
+  const ra = fifaRankOf(m.homeId);
+  const rb = fifaRankOf(m.awayId);
+  if (ra != null && rb != null) {
+    score += Math.max(0, 60 - ra) + Math.max(0, 60 - rb); // two strong sides = big
+    if (ra <= 30 && rb <= 30) score += Math.max(0, 20 - Math.abs(ra - rb)); // even clash
+  }
+  return score;
+}
+
+function hypeReasons(m: WcMatch): string[] {
+  const reasons: string[] = [];
+  if (m.stage === 'final') reasons.push('The final 🏆');
+  else if (m.stage !== 'group') reasons.push(`${WC_STAGE_LABEL[m.stage]} — knockout drama`);
+  else if (m.matchday === 3) reasons.push('Matchday 3 — qualification on the line');
+
+  const ra = fifaRankOf(m.homeId);
+  const rb = fifaRankOf(m.awayId);
+  if (ra != null && rb != null) {
+    if (ra <= 10 && rb <= 10) reasons.push('Top-10 heavyweight clash');
+    else if (ra <= 25 && rb <= 25) reasons.push('Two of the contenders');
+    if (ra <= 30 && rb <= 30 && Math.abs(ra - rb) <= 5) reasons.push('Evenly matched');
+    reasons.push(`FIFA #${ra} vs #${rb}`);
+  }
+  return reasons.slice(0, 3);
+}
+
+/**
+ * The single upcoming fixture most worth hyping — the "Match of the Day".
+ * Among ready, not-yet-kicked-off matches it prefers the next `withinMs` (default
+ * 60h) and falls back to the soonest, then picks the highest-"hype" one by stakes
+ * (stage), quality (FIFA ranks) and how evenly matched it is. Pure; null when
+ * nothing is coming up. (Knockout ties only qualify once both teams are known.)
+ */
+export function matchOfTheDay(
+  state: WorldCupState,
+  now: Date = new Date(),
+  withinMs = 60 * 3_600_000,
+): WcMatchOfDay | null {
+  const t = now.getTime();
+  const upcoming = state.matches.filter((m) => isMatchReady(m) && toMs(m.kickoff) > t);
+  if (upcoming.length === 0) return null;
+  const soon = upcoming.filter((m) => toMs(m.kickoff) - t <= withinMs);
+  const pool = soon.length ? soon : upcoming;
+  const best = pool
+    .map((m) => ({ m, hype: matchHype(m) }))
+    .sort(
+      (a, b) => b.hype - a.hype || toMs(a.m.kickoff) - toMs(b.m.kickoff) || a.m.order - b.m.order,
+    )[0]!;
+  return { matchId: best.m.id, reasons: hypeReasons(best.m) };
+}
+
 // --- Nudges (who still needs to predict) -----------------------------------
 
 /** Ready, still-open matches a predictor hasn't picked yet, soonest first. */

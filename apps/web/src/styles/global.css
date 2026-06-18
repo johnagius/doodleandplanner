@@ -3665,6 +3665,110 @@ label.field {
   border-radius: 999px;
   background: var(--primary);
 }
+
+/* Form / momentum table */
+.wc-form-table {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.wc-form-row {
+  display: grid;
+  grid-template-columns: 1.4rem 1fr auto auto;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: 0.5rem;
+}
+.wc-form-row.is-me {
+  background: color-mix(in srgb, var(--primary) 12%, var(--surface));
+}
+.wc-form-rank {
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.wc-form-name {
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-width: 0;
+}
+.wc-form-pts {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.wc-trend {
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+.wc-trend.up {
+  color: var(--success);
+}
+.wc-trend.down {
+  color: var(--danger);
+}
+
+/* Match of the Day spotlight */
+.wc-spotlight {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  border-color: color-mix(in srgb, var(--primary) 38%, var(--border));
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--primary) 14%, var(--surface)),
+    var(--surface)
+  );
+}
+.wc-spotlight-tag {
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  font-size: 0.82rem;
+  color: var(--primary);
+}
+.wc-spotlight-teams {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  text-align: center;
+}
+.wc-spotlight-team {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+.wc-spotlight-flag {
+  font-size: 1.5rem;
+}
+.wc-spotlight-rank {
+  font-weight: 600;
+}
+.wc-spotlight-vs {
+  color: var(--muted);
+  font-weight: 600;
+}
+.wc-spotlight-reasons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.wc-spotlight-chip {
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--primary) 16%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--primary) 30%, var(--border));
+}
 .wc-move {
   display: block;
   font-size: 0.62rem;

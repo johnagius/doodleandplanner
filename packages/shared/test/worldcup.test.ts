@@ -19,6 +19,7 @@ import {
   closestToScore,
   consensusScore,
   fifaRankOf,
+  formTable,
   isChampionLocked,
   setChampionPick,
   dayChampion,
@@ -46,6 +47,7 @@ import {
   leaderboard,
   loserOf,
   matchDateKey,
+  matchOfTheDay,
   matchesOn,
   populateBracket,
   predictionFor,
@@ -65,6 +67,7 @@ import {
   trophyCount,
   wcTimeline,
   winnerOf,
+  type WcMatch,
   type WorldCupState,
 } from '../src/worldcup.js';
 
@@ -861,6 +864,79 @@ describe('achievements', () => {
       s = togglePickReaction(s, 'g-A-1', john.id, '🔥', `fan-${i}`);
     }
     expect(find(s, john.id, 'crowd-favourite')).toMatchObject({ earned: true, have: 10 });
+  });
+});
+
+describe('formTable (momentum)', () => {
+  it('ranks by recent points and flags who is heating up', () => {
+    let s = seed();
+    const john = s.predictors[0]!;
+    // g-A-1 (earlier kickoff) is a miss; g-A-2 (later) is exact.
+    s = setPrediction(s, { matchId: 'g-A-1', predictorId: john.id, home: 0, away: 5, now: NOW });
+    s = setPrediction(s, { matchId: 'g-A-2', predictorId: john.id, home: 2, away: 0, now: NOW });
+    s = setResult(s, { matchId: 'g-A-1', home: 2, away: 0 }); // miss (0)
+    s = setResult(s, { matchId: 'g-A-2', home: 2, away: 0 }); // exact (5)
+
+    const last1 = formTable(s, 1).find((r) => r.predictorId === john.id)!;
+    expect(last1).toMatchObject({ points: 5, games: 1, form: ['exact'], trend: 'up' });
+
+    const last5 = formTable(s, 5).find((r) => r.predictorId === john.id)!;
+    expect(last5).toMatchObject({ points: 5, games: 2, form: ['exact', 'miss'], trend: 'flat' });
+    expect(formTable(s, 5)[0]!.predictorId).toBe(john.id); // tops the form table
+  });
+});
+
+describe('matchOfTheDay', () => {
+  const mk = (
+    id: string,
+    homeId: string | undefined,
+    awayId: string | undefined,
+    kickoff: string,
+    order: number,
+    extra: Partial<WcMatch> = {},
+  ): WcMatch => ({ id, stage: 'group', matchday: 1, order, kickoff, homeId, awayId, ...extra });
+
+  const stateOf = (matches: WcMatch[]): WorldCupState => ({
+    season: '2026',
+    title: 'T',
+    teams: [],
+    matches,
+    predictors: [],
+    predictions: [],
+    createdAt: '2026-01-01T00:00:00.000Z',
+  });
+
+  it('hypes the biggest upcoming clash, with reasons', () => {
+    const s = stateOf([
+      mk('past', 'ESP', 'FRA', '2026-06-09T00:00:00Z', 0), // already kicked off — ignored
+      mk('big', 'BRA', 'MAR', '2026-06-11T00:00:00Z', 1), // FIFA 6 v 7 — heavyweight + even
+      mk('small', 'RSA', 'KOR', '2026-06-11T03:00:00Z', 2), // FIFA 60 v 25
+      mk('final', undefined, undefined, '2026-06-11T01:00:00Z', 3, {
+        stage: 'final',
+        homeSource: { kind: 'winner-match', matchId: 'sf-1' },
+        awaySource: { kind: 'winner-match', matchId: 'sf-2' },
+      }), // not ready — ignored despite the stage
+    ]);
+    const motd = matchOfTheDay(s, new Date('2026-06-10T00:00:00Z'))!;
+    expect(motd.matchId).toBe('big');
+    expect(motd.reasons).toContain('Top-10 heavyweight clash');
+    expect(motd.reasons).toContain('Evenly matched');
+    expect(motd.reasons).toContain('FIFA #6 vs #7');
+  });
+
+  it('falls back to the biggest of all upcoming when none are imminent', () => {
+    const s = stateOf([
+      mk('big', 'BRA', 'MAR', '2026-06-20T00:00:00Z', 1), // heavyweight
+      mk('small', 'RSA', 'KOR', '2026-06-21T00:00:00Z', 2), // minnows
+    ]);
+    // now is well over 60h before either match → no imminent games, so the whole
+    // upcoming list is considered and the heavyweight wins on hype.
+    expect(matchOfTheDay(s, new Date('2026-06-01T00:00:00Z'))!.matchId).toBe('big');
+  });
+
+  it('returns null when nothing is upcoming', () => {
+    const s = stateOf([mk('past', 'BRA', 'MAR', '2026-06-09T00:00:00Z', 0)]);
+    expect(matchOfTheDay(s, new Date('2026-06-10T00:00:00Z'))).toBeNull();
   });
 });
 

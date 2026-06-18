@@ -2,11 +2,16 @@ import {
   WC_TIMEZONE,
   achievements,
   defaultDay,
+  fifaRankOf,
+  findMatch,
   findTeam,
   lockingSoon,
+  matchDateKey,
+  matchOfTheDay,
   matchesOn,
   pendingForMe,
   playedCount,
+  predictionCount,
   scorePrediction,
   tournamentDays,
   type WorldCupState,
@@ -18,6 +23,8 @@ import { useToast } from '../../components/Toast.js';
 import { isRealtimeBackend } from '../../lib/storage/index.js';
 import { useTitleAlert } from '../../lib/useTitleAlert.js';
 import { useWorldCupStore } from '../../state/worldCupStore.js';
+import { Countdown } from './Countdown.js';
+import { useNow } from './useNow.js';
 import { BettingView } from './BettingView.js';
 import { BracketView } from './BracketView.js';
 import { CardsView } from './CardsView.js';
@@ -30,7 +37,7 @@ import { PredictorBar } from './PredictorBar.js';
 import { ScoringLegend } from './ScoringLegend.js';
 import { TimelineView } from './TimelineView.js';
 import { hasSession, installWcSaveAuth } from './wcAuthClient.js';
-import { formatDayLong } from './wcFormat.js';
+import { formatDayLong, formatKickoff } from './wcFormat.js';
 
 type Tab =
   | 'fixtures'
@@ -454,9 +461,16 @@ function FixturesView() {
     go(delta);
     topRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
   };
+  // Jump straight to a specific day (used by the Match of the Day "see fixture").
+  const jumpToDay = (d: string) => {
+    if (days.includes(d)) setDay(d);
+    topRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+  };
 
   return (
     <div className="stack">
+      <Spotlight wc={wc} onJump={jumpToDay} />
+
       <div ref={topRef}>
         <DayNav
           day={day}
@@ -488,6 +502,67 @@ function FixturesView() {
         matchCount={matches.length}
         go={goFromBottom}
       />
+    </div>
+  );
+}
+
+/** Pre-kickoff hype: the single biggest upcoming fixture (by stakes, FIFA ranks
+ * and how even it is), with a live countdown and a jump to its day. Recomputed
+ * at most once a minute; the countdown still ticks per second. */
+function Spotlight({ wc, onJump }: { wc: WorldCupState; onJump: (day: string) => void }) {
+  const now = useNow(1000);
+  const minute = Math.floor(now / 60_000);
+  const motd = useMemo(() => matchOfTheDay(wc, new Date(minute * 60_000)), [wc, minute]);
+  const m = motd ? findMatch(wc, motd.matchId) : null;
+  if (!motd || !m) return null;
+  const home = findTeam(wc, m.homeId);
+  const away = findTeam(wc, m.awayId);
+  const hr = fifaRankOf(m.homeId);
+  const ar = fifaRankOf(m.awayId);
+  const picks = predictionCount(wc, m.id);
+  return (
+    <div className="card wc-spotlight">
+      <div className="row spread" style={{ alignItems: 'center' }}>
+        <span className="wc-spotlight-tag">🔥 Match of the Day</span>
+        <Countdown kickoff={m.kickoff} now={now} />
+      </div>
+      <div className="wc-spotlight-teams">
+        <span className="wc-spotlight-team">
+          <span className="wc-spotlight-flag" aria-hidden>
+            {home?.flag ?? '⚽'}
+          </span>
+          <span className="wc-spotlight-tname">{home?.name ?? '?'}</span>
+          {hr != null && <span className="wc-spotlight-rank muted small">#{hr}</span>}
+        </span>
+        <span className="wc-spotlight-vs">v</span>
+        <span className="wc-spotlight-team">
+          <span className="wc-spotlight-flag" aria-hidden>
+            {away?.flag ?? '⚽'}
+          </span>
+          <span className="wc-spotlight-tname">{away?.name ?? '?'}</span>
+          {ar != null && <span className="wc-spotlight-rank muted small">#{ar}</span>}
+        </span>
+      </div>
+      <div className="muted small">
+        {formatKickoff(m.kickoff)} 🇲🇹{m.venue ? ` · ${m.venue}` : ''}
+      </div>
+      {motd.reasons.length > 0 && (
+        <div className="wc-spotlight-reasons">
+          {motd.reasons.map((r) => (
+            <span key={r} className="wc-spotlight-chip">
+              {r}
+            </span>
+          ))}
+        </div>
+      )}
+      <div className="row spread" style={{ alignItems: 'center' }}>
+        <span className="muted small">
+          🗳 {picks}/{wc.predictors.length} have picked it
+        </span>
+        <button className="btn btn-sm" onClick={() => onJump(matchDateKey(m))}>
+          See fixture →
+        </button>
+      </div>
     </div>
   );
 }

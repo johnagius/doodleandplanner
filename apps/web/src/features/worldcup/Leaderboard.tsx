@@ -17,8 +17,10 @@ import {
 import { useState } from 'react';
 import { EmptyState } from '../../components/EmptyState.js';
 import { Modal } from '../../components/Modal.js';
+import { useToast } from '../../components/Toast.js';
 import { useWorldCupStore } from '../../state/worldCupStore.js';
 import { Avatar } from './Avatar.js';
+import { renderWcShareCard, shareWcCard } from './shareCard.js';
 import { formatDayLong } from './wcFormat.js';
 
 const MEDALS = ['🥇', '🥈', '🥉'];
@@ -74,6 +76,7 @@ export function Leaderboard({ wc }: { wc: WorldCupState }) {
   const meId = useWorldCupStore((s) => s.meId);
   const live = useWorldCupStore((s) => s.live);
   const [openId, setOpenId] = useState<string | null>(null);
+  const { show } = useToast();
 
   // Fold in-play games into the table "as it stands" (final results take over
   // once they land). Scores can lag on the free feed — we flag that.
@@ -90,6 +93,41 @@ export function Leaderboard({ wc }: { wc: WorldCupState }) {
   const played = playedCount(wc);
   const topScore = rows[0]?.points ?? 0;
   const champ = dayChampion(wc);
+  const myRow = meId ? rows.find((r) => r.predictorId === meId) : undefined;
+
+  async function shareMyCard() {
+    if (!myRow) return;
+    const rankLabel = `${ordinal(myRow.rank)} of ${rows.length}`;
+    const gap = topScore - myRow.points;
+    const subtitle =
+      myRow.rank === 1
+        ? 'Top of the table 👑'
+        : gap === 0
+          ? 'Level with the lead'
+          : `${gap} point${gap === 1 ? '' : 's'} off the lead`;
+    try {
+      const blob = await renderWcShareCard({
+        title: wc.title,
+        name: myRow.name,
+        medal: MEDALS[myRow.rank - 1] ?? `#${myRow.rank}`,
+        rankLabel,
+        points: myRow.points,
+        exact: myRow.exact,
+        correctResults: myRow.correctResults,
+        scored: myRow.scored,
+        subtitle,
+        url: 'doodleandplanner.pages.dev/world-cup',
+      });
+      const res = await shareWcCard(
+        blob,
+        `${myRow.name}: ${myRow.points} pts (${rankLabel}) — World Cup 2026 Predictions`,
+        wc.title,
+      );
+      if (res === 'downloaded') show('Card saved — share it anywhere 📸');
+    } catch {
+      show('Could not create the card');
+    }
+  }
 
   if (played === 0 && liveCount === 0) {
     return (
@@ -115,9 +153,21 @@ export function Leaderboard({ wc }: { wc: WorldCupState }) {
         </div>
       )}
       {meId && <RivalryLine wc={wc} meId={meId} liveScores={liveCount ? liveScores : undefined} />}
-      <p className="muted small">
-        {played} match{played === 1 ? '' : 'es'} scored · tap a player for their stats.
-      </p>
+      <div className="row spread" style={{ alignItems: 'center', gap: '0.5rem' }}>
+        <p className="muted small" style={{ margin: 0 }}>
+          {played} match{played === 1 ? '' : 'es'} scored · tap a player for their stats.
+        </p>
+        {myRow && (
+          <button
+            type="button"
+            className="btn btn-sm"
+            onClick={() => void shareMyCard()}
+            title="Share an image of your standings"
+          >
+            📸 Share my card
+          </button>
+        )}
+      </div>
       <ol className="wc-leaderboard">
         {rows.map((r, i) => {
           const badges = badgesFor(wc, r.predictorId);

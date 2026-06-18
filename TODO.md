@@ -118,6 +118,13 @@ A standalone `/world-cup` board (no login) for predicting the tournament.
       `scripts/harvest-transfermarkt.mjs`). DB-first lookup in the web app + Worker,
       so star values resolve instantly and reliably; the flaky live API is only a
       fallback for names not in the DB.
+- [x] **Social polish** — a read-only celebration layer (no change to scoring): a
+      **Round honours** board crowning the 🏅 Player of the Round and 🥄 Wooden
+      Spoon for every completed round (group matchdays, then each knockout stage), a
+      personal **rivalry line** (your rank + the gap to the players just above and
+      below), **confetti + a toast** the instant you nail an exact score, and a
+      **shareable PNG card** of your standings (Canvas-drawn; OS share sheet with a
+      download fallback). New pure `roundAwards()` / `rivalry()` in `@dap/shared`.
 - [ ] **Team match stats** — ESPN's per-match `summary` also has possession +
       shots; surface them on the Stats tab (no paid API needed after all).
 - [ ] Broaden the value DB beyond the squad stars (long-tail squad players still

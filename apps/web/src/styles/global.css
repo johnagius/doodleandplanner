@@ -3506,6 +3506,49 @@ label.field {
   background: color-mix(in srgb, var(--success) 14%, var(--surface));
   color: var(--success);
 }
+.wc-rivalry {
+  background: color-mix(in srgb, var(--primary) 12%, var(--surface));
+  border-color: color-mix(in srgb, var(--primary) 32%, var(--border));
+}
+/* Round honours board: Player of the Round + Wooden Spoon, newest first. */
+.wc-honours-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.wc-honour {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.3rem 0.75rem;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 0.6rem;
+  background: var(--surface);
+}
+.wc-honour.is-latest {
+  border-color: color-mix(in srgb, var(--primary) 45%, var(--border));
+  box-shadow: 0 0 0 1px var(--primary-soft);
+}
+.wc-honour-round {
+  font-weight: 700;
+}
+.wc-honour-awards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.85rem;
+  align-items: baseline;
+}
+.wc-honour-potr {
+  font-weight: 600;
+}
+.wc-honour-spoon {
+  color: var(--muted);
+}
 .wc-move {
   display: block;
   font-size: 0.62rem;

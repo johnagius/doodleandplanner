@@ -9,6 +9,8 @@ import {
   playedCount,
   playerForm,
   playerStats,
+  rivalry,
+  roundAwards,
   type WcScoreCategory,
   type WorldCupState,
 } from '@dap/shared';
@@ -112,6 +114,7 @@ export function Leaderboard({ wc }: { wc: WorldCupState }) {
           🗓️ {formatDayLong(champ.day)} — top scorer <strong>{champ.name}</strong> (+{champ.points})
         </div>
       )}
+      {meId && <RivalryLine wc={wc} meId={meId} liveScores={liveCount ? liveScores : undefined} />}
       <p className="muted small">
         {played} match{played === 1 ? '' : 'es'} scored · tap a player for their stats.
       </p>
@@ -155,7 +158,94 @@ export function Leaderboard({ wc }: { wc: WorldCupState }) {
         })}
       </ol>
 
+      <RoundHonours wc={wc} />
+
       {openId && <PlayerModal wc={wc} predictorId={openId} onClose={() => setOpenId(null)} />}
+    </div>
+  );
+}
+
+/** Join predictor ids into "Alice & Bob" for an award line. */
+function namesOf(wc: WorldCupState, ids: string[]): string {
+  return ids.map((id) => findPredictor(wc, id)?.name ?? '?').join(' & ');
+}
+
+/** "1st", "2nd", "3rd", "4th"… */
+function ordinal(n: number): string {
+  const tens = n % 100;
+  if (tens >= 11 && tens <= 13) return `${n}th`;
+  const suffix = ['th', 'st', 'nd', 'rd'][n % 10] ?? 'th';
+  return `${n}${suffix}`;
+}
+
+/** A motivating "where you stand" line for the current player: your rank plus
+ * the gap to the rival just above (to catch) and just below (to hold off). */
+function RivalryLine({
+  wc,
+  meId,
+  liveScores,
+}: {
+  wc: WorldCupState;
+  meId: string;
+  liveScores?: Record<string, { home: number; away: number }>;
+}) {
+  const r = rivalry(wc, meId, liveScores ? { liveScores } : undefined);
+  if (!r) return null;
+  const parts: string[] = [];
+  if (r.ahead) {
+    parts.push(
+      r.ahead.gap === 0
+        ? `level with ${r.ahead.name} above`
+        : `${r.ahead.gap} behind ${r.ahead.name}`,
+    );
+  }
+  if (r.behind) {
+    parts.push(
+      r.behind.gap === 0
+        ? `level with ${r.behind.name} below`
+        : `${r.behind.gap} ahead of ${r.behind.name}`,
+    );
+  }
+  return (
+    <div className="banner wc-rivalry">
+      {r.rank === 1 ? '👑' : '🎯'} You’re <strong>{ordinal(r.rank)}</strong> of {r.of}
+      {parts.length > 0 && <> — {parts.join(' · ')}</>}
+    </div>
+  );
+}
+
+/** An honours board: Player of the Round 🏅 and Wooden Spoon 🥄 for every
+ * completed round (group matchdays then each knockout stage), newest first. */
+function RoundHonours({ wc }: { wc: WorldCupState }) {
+  const awards = roundAwards(wc);
+  if (awards.length === 0) return null;
+  return (
+    <div className="card stack wc-honours">
+      <div className="row spread">
+        <h3 style={{ margin: 0 }}>🏅 Round honours</h3>
+        <span className="muted small">Top & bottom of each completed round</span>
+      </div>
+      <ul className="wc-honours-list">
+        {awards.map((a, i) => (
+          <li key={a.key} className={`wc-honour ${i === 0 ? 'is-latest' : ''}`}>
+            <span className="wc-honour-round">{a.label}</span>
+            <span className="wc-honour-awards">
+              {a.winners.length > 0 ? (
+                <span className="wc-honour-potr" title="Player of the Round">
+                  🏅 {namesOf(wc, a.winners)} <span className="muted small">+{a.topPoints}</span>
+                </span>
+              ) : (
+                <span className="muted small">No points scored</span>
+              )}
+              {a.spoon.length > 0 && (
+                <span className="wc-honour-spoon" title="Wooden Spoon — fewest points">
+                  🥄 {namesOf(wc, a.spoon)} <span className="muted small">+{a.lowPoints}</span>
+                </span>
+              )}
+            </span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

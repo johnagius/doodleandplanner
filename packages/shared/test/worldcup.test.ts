@@ -50,6 +50,8 @@ import {
   predictionFor,
   removePredictor,
   renamePredictor,
+  rivalry,
+  roundAwards,
   scenarioBoard,
   scorePrediction,
   seedWorldCup,
@@ -654,6 +656,120 @@ describe('playerGameLog + playerBreakdown', () => {
       close: 0,
       miss: 1,
     });
+  });
+});
+
+describe('round awards', () => {
+  /** Result every still-unplayed group match on matchday `md` (default 1-0), so a
+   * whole matchday round completes. Explicitly-set results are left untouched. */
+  function playMatchday(s: WorldCupState, md: number, home = 1, away = 0): WorldCupState {
+    let next = s;
+    for (const m of s.matches) {
+      if (m.stage === 'group' && m.matchday === md && !m.result) {
+        next = setResult(next, { matchId: m.id, home, away });
+      }
+    }
+    return next;
+  }
+
+  it('gives no awards until a whole round completes', () => {
+    let s = seed();
+    const john = s.predictors[0]!;
+    s = setPrediction(s, { matchId: 'g-A-1', predictorId: john.id, home: 2, away: 0, now: NOW });
+    s = setResult(s, { matchId: 'g-A-1', home: 2, away: 0 });
+    // Matchday 1 has 24 games across all groups; one result isn't a round.
+    expect(roundAwards(s)).toEqual([]);
+  });
+
+  it('crowns the Player of the Round and the Wooden Spoon', () => {
+    let s = seed();
+    const [john, daniel] = s.predictors as [(typeof s.predictors)[0], (typeof s.predictors)[0]];
+    // John nails both his matchday-1 picks (+5, +5); Daniel is a goal off on one (+1).
+    s = setPrediction(s, { matchId: 'g-A-1', predictorId: john.id, home: 2, away: 0, now: NOW });
+    s = setPrediction(s, { matchId: 'g-A-2', predictorId: john.id, home: 1, away: 0, now: NOW });
+    s = setPrediction(s, { matchId: 'g-A-1', predictorId: daniel.id, home: 0, away: 0, now: NOW });
+    s = setResult(s, { matchId: 'g-A-1', home: 2, away: 0 });
+    s = setResult(s, { matchId: 'g-A-2', home: 1, away: 0 });
+    s = playMatchday(s, 1); // finish the rest of matchday 1
+
+    const awards = roundAwards(s);
+    expect(awards).toHaveLength(1); // only matchday 1 is complete
+    const md1 = awards[0]!;
+    expect(md1).toMatchObject({
+      key: 'group-1',
+      label: 'Group Matchday 1',
+      stage: 'group',
+      matchday: 1,
+      matches: 24,
+      participants: 2,
+      topPoints: 10,
+      lowPoints: 1,
+    });
+    expect(md1.winners).toEqual([john.id]);
+    expect(md1.spoon).toEqual([daniel.id]);
+  });
+
+  it('awards no Wooden Spoon when participants tie', () => {
+    let s = seed();
+    const [a, b] = s.predictors as [(typeof s.predictors)[0], (typeof s.predictors)[0]];
+    s = setPrediction(s, { matchId: 'g-A-1', predictorId: a.id, home: 2, away: 0, now: NOW });
+    s = setPrediction(s, { matchId: 'g-A-1', predictorId: b.id, home: 2, away: 0, now: NOW });
+    s = setResult(s, { matchId: 'g-A-1', home: 2, away: 0 });
+    s = playMatchday(s, 1);
+    const md1 = roundAwards(s)[0]!;
+    expect(new Set(md1.winners)).toEqual(new Set([a.id, b.id])); // joint top
+    expect(md1.spoon).toEqual([]); // level on points → no booby prize
+  });
+
+  it('returns completed rounds newest first', () => {
+    let s = seed();
+    const john = s.predictors[0]!;
+    s = setPrediction(s, { matchId: 'g-A-1', predictorId: john.id, home: 1, away: 0, now: NOW });
+    s = playMatchday(s, 1);
+    s = playMatchday(s, 2);
+    const awards = roundAwards(s);
+    expect(awards.map((a) => a.key)).toEqual(['group-2', 'group-1']);
+  });
+});
+
+describe('rivalry', () => {
+  /** g-A-1 (2-0): John exact +5, Daniel result +3, Noel a goal off +1, Saviour out. */
+  function spread() {
+    let s = seed();
+    const [john, daniel, noel, saviour] = s.predictors as [
+      (typeof s.predictors)[0],
+      (typeof s.predictors)[0],
+      (typeof s.predictors)[0],
+      (typeof s.predictors)[0],
+    ];
+    s = setPrediction(s, { matchId: 'g-A-1', predictorId: john.id, home: 2, away: 0, now: NOW });
+    s = setPrediction(s, { matchId: 'g-A-1', predictorId: daniel.id, home: 1, away: 0, now: NOW });
+    s = setPrediction(s, { matchId: 'g-A-1', predictorId: noel.id, home: 1, away: 1, now: NOW });
+    s = setResult(s, { matchId: 'g-A-1', home: 2, away: 0 });
+    return { s, john, daniel, noel, saviour };
+  }
+
+  it('reads the gap to the player above and below', () => {
+    const { s, john, daniel, noel } = spread();
+    const r = rivalry(s, daniel.id)!;
+    expect(r).toMatchObject({ rank: 2, of: 4, points: 3 });
+    expect(r.ahead).toEqual({ predictorId: john.id, name: 'John', gap: 2 });
+    expect(r.behind).toEqual({ predictorId: noel.id, name: 'Noel', gap: 2 });
+  });
+
+  it('has no one ahead of the leader, no one behind the tail', () => {
+    const { s, john, daniel, saviour } = spread();
+    const leader = rivalry(s, john.id)!;
+    expect(leader.ahead).toBeNull();
+    expect(leader.behind).toMatchObject({ predictorId: daniel.id, gap: 2 });
+
+    const tail = rivalry(s, saviour.id)!; // 0 pts, last
+    expect(tail.behind).toBeNull();
+    expect(tail.ahead!.gap).toBe(1); // Noel on 1
+  });
+
+  it('returns null for an unknown predictor', () => {
+    expect(rivalry(seed(), 'nope')).toBeNull();
   });
 });
 

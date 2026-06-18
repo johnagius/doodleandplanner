@@ -1387,6 +1387,164 @@ export function headToHead(state: WorldCupState, aId: string, bId: string): WcHe
   return { rows, aTotal, bTotal };
 }
 
+// --- Rounds, awards & rivalry ----------------------------------------------
+
+/** Stable round key for a match: a group matchday ("group-2") or a knockout
+ * stage ("qf"). Rounds are the tournament's natural chapters. */
+export function roundKeyOf(match: WcMatch): string {
+  return match.stage === 'group' ? `group-${match.matchday ?? 0}` : match.stage;
+}
+
+/** Human label for a match's round, e.g. "Group Matchday 2" or "Quarter-finals". */
+export function roundLabelOf(match: WcMatch): string {
+  if (match.stage === 'group') return `Group Matchday ${match.matchday ?? 0}`;
+  return WC_STAGE_LABEL[match.stage];
+}
+
+/** Chronological sort key for a round (group matchdays, then each KO stage). */
+function roundOrderOf(match: WcMatch): number {
+  return STAGE_ORDER[match.stage] * 10 + (match.matchday ?? 0);
+}
+
+export interface WcRoundAward {
+  /** Stable key, e.g. "group-2" or "qf". */
+  key: string;
+  label: string;
+  stage: WcStage;
+  /** 1..3 for group rounds; omitted for knockout stages. */
+  matchday?: number;
+  /** Matches in this (complete) round. */
+  matches: number;
+  /** Predictors who picked at least one of the round's matches. */
+  participants: number;
+  /** Most points any participant scored this round (0 if nobody scored). */
+  topPoints: number;
+  /** 🏅 Player(s) of the Round — top scorers with > 0. Empty on a round nobody
+   * scored in. */
+  winners: string[];
+  /** Fewest points among the participants. */
+  lowPoints: number;
+  /** 🥄 Wooden Spoon — lowest-scoring participant(s). Empty when there's no real
+   * spread (everyone level, or fewer than two took part) — no booby prize for a
+   * tie. */
+  spoon: string[];
+}
+
+/**
+ * Per-round accolades for every COMPLETE round (all its matches resulted),
+ * newest first: who topped the round (🏅 Player of the Round) and who propped it
+ * up (🥄 Wooden Spoon). Rounds are the group matchdays then each knockout stage —
+ * the tournament's chapters, distinct from the calendar-day timeline. Pure and
+ * deterministic; joint winners/spoons come back in predictor order.
+ */
+export function roundAwards(state: WorldCupState): WcRoundAward[] {
+  const order = new Map(state.predictors.map((p, i) => [p.id, i]));
+  const byRound = new Map<string, WcMatch[]>();
+  for (const m of state.matches) {
+    const k = roundKeyOf(m);
+    let arr = byRound.get(k);
+    if (!arr) byRound.set(k, (arr = []));
+    arr.push(m);
+  }
+
+  const awards: Array<WcRoundAward & { sort: number }> = [];
+  for (const [key, matches] of byRound) {
+    // Only finished rounds earn an award.
+    if (!matches.every((m) => !!m.result)) continue;
+    const sample = matches[0]!;
+
+    // Points each participant scored across the round's matches.
+    const pts = new Map<string, number>();
+    for (const m of matches) {
+      for (const pred of state.predictions) {
+        if (pred.matchId !== m.id) continue;
+        const add = scorePrediction(pred, m.result!).points;
+        pts.set(pred.predictorId, (pts.get(pred.predictorId) ?? 0) + add);
+      }
+    }
+
+    const participants = [...pts.keys()];
+    const values = participants.map((id) => pts.get(id)!);
+    const topPoints = values.length ? Math.max(...values) : 0;
+    const lowPoints = values.length ? Math.min(...values) : 0;
+    const inOrder = (ids: string[]) =>
+      [...ids].sort((a, b) => (order.get(a) ?? 0) - (order.get(b) ?? 0));
+    const winners =
+      topPoints > 0 ? inOrder(participants.filter((id) => pts.get(id) === topPoints)) : [];
+    const spoon =
+      participants.length >= 2 && lowPoints < topPoints
+        ? inOrder(participants.filter((id) => pts.get(id) === lowPoints))
+        : [];
+
+    awards.push({
+      key,
+      label: roundLabelOf(sample),
+      stage: sample.stage,
+      matchday: sample.matchday,
+      matches: matches.length,
+      participants: participants.length,
+      topPoints,
+      winners,
+      lowPoints,
+      spoon,
+      sort: roundOrderOf(sample),
+    });
+  }
+
+  awards.sort((a, b) => b.sort - a.sort);
+  return awards.map(({ sort: _sort, ...rest }) => rest);
+}
+
+export interface WcRivalSide {
+  predictorId: string;
+  name: string;
+  /** Points between you and them (always ≥ 0). */
+  gap: number;
+}
+
+export interface WcRivalry {
+  /** Your 1-based position in the standings. */
+  rank: number;
+  /** How many predictors are ranked. */
+  of: number;
+  /** Your current points. */
+  points: number;
+  /** The player one place above you — the gap to close. Null when you lead. */
+  ahead: WcRivalSide | null;
+  /** The player one place below you — the lead to defend. Null when you're last. */
+  behind: WcRivalSide | null;
+}
+
+/**
+ * Where one predictor sits relative to their nearest rivals: the player just
+ * above (the gap to chase down) and the one just below (the lead to protect) —
+ * the personal "what's at stake for me" read. Pure; pass `liveScores` to track
+ * the live "as it stands" table. Null when the predictor isn't on the board.
+ */
+export function rivalry(
+  state: WorldCupState,
+  predictorId: string,
+  opts?: { liveScores?: Record<string, { home: number; away: number }> },
+): WcRivalry | null {
+  const rows = leaderboard(state, opts);
+  const i = rows.findIndex((r) => r.predictorId === predictorId);
+  if (i === -1) return null;
+  const me = rows[i]!;
+  const above = i > 0 ? rows[i - 1]! : null;
+  const below = i < rows.length - 1 ? rows[i + 1]! : null;
+  return {
+    rank: i + 1,
+    of: rows.length,
+    points: me.points,
+    ahead: above
+      ? { predictorId: above.predictorId, name: above.name, gap: above.points - me.points }
+      : null,
+    behind: below
+      ? { predictorId: below.predictorId, name: below.name, gap: me.points - below.points }
+      : null,
+  };
+}
+
 // --- Nudges (who still needs to predict) -----------------------------------
 
 /** Ready, still-open matches a predictor hasn't picked yet, soonest first. */

@@ -1,14 +1,19 @@
 import {
   WC_TIMEZONE,
   defaultDay,
+  findTeam,
   lockingSoon,
   matchesOn,
   pendingForMe,
   playedCount,
+  scorePrediction,
   tournamentDays,
+  type WorldCupState,
 } from '@dap/shared';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Confetti } from '../../components/Confetti.js';
+import { useToast } from '../../components/Toast.js';
 import { isRealtimeBackend } from '../../lib/storage/index.js';
 import { useTitleAlert } from '../../lib/useTitleAlert.js';
 import { useWorldCupStore } from '../../state/worldCupStore.js';
@@ -102,6 +107,18 @@ export function WorldCupPage() {
   const lockingCount = wc && meId ? lockingSoon(wc, meId, new Date()).length : 0;
   useTitleAlert(lockingCount, 'World Cup 2026 Predictions');
 
+  // Celebrate the moment a match I called exactly lands — confetti + a toast.
+  const toast = useToast();
+  const [confettiKey, setConfettiKey] = useState(0);
+  const celebrate = useCallback(
+    (message: string) => {
+      setConfettiKey((k) => k + 1);
+      toast.show(message);
+    },
+    [toast],
+  );
+  useExactCelebration(wc, meId, celebrate);
+
   if (loading && !wc) {
     return (
       <div className="container container-narrow">
@@ -146,6 +163,7 @@ export function WorldCupPage() {
 
   return (
     <div className="container">
+      <Confetti fireKey={confettiKey} />
       <IdentityModal
         open={(!meId && !identityAsked) || identityOpen}
         onClose={() => {
@@ -282,6 +300,65 @@ export function WorldCupPage() {
       <BuildStamp />
     </div>
   );
+}
+
+/**
+ * Fire `onCelebrate` the instant a match the current player called *exactly*
+ * lands a result. Tracks which exacts we've already seen for this identity in a
+ * ref, so the first observation (and a reload) baselines silently — only a fresh
+ * spot-on result during the session pops the confetti. Re-baselines on identity
+ * change. A batch of new exacts in one update is celebrated once.
+ */
+function useExactCelebration(
+  wc: WorldCupState | null,
+  meId: string | null,
+  onCelebrate: (message: string) => void,
+) {
+  const seen = useRef<Set<string> | null>(null);
+  const lastMe = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!wc || !meId) {
+      seen.current = null;
+      lastMe.current = meId;
+      return;
+    }
+    // Switching who "I" am must not celebrate the new identity's past exacts.
+    if (lastMe.current !== meId) {
+      seen.current = null;
+      lastMe.current = meId;
+    }
+
+    const exacts: string[] = [];
+    for (const m of wc.matches) {
+      if (!m.result) continue;
+      const pred = wc.predictions.find((p) => p.matchId === m.id && p.predictorId === meId);
+      if (pred && scorePrediction(pred, m.result).category === 'exact') exacts.push(m.id);
+    }
+
+    if (seen.current === null) {
+      seen.current = new Set(exacts); // first look for this identity → baseline silently
+      return;
+    }
+
+    const fresh = exacts.filter((id) => !seen.current!.has(id));
+    for (const id of fresh) seen.current.add(id);
+    if (fresh.length === 1) {
+      const m = wc.matches.find((x) => x.id === fresh[0]);
+      onCelebrate(`🎯 Spot on! ${m ? matchScoreLabel(wc, m.id) : 'Exact score'} (+5)`);
+    } else if (fresh.length > 1) {
+      onCelebrate(`🎯 ${fresh.length} exact scores! +${fresh.length * 5}`);
+    }
+  }, [wc, meId, onCelebrate]);
+}
+
+/** "🇧🇷 BRA 2–1 ARG 🇦🇷" for a resolved match, for a celebration toast. */
+function matchScoreLabel(wc: WorldCupState, matchId: string): string {
+  const m = wc.matches.find((x) => x.id === matchId);
+  if (!m || !m.result) return 'Exact score';
+  const home = findTeam(wc, m.homeId);
+  const away = findTeam(wc, m.awayId);
+  return `${home?.id ?? '?'} ${m.result.home}–${m.result.away} ${away?.id ?? '?'}`;
 }
 
 /** Which commit is live — baked in at build time so a deploy is verifiable at a

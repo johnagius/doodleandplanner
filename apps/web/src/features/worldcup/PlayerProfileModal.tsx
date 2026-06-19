@@ -2,7 +2,7 @@ import {
   findTeam,
   marketValueM,
   playerCard,
-  playerEventStats,
+  tallyPlayerEvents,
   type WcPlayerCard,
   type WcPlayerPos,
   type WcSquadPlayer,
@@ -60,7 +60,7 @@ export function PlayerProfileModal({
   const matchEvents = useWorldCupStore((s) => s.matchEvents);
   const card = playerCard(player);
   const value = marketValueM(player.name);
-  const wcStats = playerEventStats(Object.values(matchEvents).flat(), player.name);
+  const wcStats = tallyPlayerEvents(Object.values(matchEvents).flat(), player.name);
   const hasWc = wcStats.goals + wcStats.assists + wcStats.yellow + wcStats.red > 0;
   const age = profile?.born ? ageFrom(profile.born) : null;
   const dash = (v: string | null | undefined) => v || (loading ? '…' : '—');
@@ -69,7 +69,7 @@ export function PlayerProfileModal({
     <Modal open onClose={onClose} title={player.name}>
       <div className="wc-pp stack">
         <div className="wc-pp-head">
-          <div className={`wc-pp-photo tier-${card.tier}`}>
+          <div className="wc-pp-photo">
             {photo ? <img src={photo} alt="" /> : <span aria-hidden>{team?.flag ?? '⚽'}</span>}
           </div>
           <div className="wc-pp-id">

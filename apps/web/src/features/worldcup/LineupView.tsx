@@ -16,6 +16,7 @@ import { Modal } from '../../components/Modal.js';
 import { useWorldCupStore } from '../../state/worldCupStore.js';
 import { useLineups } from './lineups.js';
 import { usePlayerPhoto } from './playerPhoto.js';
+import { usePlayerProfile } from './playerProfile.js';
 import { usePlayerValues } from './values.js';
 
 const POS_LABEL: Record<WcPitchRow, string> = {
@@ -31,6 +32,17 @@ const POS_LABEL: Record<WcPitchRow, string> = {
 function shortName(name: string): string {
   const parts = name.trim().split(/\s+/);
   return parts.length > 1 ? parts[parts.length - 1]! : name;
+}
+
+/** Whole-years age from a YYYY-MM-DD birth date, or null if unparseable. */
+function ageFrom(born: string): number | null {
+  const d = new Date(born);
+  if (Number.isNaN(d.getTime())) return null;
+  const now = new Date();
+  let age = now.getFullYear() - d.getFullYear();
+  const m = now.getMonth() - d.getMonth();
+  if (m < 0 || (m === 0 && now.getDate() < d.getDate())) age -= 1;
+  return age >= 0 && age < 60 ? age : null;
 }
 
 /** €M label, e.g. "€80M" or "€1.5M"; "…" while loading, "—" when unknown. */
@@ -94,8 +106,11 @@ function PlayerPanel({
   onClose: () => void;
 }) {
   const photo = usePlayerPhoto(placed.player.name);
+  const { profile, loading } = usePlayerProfile(placed.player.name);
   const matchEvents = useWorldCupStore((s) => s.matchEvents);
   const tally = tallyPlayerEvents(Object.values(matchEvents).flat(), placed.player.name);
+  const age = profile?.born ? ageFrom(profile.born) : null;
+  const dash = (v: string | null | undefined) => v || (loading ? '…' : '—');
   return (
     <Modal open onClose={onClose} title={placed.player.name}>
       <div className="stack wc-pp" style={{ gap: '0.85rem' }}>
@@ -111,6 +126,24 @@ function PlayerPanel({
             <span className="muted small">{team?.name ?? team?.id}</span>
           </div>
         </div>
+        <div className="wc-pp-facts">
+          <span>
+            <span className="muted small">Club</span>
+            <strong>{dash(profile?.club)}</strong>
+          </span>
+          <span>
+            <span className="muted small">Age</span>
+            <strong>{age != null ? age : dash(null)}</strong>
+          </span>
+          <span>
+            <span className="muted small">Height</span>
+            <strong>{dash(profile?.height)}</strong>
+          </span>
+          <span>
+            <span className="muted small">Nationality</span>
+            <strong>{dash(profile?.nationality ?? team?.name)}</strong>
+          </span>
+        </div>
         <div className="wc-stat-grid">
           <Stat label="Value" value={valueLabel(value)} />
           <Stat label="Rating" value={`${(placed.rating / 10).toFixed(1)}`} />
@@ -121,8 +154,16 @@ function PlayerPanel({
           <span className="badge">🟨 {tally.yellow}</span>
           <span className="badge">🟥 {tally.red}</span>
         </div>
+        {profile?.description && (
+          <p className="muted small wc-pp-bio">
+            {profile.description.length > 320
+              ? `${profile.description.slice(0, 319)}…`
+              : profile.description}
+          </p>
+        )}
         <p className="muted small" style={{ margin: 0, textAlign: 'center' }}>
-          Value &amp; rating from Transfermarkt · goals/assists/cards: this World Cup.
+          Club &amp; bio via TheSportsDB · value &amp; rating from Transfermarkt ·
+          goals/assists/cards: this World Cup.
         </p>
       </div>
     </Modal>

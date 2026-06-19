@@ -219,6 +219,24 @@ describe('rating + value', () => {
     });
   });
 
+  it('matches names accent- and initial+surname-insensitively', () => {
+    const ev = (kind: WcMatchEvent['kind'], player: string, assist?: string): WcMatchEvent => ({
+      minute: "1'",
+      kind,
+      teamTla: 'X',
+      player,
+      assist,
+    });
+    const events: WcMatchEvent[] = [
+      ev('goal', 'Lionel Messi'),
+      ev('pen-goal', 'L. Messi'), // first-initial + surname
+      ev('goal', 'Vinicius Junior', 'Lionel Messi'),
+    ];
+    expect(tallyPlayerEvents(events, 'Lionel Messi')).toMatchObject({ goals: 2, assists: 1 });
+    // The squad's accented spelling still matches the feed's plain text.
+    expect(tallyPlayerEvents(events, 'Vinícius Júnior').goals).toBe(1);
+  });
+
   it('sums the starting XI into a team value', () => {
     const l = lineup433();
     const total = teamValueM(l);

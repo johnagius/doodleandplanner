@@ -3436,34 +3436,8 @@ label.field {
   text-decoration: underline;
 }
 
-/* Player profile modal */
-.wc-pp-head {
-  display: flex;
-  align-items: center;
-  gap: 0.8rem;
-}
-.wc-pp-photo {
-  width: 72px;
-  height: 72px;
-  border-radius: 12px;
-  display: grid;
-  place-items: center;
-  overflow: hidden;
-  flex: 0 0 auto;
-  background: linear-gradient(160deg, #eef1f4, #cbd2da);
-  font-size: 2rem;
-}
-.wc-pp-photo.tier-gold {
-  background: linear-gradient(160deg, #fbe9a0, #d3a93b);
-}
-.wc-pp-photo.tier-bronze {
-  background: linear-gradient(160deg, #f0cda0, #b07a3c);
-}
-.wc-pp-photo img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
+/* Player profile modal — shares .wc-pp-head / .wc-pp-photo with the lineup
+   tap-through panel (defined once, further down). */
 .wc-pp-id {
   flex: 1;
   min-width: 0;

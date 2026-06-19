@@ -203,14 +203,32 @@ export interface WcPlayerTally {
 /** A player's World Cup goals / assists / cards, summed from the match events
  * (matched by name). Own goals don't count as goals. */
 export function tallyPlayerEvents(events: WcMatchEvent[], name: string): WcPlayerTally {
+  // Match the feed's display names best-effort: accent- and dot-insensitive,
+  // accepting an exact match or a "first-initial + surname" one ("L. Messi" ↔
+  // "Lionel Messi"), so squad names line up with the live feed's names.
+  const norm = (s: string) =>
+    s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\./g, '').toLowerCase().trim();
+  const target = norm(name);
+  const parts = target.split(/\s+/).filter(Boolean);
+  const surname = parts[parts.length - 1] ?? '';
+  const initial = parts[0]?.[0] ?? '';
+  const isPlayer = (p?: string): boolean => {
+    if (!p) return false;
+    const n = norm(p);
+    if (n === target) return true;
+    const np = n.split(/\s+/).filter(Boolean);
+    return (
+      surname.length > 2 && (np[np.length - 1] ?? '') === surname && (np[0]?.[0] ?? '') === initial
+    );
+  };
   const t: WcPlayerTally = { goals: 0, assists: 0, yellow: 0, red: 0 };
   for (const e of events) {
-    if (e.player === name) {
+    if (isPlayer(e.player)) {
       if (e.kind === 'goal' || e.kind === 'pen-goal') t.goals++;
       else if (e.kind === 'yellow') t.yellow++;
       else if (e.kind === 'red') t.red++;
     }
-    if (e.assist === name) t.assists++;
+    if (isPlayer(e.assist)) t.assists++;
   }
   return t;
 }

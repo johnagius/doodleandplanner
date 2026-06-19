@@ -39,6 +39,6 @@ test.describe('@smoke World Cup', () => {
 
     // Banter now lives in the hot zone: each fixture card has a comment thread.
     await page.getByRole('tab', { name: /Fixtures/ }).click();
-    await expect(page.getByRole('button', { name: /Comment/ }).first()).toBeVisible();
+    await expect(page.getByRole('button', { name: /Banter/ }).first()).toBeVisible();
   });
 });

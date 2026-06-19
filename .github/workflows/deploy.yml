@@ -11,10 +11,13 @@ permissions:
   pages: write
   id-token: write
 
-# Only one Pages deploy at a time; let a newer one supersede an in-flight build.
+# Only one Pages deploy at a time. Queue rather than cancel: GitHub's Pages
+# backend rejects a new deployment while one is still in progress (HTTP 400), so
+# letting in-flight deploys finish — and superseding only *pending* ones — avoids
+# collisions when several commits land in quick succession.
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build:

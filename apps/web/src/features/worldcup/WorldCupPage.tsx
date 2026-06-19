@@ -324,7 +324,7 @@ export function WorldCupPage() {
             className={`tab ${tab === t.id ? 'active' : ''}`}
             onClick={(e) => {
               setTab(t.id);
-              e.currentTarget.scrollIntoView({ inline: 'center', block: 'nearest' });
+              e.currentTarget.scrollIntoView?.({ inline: 'center', block: 'nearest' });
             }}
           >
             <span className="tab-label">

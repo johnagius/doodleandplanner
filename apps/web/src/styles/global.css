@@ -3513,6 +3513,11 @@ label.field {
   padding-top: 0.5rem;
 }
 .wc-comments-toggle {
+  display: flex;
+  align-items: baseline;
+  gap: 0.3rem;
+  width: 100%;
+  text-align: left;
   border: none;
   background: none;
   padding: 0.15rem 0;
@@ -3524,8 +3529,44 @@ label.field {
 .wc-comments-toggle:hover {
   color: var(--text);
 }
+.wc-comments-preview {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.wc-comments-preview strong {
+  font-weight: 800;
+}
 .wc-comments-body {
   margin-top: 0.5rem;
+}
+
+/* One-tap banter chips — canned, phase-aware lines that post with no typing. */
+.wc-banter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+.wc-banter-chip {
+  border: 1px solid var(--border);
+  background: transparent;
+  border-radius: 999px;
+  padding: 0.1rem 0.55rem;
+  font-size: 0.78rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    transform 120ms ease,
+    background 120ms ease;
+}
+.wc-banter-chip:hover {
+  background: rgba(127, 127, 127, 0.14);
+  transform: translateY(-1px);
+}
+.wc-banter-chip:active {
+  transform: scale(0.96);
 }
 
 /* Organiser result editor */

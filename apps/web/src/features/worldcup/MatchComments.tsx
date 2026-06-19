@@ -3,11 +3,14 @@ import { useState, type FormEvent } from 'react';
 import { useToast } from '../../components/Toast.js';
 import { useWorldCupStore } from '../../state/worldCupStore.js';
 import { Avatar } from './Avatar.js';
+import { banterChips, commentSnippet, emptyPrompt, type WcMatchPhase } from './wcBanter.js';
 
 /** A collapsible per-match comment thread — banter right in the hot zone, under
  * each match card. Reuses the pure chat helpers (and chat CSS), authored by the
- * selected predictor. Collapsed by default to keep the day list tidy. */
-export function MatchComments({ matchId }: { matchId: string }) {
+ * selected predictor. Collapsed by default but previews the latest comment (or a
+ * phase-aware prompt) so it's never a silent, empty box, and offers one-tap
+ * banter chips so joining in needs no typing. */
+export function MatchComments({ matchId, phase }: { matchId: string; phase: WcMatchPhase }) {
   const messages = useWorldCupStore((s) => s.state?.messages);
   const predictors = useWorldCupStore((s) => s.state?.worldCup?.predictors ?? []);
   const meId = useWorldCupStore((s) => s.meId);
@@ -18,15 +21,20 @@ export function MatchComments({ matchId }: { matchId: string }) {
 
   const thread = (messages ?? []).filter((m) => m.matchId === matchId);
   const predictorOf = (id: string) => predictors.find((p) => p.id === id) ?? null;
+  const last = thread[thread.length - 1];
 
-  async function submit(e: FormEvent) {
-    e.preventDefault();
-    const trimmed = text.trim();
+  async function post(body: string) {
+    const trimmed = body.trim();
     if (!trimmed || !meId) return;
     await postComment(matchId, trimmed);
     const err = useWorldCupStore.getState().error;
     if (err) show(err);
     else setText('');
+  }
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    await post(text);
   }
 
   return (
@@ -35,12 +43,18 @@ export function MatchComments({ matchId }: { matchId: string }) {
         type="button"
         className="wc-comments-toggle"
         aria-expanded={open}
+        aria-label={`Banter${thread.length ? `, ${thread.length} comment${thread.length === 1 ? '' : 's'}` : ''}`}
         onClick={() => setOpen((v) => !v)}
       >
         💬{' '}
-        {thread.length > 0
-          ? `${thread.length} comment${thread.length === 1 ? '' : 's'}`
-          : 'Comment'}
+        {last ? (
+          <span className="wc-comments-preview">
+            <strong>{predictorOf(last.authorId)?.name ?? 'Someone'}:</strong>{' '}
+            {commentSnippet(last.text)} · {thread.length}
+          </span>
+        ) : (
+          <span className="wc-comments-preview muted">{emptyPrompt(phase)}</span>
+        )}
       </button>
 
       {open && (
@@ -62,12 +76,26 @@ export function MatchComments({ matchId }: { matchId: string }) {
               ))}
             </div>
           )}
+          {meId && (
+            <div className="wc-banter-chips">
+              {banterChips(phase).map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  className="wc-banter-chip"
+                  onClick={() => void post(c)}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+          )}
           <form className="row" onSubmit={submit} style={{ gap: '0.4rem' }}>
             <input
               className="input"
               value={text}
               onChange={(e) => setText(e.target.value)}
-              placeholder={meId ? 'Talk some trash…' : 'Pick your name to chat'}
+              placeholder={meId ? 'Or type your own…' : 'Pick your name to chat'}
               aria-label="Match comment"
               maxLength={2000}
               disabled={!meId}

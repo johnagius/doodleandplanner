@@ -497,7 +497,7 @@ export function MatchCard({ matchId }: { matchId: string }) {
             }
           />
           <MatchReactions wc={wc} match={match} meId={meId} />
-          <MatchComments matchId={match.id} />
+          <MatchComments matchId={match.id} phase={result ? 'ft' : isLive ? 'live' : 'pre'} />
           {admin && <ResultEditor wc={wc} match={match} />}
           {admin && <AdminFixPick wc={wc} match={match} />}
         </>

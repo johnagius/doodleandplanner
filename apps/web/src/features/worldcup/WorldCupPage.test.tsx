@@ -652,7 +652,7 @@ describe('WorldCupPage', () => {
     await user.click(within(dialog).getByRole('button', { name: 'John' }));
 
     // The thread is collapsed by default — open it, then post.
-    await user.click(await screen.findByRole('button', { name: /Comment/ }));
+    await user.click(await screen.findByRole('button', { name: /Banter/ }));
     await user.type(screen.getByLabelText('Match comment'), 'Come on England!');
     await user.click(screen.getByRole('button', { name: 'Send' }));
 

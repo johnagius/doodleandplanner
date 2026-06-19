@@ -2632,6 +2632,164 @@ label.field {
   color: var(--primary-dark);
 }
 
+/* Implied win probability (from the betting line) */
+.wc-winprob {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.wc-winprob-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  font-weight: 700;
+  font-size: 0.8rem;
+}
+.wc-winprob-bar {
+  display: flex;
+  height: 12px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--surface-3);
+}
+.wc-winprob-seg.is-home {
+  background: var(--primary);
+}
+.wc-winprob-seg.is-draw {
+  background: var(--muted);
+}
+.wc-winprob-seg.is-away {
+  background: var(--accent);
+}
+.wc-winprob-legend {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+}
+
+/* Live match stats + standout performers (from ESPN's match summary) */
+.wc-matchdetail {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  border-top: 1px dashed var(--border);
+  padding-top: 0.55rem;
+}
+.wc-md-head,
+.wc-leaders-head {
+  text-align: center;
+  font-weight: 800;
+  font-size: 0.74rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.wc-mstats {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.wc-msrow {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.wc-mstop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.82rem;
+}
+.wc-msval {
+  font-weight: 700;
+  min-width: 2.6em;
+}
+.wc-mstop .wc-msval:last-child {
+  text-align: right;
+}
+.wc-mslabel {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+.wc-msbars {
+  display: flex;
+  gap: 4px;
+}
+.wc-msbar {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--surface-3);
+  overflow: hidden;
+  display: flex;
+}
+.wc-msbar.left {
+  justify-content: flex-end;
+}
+.wc-msbar i {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+}
+.wc-msbar.left i {
+  background: var(--primary);
+}
+.wc-msbar.right i {
+  background: var(--accent);
+}
+.wc-leaders-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+.wc-leaders-col {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.wc-leaders-col > li {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.8rem;
+  line-height: 1.2;
+}
+.wc-leaders-team {
+  font-weight: 800;
+  flex-direction: row !important;
+  gap: 0.3rem;
+}
+.wc-leader-cat {
+  font-size: 0.68rem;
+}
+.wc-leader-name {
+  font-weight: 600;
+}
+.wc-leader-name.is-link {
+  background: none;
+  border: 0;
+  padding: 0;
+  text-align: left;
+  color: var(--primary-dark);
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 2px;
+}
+.wc-leader-val {
+  color: var(--text-soft);
+}
+.wc-md-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.3rem 0.9rem;
+  margin: 0;
+  text-align: center;
+}
+
 /* Altitude & climate comparison */
 .wc-climate {
   display: flex;

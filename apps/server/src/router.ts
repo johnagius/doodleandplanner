@@ -17,6 +17,7 @@ export type ApiRoute =
   | { kind: 'wc-scores' }
   | { kind: 'wc-events' }
   | { kind: 'wc-lineups' }
+  | { kind: 'wc-match' }
   | { kind: 'wc-values' }
   | { kind: 'wc-h2h' }
   | { kind: 'get'; slug: string }
@@ -48,6 +49,9 @@ export function route(method: string, pathname: string): ApiRoute {
   }
   if (parts[1] === 'football' && parts[2] === 'lineups' && parts.length === 3) {
     return m === 'GET' ? { kind: 'wc-lineups' } : { kind: 'not-found' };
+  }
+  if (parts[1] === 'football' && parts[2] === 'match' && parts.length === 3) {
+    return m === 'GET' ? { kind: 'wc-match' } : { kind: 'not-found' };
   }
   if (parts[1] === 'football' && parts[2] === 'values' && parts.length === 3) {
     return m === 'GET' ? { kind: 'wc-values' } : { kind: 'not-found' };

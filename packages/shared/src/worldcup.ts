@@ -658,6 +658,49 @@ export interface WcMatchEvent {
   assist?: string;
 }
 
+/** One row of head-to-head team match statistics (e.g. possession, shots), with
+ * each side's value oriented to the board's home/away. `pct` marks values that
+ * are already percentages (so the UI shows each side's own %, not a share). */
+export interface WcMatchStatRow {
+  /** Stable key, e.g. 'possession' | 'shots' | 'onTarget'. */
+  key: string;
+  /** Human label, e.g. "Possession". */
+  label: string;
+  home: number | null;
+  away: number | null;
+  /** True when the value is a percentage (possession, pass accuracy). */
+  pct: boolean;
+}
+
+/** A standout performer in a match — the team's leader in some category. */
+export interface WcMatchLeader {
+  /** Canonical team code the player belongs to. */
+  teamTla: string;
+  /** Category label, e.g. "Total Shots" | "Saves". */
+  category: string;
+  /** Player display name (as the feed spells it). */
+  name: string;
+  /** Display value, e.g. "5" or "92%". */
+  value: string;
+}
+
+/** The per-match detail mined from ESPN's summary (the same call that gives us
+ * lineups): team match stats, standout performers, referee and venue. All
+ * oriented to the board's home/away codes. */
+export interface WcMatchSummary {
+  homeTla: string;
+  awayTla: string;
+  /** Side-by-side team stats (possession, shots, …); empty before kickoff. */
+  stats: WcMatchStatRow[];
+  /** Each team's standout performers (top of each category). */
+  leaders: WcMatchLeader[];
+  /** Match referee, when listed. */
+  referee: string | null;
+  venue: string | null;
+  /** Stadium city/country, e.g. "Seattle, Washington, USA". */
+  venueCity: string | null;
+}
+
 /** One historical meeting between two teams (from the results feed). */
 export interface WcH2HMeeting {
   /** ISO date of the meeting. */

@@ -2,10 +2,12 @@ import { describe, expect, it } from 'vitest';
 import {
   espnDateWindow,
   mergeLiveScores,
+  orientMatchSummary,
   parseEspnEventIds,
   parseEspnLineups,
   parseEspnMatchEvents,
   parseEspnScoreboard,
+  parseEspnSummary,
 } from '../src/espn.js';
 import type { WcLiveScore } from '@dap/shared';
 
@@ -427,6 +429,124 @@ describe('parseEspnLineups + parseEspnEventIds', () => {
       ],
     });
     expect(ids[['MEX', 'RSA'].sort().join('|')]).toBe('760415');
+  });
+});
+
+describe('parseEspnSummary + orientMatchSummary', () => {
+  const summary = {
+    boxscore: {
+      teams: [
+        {
+          homeAway: 'home',
+          team: { abbreviation: 'USA' },
+          statistics: [
+            { name: 'possessionPct', value: 74.6, displayValue: '74.6' },
+            { name: 'totalShots', value: 12, displayValue: '12' },
+            { name: 'shotsOnTarget', value: 5, displayValue: '5' },
+            { name: 'wonCorners', value: 7, displayValue: '7' },
+            { name: 'foulsCommitted', value: 9, displayValue: '9' },
+            { name: 'offsides', value: 2, displayValue: '2' },
+            { name: 'passPct', value: 88, displayValue: '88' },
+            { name: 'saves', value: 1, displayValue: '1' },
+            { name: 'totalTackles', value: 14, displayValue: '14' },
+          ],
+        },
+        {
+          homeAway: 'away',
+          team: { abbreviation: 'AUS' },
+          statistics: [
+            { name: 'possessionPct', displayValue: '25.4' }, // value missing → parse displayValue
+            { name: 'totalShots', value: 4 },
+            { name: 'shotsOnTarget', value: 1 },
+            { name: 'passPct', value: 71 },
+          ],
+        },
+      ],
+    },
+    leaders: [
+      {
+        team: { abbreviation: 'USA' },
+        leaders: [
+          {
+            displayName: 'Total Shots',
+            leaders: [
+              { displayValue: '4', athlete: { displayName: 'Sergiño Dest' } },
+              { displayValue: '2', athlete: { displayName: 'Someone Else' } }, // not the top → dropped
+            ],
+          },
+          {
+            displayName: 'Saves',
+            leaders: [{ value: 1, athlete: { displayName: 'Matt Turner' } }],
+          },
+        ],
+      },
+      {
+        team: { abbreviation: 'AUS' },
+        leaders: [
+          {
+            displayName: 'Total Shots',
+            leaders: [{ displayValue: '2', athlete: { displayName: 'Mat Ryan' } }],
+          },
+        ],
+      },
+    ],
+    gameInfo: {
+      officials: [
+        { fullName: 'Assistant One', position: { name: 'Assistant Referee 1' } },
+        { fullName: 'Felix Zwayer', displayName: 'Felix Zwayer', position: { name: 'Referee', id: '1' } }, // prettier-ignore
+      ],
+      venue: { fullName: 'Lumen Field', address: { city: 'Seattle, Washington', country: 'USA' } },
+    },
+  };
+
+  it('parses team stats, top performers, referee and venue', () => {
+    const p = parseEspnSummary(summary);
+    expect(p.teamStats.USA?.possessionPct).toBe(74.6);
+    expect(p.teamStats.AUS?.possessionPct).toBe(25.4); // from displayValue when value is missing
+    expect(p.referee).toBe('Felix Zwayer'); // picked by position, not list order
+    expect(p.venue).toBe('Lumen Field');
+    expect(p.venueCity).toBe('Seattle, Washington, USA');
+    // Only the top athlete per category, with the team code attached.
+    const usaShots = p.leaders.find((l) => l.teamTla === 'USA' && l.category === 'Total Shots');
+    expect(usaShots).toMatchObject({ name: 'Sergiño Dest', value: '4' });
+    expect(p.leaders.some((l) => l.name === 'Someone Else')).toBe(false);
+    expect(p.leaders.find((l) => l.category === 'Saves')).toMatchObject({ name: 'Matt Turner', value: '1' }); // prettier-ignore
+  });
+
+  it('orients stats to the board home/away, mirroring when flipped', () => {
+    const p = parseEspnSummary(summary);
+    const s = orientMatchSummary(p, 'USA', 'AUS');
+    expect(s.homeTla).toBe('USA');
+    expect(s.stats.find((r) => r.key === 'possession')).toMatchObject({ home: 74.6, away: 25.4, pct: true }); // prettier-ignore
+    expect(s.stats.find((r) => r.key === 'shots')).toMatchObject({ home: 12, away: 4, pct: false });
+    // USA has corners, AUS doesn't — the row still shows with a null for AUS.
+    expect(s.stats.find((r) => r.key === 'corners')).toMatchObject({ home: 7, away: null });
+    // Flipping the orientation swaps the two sides.
+    const flipped = orientMatchSummary(p, 'AUS', 'USA');
+    expect(flipped.stats.find((r) => r.key === 'shots')).toMatchObject({ home: 4, away: 12 });
+  });
+
+  it('drops a stat row that neither side reports', () => {
+    const p = parseEspnSummary({
+      boxscore: {
+        teams: [
+          { team: { abbreviation: 'USA' }, statistics: [{ name: 'totalShots', value: 3 }] },
+          { team: { abbreviation: 'AUS' }, statistics: [{ name: 'totalShots', value: 1 }] },
+        ],
+      },
+    });
+    const s = orientMatchSummary(p, 'USA', 'AUS');
+    expect(s.stats.map((r) => r.key)).toEqual(['shots']);
+    expect(s.leaders).toEqual([]);
+    expect(s.referee).toBeNull();
+    expect(s.venue).toBeNull();
+  });
+
+  it('is unfazed by an empty or junk payload', () => {
+    const p = parseEspnSummary({});
+    expect(p.teamStats).toEqual({});
+    expect(orientMatchSummary(p, 'USA', 'AUS').stats).toEqual([]);
+    expect(parseEspnSummary(null).leaders).toEqual([]);
   });
 });
 

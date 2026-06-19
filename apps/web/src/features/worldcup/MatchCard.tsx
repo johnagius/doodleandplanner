@@ -9,6 +9,7 @@ import {
   consensusScore,
   crownOdds,
   fifaRankOf,
+  findSquadPlayer,
   findTeam,
   liveRankFlips,
   liveSweat,
@@ -28,8 +29,12 @@ import {
   type WcGroupOutlookRow,
   type WcMatch,
   type WcMatchEvent,
+  type WcMatchLeader,
   type WcMatchOdds,
+  type WcMatchStatRow,
+  type WcMatchSummary,
   type WcScoreCategory,
+  type WcSquadPlayer,
   type WcTeam,
   type WorldCupState,
 } from '@dap/shared';
@@ -43,6 +48,8 @@ import { GifPicker } from './GifPicker.js';
 import { useHeadToHead, type H2HState } from './h2h.js';
 import { LineupView } from './LineupView.js';
 import { MatchComments } from './MatchComments.js';
+import { statBarPercents, useMatchSummary } from './matchSummary.js';
+import { PlayerProfileModal } from './PlayerProfileModal.js';
 import { ScenariosView } from './ScenariosView.js';
 import { ScoreStepper } from './ScoreStepper.js';
 import { useNow } from './useNow.js';
@@ -504,7 +511,7 @@ export function MatchCard({ matchId }: { matchId: string }) {
         </>
       )}
 
-      {view === 'stats' && <StatsView wc={wc} match={match} />}
+      {view === 'stats' && <StatsView wc={wc} match={match} live={live} />}
       {view === 'lineup' && <LineupView wc={wc} match={match} />}
       {view === 'scenarios' && showScenarios && (
         <ScenariosView wc={wc} match={match} live={live} meId={meId} />
@@ -690,15 +697,19 @@ function FormDots({ form }: { form: Array<'W' | 'D' | 'L'> }) {
   );
 }
 
-/** "Stats" view: the two teams' tournament form & record, side by side.
- * (Historical head-to-head is layered on in a later pass.) */
-function StatsView({ wc, match }: { wc: WorldCupState; match: WcMatch }) {
+/** "Stats" view: implied win probability, the live team match stats + standout
+ * performers (from ESPN once the game's underway), the two teams' tournament
+ * form & record, and the historical head-to-head. */
+function StatsView({ wc, match, live }: { wc: WorldCupState; match: WcMatch; live?: WcLiveInfo }) {
   const home = findTeam(wc, match.homeId);
   const away = findTeam(wc, match.awayId);
   const h2h = useHeadToHead(home?.id, away?.id);
+  const { summary } = useMatchSummary(home?.id, away?.id);
+  const [profilePlayer, setProfilePlayer] = useState<WcSquadPlayer | null>(null);
   if (!home || !away) {
     return <p className="muted small wc-tab-empty">Teams are decided once the bracket fills in.</p>;
   }
+  const odds = live?.odds ?? wc.odds?.[match.id] ?? null;
   const hr = teamRecord(wc, home.id);
   const ar = teamRecord(wc, away.id);
   const anyPlayed = (hr?.played ?? 0) + (ar?.played ?? 0) > 0;
@@ -731,6 +742,15 @@ function StatsView({ wc, match }: { wc: WorldCupState; match: WcMatch }) {
           {away.flag}
         </span>
       </div>
+      <WinProbBar odds={odds} home={home} away={away} />
+      <MatchDetail
+        summary={summary}
+        home={home}
+        away={away}
+        homeColor={live?.homeColor}
+        awayColor={live?.awayColor}
+        onPlayer={setProfilePlayer}
+      />
       {fav && (
         <div className="wc-fav">
           📈 <strong>{fav.team.name}</strong> favoured — {fav.gap} place{fav.gap === 1 ? '' : 's'}{' '}
@@ -788,6 +808,195 @@ function StatsView({ wc, match }: { wc: WorldCupState; match: WcMatch }) {
         </p>
       )}
       <H2HView state={h2h} home={home} away={away} />
+      {profilePlayer && (
+        <PlayerProfileModal player={profilePlayer} wc={wc} onClose={() => setProfilePlayer(null)} />
+      )}
+    </div>
+  );
+}
+
+/** Implied win / draw / win probabilities from the betting line (bookmaker's
+ * margin removed), so even a not-yet-kicked-off match has a read. Null when the
+ * feed carries no three-way odds. */
+function WinProbBar({
+  odds,
+  home,
+  away,
+}: {
+  odds: WcMatchOdds | null;
+  home: WcTeam;
+  away: WcTeam;
+}) {
+  const imp = impliedOutcome(odds);
+  if (!imp) return null;
+  const pct = (n: number) => Math.round(n * 100);
+  return (
+    <div className="wc-winprob">
+      <div className="wc-winprob-head">
+        <span>📈 Win probability</span>
+        <span className="muted small">implied by the odds</span>
+      </div>
+      <div className="wc-winprob-bar" aria-hidden>
+        <span className="wc-winprob-seg is-home" style={{ width: `${pct(imp.home)}%` }} />
+        <span className="wc-winprob-seg is-draw" style={{ width: `${pct(imp.draw)}%` }} />
+        <span className="wc-winprob-seg is-away" style={{ width: `${pct(imp.away)}%` }} />
+      </div>
+      <div className="wc-winprob-legend">
+        <span>
+          {home.flag} <strong>{pct(imp.home)}%</strong>
+        </span>
+        <span className="muted">Draw {pct(imp.draw)}%</span>
+        <span>
+          <strong>{pct(imp.away)}%</strong> {away.flag}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/** One dueling-bar row of a match stat. Count stats render as a share of the
+ * two totals; percentage stats (possession, pass accuracy) render each side's
+ * own value, so 85% vs 78% doesn't look like a near-even split. */
+function StatBar({
+  row,
+  homeColor,
+  awayColor,
+}: {
+  row: WcMatchStatRow;
+  homeColor?: string;
+  awayColor?: string;
+}) {
+  const { home: hPct, away: aPct } = statBarPercents(row);
+  const fmt = (v: number | null) => (v == null ? '—' : row.pct ? `${Math.round(v)}%` : `${v}`);
+  return (
+    <div className="wc-msrow">
+      <div className="wc-mstop">
+        <span className="wc-msval">{fmt(row.home)}</span>
+        <span className="wc-mslabel">{row.label}</span>
+        <span className="wc-msval">{fmt(row.away)}</span>
+      </div>
+      <div className="wc-msbars" aria-hidden>
+        <span className="wc-msbar left">
+          <i style={{ width: `${hPct}%`, ...(homeColor ? { background: homeColor } : {}) }} />
+        </span>
+        <span className="wc-msbar right">
+          <i style={{ width: `${aPct}%`, ...(awayColor ? { background: awayColor } : {}) }} />
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/** A standout-performer name — a button into the player profile when we carry
+ * the player, otherwise just text (the feed sometimes names squad fringe). */
+function LeaderName({
+  leader,
+  onPlayer,
+}: {
+  leader: WcMatchLeader;
+  onPlayer: (p: WcSquadPlayer) => void;
+}) {
+  const squad = findSquadPlayer(leader.name, leader.teamTla);
+  if (!squad) return <span className="wc-leader-name">{leader.name}</span>;
+  return (
+    <button type="button" className="wc-leader-name is-link" onClick={() => onPlayer(squad)}>
+      {leader.name}
+    </button>
+  );
+}
+
+/** Standout performers, grouped by team (top of each category ESPN tracks). */
+function StarPerformers({
+  leaders,
+  home,
+  away,
+  onPlayer,
+}: {
+  leaders: WcMatchLeader[];
+  home: WcTeam;
+  away: WcTeam;
+  onPlayer: (p: WcSquadPlayer) => void;
+}) {
+  if (leaders.length === 0) return null;
+  const side = (code: string) => leaders.filter((l) => l.teamTla === code).slice(0, 4);
+  const col = (team: WcTeam) => (
+    <ul className="wc-leaders-col">
+      <li className="wc-leaders-team">
+        <span aria-hidden>{team.flag}</span> {team.id}
+      </li>
+      {side(team.id).map((l, i) => (
+        <li key={`${l.category}-${i}`}>
+          <span className="wc-leader-cat muted small">{l.category}</span>
+          <LeaderName leader={l} onPlayer={onPlayer} />
+          <span className="wc-leader-val">{l.value}</span>
+        </li>
+      ))}
+    </ul>
+  );
+  return (
+    <div className="wc-leaders">
+      <div className="wc-leaders-head">⭐ Standout performers</div>
+      <div className="wc-leaders-cols">
+        {col(home)}
+        {col(away)}
+      </div>
+    </div>
+  );
+}
+
+/** The live match detail mined from ESPN's summary: team stats, standout
+ * performers and the referee. Renders nothing until the game's underway. */
+function MatchDetail({
+  summary,
+  home,
+  away,
+  homeColor,
+  awayColor,
+  onPlayer,
+}: {
+  summary: WcMatchSummary | null;
+  home: WcTeam;
+  away: WcTeam;
+  homeColor?: string | null;
+  awayColor?: string | null;
+  onPlayer: (p: WcSquadPlayer) => void;
+}) {
+  if (!summary) return null;
+  const hasStats = summary.stats.length > 0;
+  const hasLeaders = summary.leaders.length > 0;
+  if (!hasStats && !hasLeaders && !summary.referee && !summary.venue) return null;
+  return (
+    <div className="wc-matchdetail">
+      {hasStats && (
+        <>
+          <div className="wc-md-head">📊 Match stats</div>
+          <div className="wc-mstats">
+            {summary.stats.map((row) => (
+              <StatBar
+                key={row.key}
+                row={row}
+                homeColor={homeColor ?? undefined}
+                awayColor={awayColor ?? undefined}
+              />
+            ))}
+          </div>
+        </>
+      )}
+      {hasLeaders && (
+        <StarPerformers leaders={summary.leaders} home={home} away={away} onPlayer={onPlayer} />
+      )}{' '}
+      {/* prettier-ignore */}
+      {(summary.referee || summary.venue) && (
+        <p className="muted small wc-md-meta">
+          {summary.referee && <span title="Match referee">🧑‍⚖️ {summary.referee}</span>}
+          {summary.venue && (
+            <span title="Venue">
+              📍 {summary.venue}
+              {summary.venueCity ? ` · ${summary.venueCity}` : ''}
+            </span>
+          )}
+        </p>
+      )}
     </div>
   );
 }

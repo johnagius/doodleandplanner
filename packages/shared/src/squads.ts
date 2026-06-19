@@ -1273,3 +1273,32 @@ export const WC_SQUADS: readonly WcSquadPlayer[] = RAW.map(([id, name, pos, nat]
   pos,
   nat,
 }));
+
+/** Accent-, dot- and case-insensitive name key (NFD strip combining marks). */
+function normName(s: string): string {
+  return s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\./g, '').toLowerCase().trim();
+}
+
+/**
+ * Resolve a feed display name (optionally scoped to a nation code) to one of our
+ * squad players, so a live "star performer" or scorer can open the same profile
+ * card. Matches exactly or as "first-initial + surname" ("S. Dest" ↔ "Sergiño
+ * Dest"), accent-insensitively. Returns null when we don't carry the player.
+ */
+export function findSquadPlayer(name: string, nat?: string): WcSquadPlayer | null {
+  const pool = nat ? WC_SQUADS.filter((p) => p.nat === nat) : WC_SQUADS;
+  const target = normName(name);
+  if (!target) return null;
+  const exact = pool.find((p) => normName(p.name) === target);
+  if (exact) return exact;
+  const parts = target.split(/\s+/).filter(Boolean);
+  const surname = parts[parts.length - 1] ?? '';
+  const initial = parts[0]?.[0] ?? '';
+  if (surname.length <= 2) return null;
+  return (
+    pool.find((p) => {
+      const np = normName(p.name).split(/\s+/).filter(Boolean);
+      return (np[np.length - 1] ?? '') === surname && (np[0]?.[0] ?? '') === initial;
+    }) ?? null
+  );
+}

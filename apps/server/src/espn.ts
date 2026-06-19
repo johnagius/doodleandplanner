@@ -7,7 +7,15 @@
  * Everything here is pure and serialisable so it unit-tests against a captured
  * scoreboard payload. The Worker does the fetching; this just parses + merges.
  */
-import type { WcLineupPlayer, WcLiveScore, WcMatchEvent, WcMatchOdds } from '@dap/shared';
+import type {
+  WcLineupPlayer,
+  WcLiveScore,
+  WcMatchEvent,
+  WcMatchLeader,
+  WcMatchOdds,
+  WcMatchStatRow,
+  WcMatchSummary,
+} from '@dap/shared';
 
 /**
  * ESPN national-team abbreviations are FIFA-style and line up with our team ids
@@ -326,6 +334,145 @@ export function parseEspnLineups(raw: unknown): Record<string, WcLineupPlayer[]>
     if (players.length) out[code] = players;
   }
   return out;
+}
+
+interface EspnStatEntry {
+  name?: string;
+  value?: number;
+  displayValue?: string;
+}
+interface EspnBoxscoreTeam {
+  homeAway?: string;
+  team?: { abbreviation?: string };
+  statistics?: EspnStatEntry[];
+}
+interface EspnLeaderAthlete {
+  displayValue?: string;
+  value?: number;
+  athlete?: { displayName?: string };
+}
+interface EspnLeaderCategory {
+  name?: string;
+  displayName?: string;
+  leaders?: EspnLeaderAthlete[];
+}
+interface EspnLeaderTeam {
+  team?: { abbreviation?: string };
+  leaders?: EspnLeaderCategory[];
+}
+interface EspnOfficial {
+  fullName?: string;
+  displayName?: string;
+  position?: { name?: string; id?: string };
+}
+interface EspnSummary {
+  boxscore?: { teams?: EspnBoxscoreTeam[] };
+  leaders?: EspnLeaderTeam[];
+  gameInfo?: {
+    officials?: EspnOfficial[];
+    venue?: { fullName?: string; address?: { city?: string; country?: string } };
+  };
+}
+
+/** The curated team stats we surface, in display order, mapped to ESPN's stat
+ * `name`s. `pct` rows are already percentages (shown as each side's own %). */
+const SUMMARY_STAT_ROWS: { key: string; label: string; espn: string; pct?: boolean }[] = [
+  { key: 'possession', label: 'Possession', espn: 'possessionPct', pct: true },
+  { key: 'shots', label: 'Shots', espn: 'totalShots' },
+  { key: 'onTarget', label: 'Shots on target', espn: 'shotsOnTarget' },
+  { key: 'corners', label: 'Corners', espn: 'wonCorners' },
+  { key: 'fouls', label: 'Fouls', espn: 'foulsCommitted' },
+  { key: 'offsides', label: 'Offsides', espn: 'offsides' },
+  { key: 'passAcc', label: 'Pass accuracy', espn: 'passPct', pct: true },
+  { key: 'saves', label: 'Saves', espn: 'saves' },
+  { key: 'tackles', label: 'Tackles', espn: 'totalTackles' },
+];
+
+const numOrNull = (v: unknown): number | null => {
+  if (typeof v === 'number' && Number.isFinite(v)) return v;
+  const n = parseFloat(String(v ?? '').replace(/[^0-9.-]/g, ''));
+  return Number.isFinite(n) ? n : null;
+};
+
+/** Everything we mine from one ESPN match summary besides the lineups: team
+ * stats by code, standout performers, referee and venue. Orientation to the
+ * board's home/away is applied later by {@link orientMatchSummary}. */
+export interface EspnSummaryParsed {
+  /** ESPN stat name → value, keyed by team code. */
+  teamStats: Record<string, Record<string, number | null>>;
+  leaders: WcMatchLeader[];
+  referee: string | null;
+  venue: string | null;
+  venueCity: string | null;
+}
+
+/** Parse the non-lineup detail out of an ESPN match summary payload. */
+export function parseEspnSummary(raw: unknown): EspnSummaryParsed {
+  const s = (raw ?? {}) as EspnSummary;
+
+  const teamStats: Record<string, Record<string, number | null>> = {};
+  for (const t of s.boxscore?.teams ?? []) {
+    const code = t.team?.abbreviation ? alias(t.team.abbreviation) : null;
+    if (!code) continue;
+    const stats: Record<string, number | null> = {};
+    for (const st of t.statistics ?? []) {
+      if (st.name) stats[st.name] = numOrNull(st.value ?? st.displayValue);
+    }
+    teamStats[code] = stats;
+  }
+
+  const leaders: WcMatchLeader[] = [];
+  for (const lt of s.leaders ?? []) {
+    const code = lt.team?.abbreviation ? alias(lt.team.abbreviation) : null;
+    if (!code) continue;
+    for (const cat of lt.leaders ?? []) {
+      const top = cat.leaders?.[0];
+      const name = top?.athlete?.displayName;
+      if (!name) continue;
+      const value = top.displayValue ?? (top.value != null ? String(top.value) : '');
+      leaders.push({ teamTla: code, category: cat.displayName ?? cat.name ?? '', name, value });
+    }
+  }
+
+  const officials = s.gameInfo?.officials ?? [];
+  const ref =
+    officials.find((o) => (o.position?.name ?? '').toLowerCase() === 'referee') ?? officials[0];
+  const venue = s.gameInfo?.venue?.fullName ?? null;
+  const city = s.gameInfo?.venue?.address?.city;
+  const country = s.gameInfo?.venue?.address?.country;
+
+  return {
+    teamStats,
+    leaders,
+    referee: ref?.fullName ?? ref?.displayName ?? null,
+    venue,
+    venueCity: [city, country].filter(Boolean).join(', ') || null,
+  };
+}
+
+/** Orient a parsed summary to the board's home/away codes: build the side-by-side
+ * stat rows (dropping rows neither side has) and keep the rest. */
+export function orientMatchSummary(
+  parsed: EspnSummaryParsed,
+  homeTla: string,
+  awayTla: string,
+): WcMatchSummary {
+  const rows: WcMatchStatRow[] = [];
+  for (const r of SUMMARY_STAT_ROWS) {
+    const home = parsed.teamStats[homeTla]?.[r.espn] ?? null;
+    const away = parsed.teamStats[awayTla]?.[r.espn] ?? null;
+    if (home == null && away == null) continue;
+    rows.push({ key: r.key, label: r.label, home, away, pct: !!r.pct });
+  }
+  return {
+    homeTla,
+    awayTla,
+    stats: rows,
+    leaders: parsed.leaders,
+    referee: parsed.referee,
+    venue: parsed.venue,
+    venueCity: parsed.venueCity,
+  };
 }
 
 /**

@@ -5,10 +5,13 @@
 import {
   espnDateWindow,
   mergeLiveScores,
+  orientMatchSummary,
   parseEspnEventIds,
   parseEspnLineups,
   parseEspnMatchEvents,
   parseEspnScoreboard,
+  parseEspnSummary,
+  type EspnSummaryParsed,
 } from './espn.js';
 import { findWcMatch, mapHeadToHead, mapWorldCupScores } from './football.js';
 import { parseTmValueM } from './transfermarkt.js';
@@ -38,8 +41,13 @@ const EVENTS_TTL_MS = 60_000;
 // starting XIs per event id. Lineups are static once posted, so cache for a while.
 let idsCache: { at: number; ids: Record<string, string> } | null = null;
 const IDS_TTL_MS = 5 * 60_000;
-const lineupCache = new Map<string, { at: number; byCode: Record<string, WcLineupPlayer[]> }>();
-const LINEUP_TTL_MS = 5 * 60_000;
+// One ESPN summary call per event feeds BOTH the lineups and the match-detail
+// (team stats / leaders / referee), so we parse + cache it once per event id.
+const summaryCache = new Map<
+  string,
+  { at: number; byCode: Record<string, WcLineupPlayer[]>; parsed: EspnSummaryParsed }
+>();
+const SUMMARY_TTL_MS = 5 * 60_000;
 // Real market values via the community transfermarkt-api (transfermarkt.com
 // blocks bots). Cached hard per name — values barely move and the source is a
 // hobby host we don't want to hammer.
@@ -223,36 +231,60 @@ async function ensureEventIds(): Promise<Record<string, string>> {
   }
 }
 
+const isoStamp = (at: number | undefined): string | null =>
+  at ? new Date(at).toISOString() : null;
+
+/** Fetch + parse one match's ESPN summary (lineups + stats/leaders/referee),
+ * cached per event id so lineups and match-detail share the single upstream
+ * call. Returns null when the event is unknown or the fetch keeps failing. */
+async function ensureSummary(home: string, away: string) {
+  const eventId = (await ensureEventIds())[[home, away].sort().join('|')];
+  if (!eventId) return null;
+  let entry = summaryCache.get(eventId);
+  if (!entry || Date.now() - entry.at >= SUMMARY_TTL_MS) {
+    try {
+      const res = await fetch(`${ESPN_SUMMARY}?event=${eventId}`, { headers: ESPN_UA });
+      if (res.ok) {
+        const raw = await res.json();
+        entry = { at: Date.now(), byCode: parseEspnLineups(raw), parsed: parseEspnSummary(raw) };
+        summaryCache.set(eventId, entry);
+      }
+    } catch {
+      /* keep any stale entry */
+    }
+  }
+  return entry ?? null;
+}
+
 /** Starting XIs for a match (~1h before kickoff), from ESPN's per-match summary. */
 async function worldCupLineups(
   home: string,
   away: string,
   cors: Record<string, string>,
 ): Promise<Response> {
-  const stamp = (at: number | undefined) => (at ? new Date(at).toISOString() : null);
   if (!home || !away) {
     return json({ home: null, away: null, fetchedAt: null, error: 'bad-request' }, { status: 400 }, cors); // prettier-ignore
   }
-  const eventId = (await ensureEventIds())[[home, away].sort().join('|')];
-  if (!eventId) {
-    return json({ home: null, away: null, fetchedAt: null, error: 'not-found' }, {}, cors);
-  }
-  let entry = lineupCache.get(eventId);
-  if (!entry || Date.now() - entry.at >= LINEUP_TTL_MS) {
-    try {
-      const res = await fetch(`${ESPN_SUMMARY}?event=${eventId}`, { headers: ESPN_UA });
-      if (res.ok) {
-        entry = { at: Date.now(), byCode: parseEspnLineups(await res.json()) };
-        lineupCache.set(eventId, entry);
-      }
-    } catch {
-      /* keep any stale entry */
-    }
-  }
+  const entry = await ensureSummary(home, away);
   const byCode = entry?.byCode ?? {};
   const lineup = (code: string): WcLineup | null =>
     byCode[code]?.length ? { teamTla: code, players: byCode[code]! } : null;
-  return json({ home: lineup(home), away: lineup(away), fetchedAt: stamp(entry?.at) }, {}, cors);
+  return json({ home: lineup(home), away: lineup(away), fetchedAt: isoStamp(entry?.at) }, {}, cors);
+}
+
+/** Per-match detail (team stats, standout performers, referee, venue) mined from
+ * the same ESPN summary as the lineups. Empty stats before kickoff. */
+async function worldCupMatch(
+  home: string,
+  away: string,
+  cors: Record<string, string>,
+): Promise<Response> {
+  if (!home || !away) {
+    return json({ summary: null, fetchedAt: null, error: 'bad-request' }, { status: 400 }, cors);
+  }
+  const entry = await ensureSummary(home, away);
+  const summary = entry ? orientMatchSummary(entry.parsed, home, away) : null;
+  return json({ summary, fetchedAt: isoStamp(entry?.at) }, {}, cors);
 }
 
 /** One player's Transfermarkt value (€M), cached; null when unresolved. A real
@@ -312,6 +344,13 @@ export default {
     if (r.kind === 'wc-events') return worldCupEvents(cors);
     if (r.kind === 'wc-lineups') {
       return worldCupLineups(
+        url.searchParams.get('home') ?? '',
+        url.searchParams.get('away') ?? '',
+        cors,
+      );
+    }
+    if (r.kind === 'wc-match') {
+      return worldCupMatch(
         url.searchParams.get('home') ?? '',
         url.searchParams.get('away') ?? '',
         cors,

@@ -117,7 +117,8 @@ export function MatchComments({ matchId, phase }: { matchId: string; phase: WcMa
         ) : last ? (
           <span className="wc-comments-preview">
             <strong>{predictorOf(last.authorId)?.name ?? 'Someone'}:</strong>{' '}
-            {last.gifUrl && !last.text ? '🎞 GIF' : commentSnippet(last.text)} · {thread.length}
+            {last.gifUrl ? <PreviewGif url={last.gifUrl} /> : commentSnippet(last.text)} ·{' '}
+            {thread.length}
           </span>
         ) : (
           <span className="wc-comments-preview muted">{emptyPrompt(phase)}</span>
@@ -228,6 +229,22 @@ export function MatchComments({ matchId, phase }: { matchId: string; phase: WcMa
         </div>
       )}
     </div>
+  );
+}
+
+/** A tiny inline GIF thumbnail for the collapsed bar, so people can see at a
+ * glance that banter has GIFs. Falls back to a text label if it won't load. */
+function PreviewGif({ url }: { url: string }) {
+  const [ok, setOk] = useState(true);
+  if (!ok) return <>🎞 GIF</>;
+  return (
+    <img
+      className="wc-comments-preview-gif"
+      src={url}
+      alt="GIF"
+      loading="lazy"
+      onError={() => setOk(false)}
+    />
   );
 }
 

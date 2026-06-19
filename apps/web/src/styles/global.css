@@ -3539,6 +3539,14 @@ label.field {
 .wc-comments-preview strong {
   font-weight: 800;
 }
+.wc-comments-preview-gif {
+  height: 1.5em;
+  width: auto;
+  max-width: 56px;
+  vertical-align: middle;
+  border-radius: 4px;
+  object-fit: cover;
+}
 .wc-comments-body {
   margin-top: 0.5rem;
 }

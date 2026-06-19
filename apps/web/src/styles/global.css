@@ -3568,6 +3568,10 @@ label.field {
 .wc-banter-chip:active {
   transform: scale(0.96);
 }
+.wc-typing {
+  font-style: italic;
+  opacity: 0.85;
+}
 
 /* Organiser result editor */
 .wc-result-editor {

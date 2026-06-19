@@ -1,9 +1,58 @@
 import { REACTION_EMOJI, type Message } from '@dap/shared';
-import { useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { useToast } from '../../components/Toast.js';
+import { getRepository } from '../../lib/storage/index.js';
 import { useWorldCupStore } from '../../state/worldCupStore.js';
 import { Avatar } from './Avatar.js';
 import { banterChips, commentSnippet, emptyPrompt, type WcMatchPhase } from './wcBanter.js';
+import { WORLD_CUP_SLUG } from './worldCupRoom.js';
+import { isTyping, typingLabel, typingPing } from './wcTyping.js';
+
+const TYPING_TTL_MS = 4000;
+const TYPING_PING_THROTTLE_MS = 1500;
+
+/** Ephemeral "is typing…" presence for one match's thread: returns who's typing
+ * (excluding me) and a throttled notifier to call as I type. */
+function useTyping(matchId: string, meName: string | null) {
+  const [typers, setTypers] = useState<string[]>([]);
+  const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+  const lastPing = useRef(0);
+
+  useEffect(() => {
+    const repo = getRepository();
+    if (!repo.subscribePresence) return;
+    const unsub = repo.subscribePresence(WORLD_CUP_SLUG, (payload) => {
+      if (!isTyping(payload) || payload.matchId !== matchId) return;
+      if (payload.name === meName) return; // never show my own
+      const name = payload.name;
+      setTypers((cur) => (cur.includes(name) ? cur : [...cur, name]));
+      clearTimeout(timers.current.get(name));
+      timers.current.set(
+        name,
+        setTimeout(() => {
+          timers.current.delete(name);
+          setTypers((cur) => cur.filter((n) => n !== name));
+        }, TYPING_TTL_MS),
+      );
+    });
+    const pending = timers.current;
+    return () => {
+      unsub?.();
+      pending.forEach((t) => clearTimeout(t));
+      pending.clear();
+    };
+  }, [matchId, meName]);
+
+  const notifyTyping = useCallback(() => {
+    if (!meName) return;
+    const now = Date.now();
+    if (now - lastPing.current < TYPING_PING_THROTTLE_MS) return;
+    lastPing.current = now;
+    getRepository().publishPresence?.(WORLD_CUP_SLUG, typingPing(matchId, meName, now));
+  }, [matchId, meName]);
+
+  return { typers, notifyTyping };
+}
 
 /** A collapsible per-match comment thread — banter right in the hot zone, under
  * each match card. Reuses the pure chat helpers (and chat CSS), authored by the
@@ -22,6 +71,8 @@ export function MatchComments({ matchId, phase }: { matchId: string; phase: WcMa
   const thread = (messages ?? []).filter((m) => m.matchId === matchId);
   const predictorOf = (id: string) => predictors.find((p) => p.id === id) ?? null;
   const last = thread[thread.length - 1];
+  const meName = (meId && predictorOf(meId)?.name) || null;
+  const { typers, notifyTyping } = useTyping(matchId, meName);
 
   async function post(body: string) {
     const trimmed = body.trim();
@@ -47,7 +98,9 @@ export function MatchComments({ matchId, phase }: { matchId: string; phase: WcMa
         onClick={() => setOpen((v) => !v)}
       >
         💬{' '}
-        {last ? (
+        {typers.length > 0 ? (
+          <span className="wc-comments-preview wc-typing">✍️ {typingLabel(typers)}</span>
+        ) : last ? (
           <span className="wc-comments-preview">
             <strong>{predictorOf(last.authorId)?.name ?? 'Someone'}:</strong>{' '}
             {commentSnippet(last.text)} · {thread.length}
@@ -90,11 +143,17 @@ export function MatchComments({ matchId, phase }: { matchId: string; phase: WcMa
               ))}
             </div>
           )}
+          {typers.length > 0 && (
+            <div className="wc-typing small muted">✍️ {typingLabel(typers)}</div>
+          )}
           <form className="row" onSubmit={submit} style={{ gap: '0.4rem' }}>
             <input
               className="input"
               value={text}
-              onChange={(e) => setText(e.target.value)}
+              onChange={(e) => {
+                setText(e.target.value);
+                notifyTyping();
+              }}
               placeholder={meId ? 'Or type your own…' : 'Pick your name to chat'}
               aria-label="Match comment"
               maxLength={2000}

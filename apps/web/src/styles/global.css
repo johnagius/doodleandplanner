@@ -705,6 +705,54 @@ label.field {
   border: 1px solid var(--border);
   border-radius: 999px;
 }
+/* World Cup section tabs: a sticky, single-row, swipeable strip (sticks just
+   under the global topbar via an inline `top`). */
+.wc-tabs {
+  position: sticky;
+  z-index: 10;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.wc-tabs::-webkit-scrollbar {
+  display: none;
+}
+.wc-tabs .tab {
+  flex: 0 0 auto;
+}
+.wc-tab-live {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-left: 5px;
+  border-radius: 50%;
+  background: #ef4444;
+  vertical-align: middle;
+  animation: wc-tab-live-pulse 1.4s ease-in-out infinite;
+}
+@keyframes wc-tab-live-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.55);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(239, 68, 68, 0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wc-tab-live {
+    animation: none;
+  }
+}
+.wc-live-jump {
+  background: #ef4444;
+  color: #fff;
+  border: none;
+}
+.wc-live-jump:hover {
+  background: #dc2626;
+}
 .tab {
   appearance: none;
   border: none;

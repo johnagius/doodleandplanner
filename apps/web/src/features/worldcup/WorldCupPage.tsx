@@ -74,10 +74,22 @@ export function WorldCupPage() {
   const offline = useWorldCupStore((s) => s.offline);
   const admin = useWorldCupStore((s) => s.admin);
   const meId = useWorldCupStore((s) => s.meId);
+  const live = useWorldCupStore((s) => s.live);
   const [tab, setTab] = useState<Tab>('fixtures');
   const [identityAsked, setIdentityAsked] = useState(false);
   const [identityOpen, setIdentityOpen] = useState(false);
   const [verifyId, setVerifyId] = useState<string | null>(null);
+  // Stick the section tabs just under the (sticky) global topbar.
+  const [topbarH, setTopbarH] = useState(0);
+  useEffect(() => {
+    const el = document.querySelector('.topbar');
+    if (!el) return;
+    const measure = () => setTopbarH(Math.round(el.getBoundingClientRect().height));
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   // Attach the current name's verified session token to every room save.
   useEffect(() => {
@@ -174,6 +186,12 @@ export function WorldCupPage() {
 
   const played = playedCount(wc);
   const total = wc.matches.length;
+  const liveCount = wc.matches.filter(
+    (m) =>
+      !m.result &&
+      live[m.id] &&
+      (live[m.id]!.status === 'IN_PLAY' || live[m.id]!.status === 'PAUSED'),
+  ).length;
 
   // How many matches I still need to pick (nudge chip).
   const pendingCount = meId ? pendingForMe(wc, meId, new Date()).length : 0;
@@ -293,10 +311,10 @@ export function WorldCupPage() {
       <ScoringLegend />
 
       <nav
-        className="tabs"
+        className="tabs wc-tabs"
         role="tablist"
         aria-label="World Cup sections"
-        style={{ marginTop: '1rem' }}
+        style={{ marginTop: '1rem', top: topbarH }}
       >
         {TABS.map((t) => (
           <button
@@ -304,10 +322,16 @@ export function WorldCupPage() {
             role="tab"
             aria-selected={tab === t.id}
             className={`tab ${tab === t.id ? 'active' : ''}`}
-            onClick={() => setTab(t.id)}
+            onClick={(e) => {
+              setTab(t.id);
+              e.currentTarget.scrollIntoView({ inline: 'center', block: 'nearest' });
+            }}
           >
             <span className="tab-label">
               <span aria-hidden>{t.icon}</span> {t.label}
+              {t.id === 'fixtures' && liveCount > 0 && (
+                <span className="wc-tab-live" aria-label={`${liveCount} live now`} />
+              )}
             </span>
           </button>
         ))}
@@ -538,7 +562,14 @@ function BuildStamp() {
 
 function FixturesView() {
   const wc = useWorldCupStore((s) => s.state?.worldCup)!;
+  const live = useWorldCupStore((s) => s.live);
   const days = useMemo(() => tournamentDays(wc), [wc]);
+  const liveMatch = wc.matches.find(
+    (m) =>
+      !m.result &&
+      live[m.id] &&
+      (live[m.id]!.status === 'IN_PLAY' || live[m.id]!.status === 'PAUSED'),
+  );
   // Land on the soonest day with an unplayed match the first time in. The match
   // calendar never changes, so initialising once is enough.
   const [day, setDay] = useState<string>(() => defaultDay(wc, new Date()));
@@ -577,6 +608,14 @@ function FixturesView() {
       </div>
 
       <div className="row row-wrap" style={{ gap: '0.4rem', justifyContent: 'center' }}>
+        {liveMatch && (
+          <button
+            className="btn btn-sm wc-live-jump"
+            onClick={() => jumpToDay(matchDateKey(liveMatch))}
+          >
+            🔴 Jump to live
+          </button>
+        )}
         <button className="btn btn-sm btn-ghost" onClick={() => setDay(defaultDay(wc, new Date()))}>
           Jump to next matches
         </button>

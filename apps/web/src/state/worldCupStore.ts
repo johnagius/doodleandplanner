@@ -10,6 +10,7 @@ import {
   createMessage,
   deleteMessage,
   generateId,
+  recordArcadeScore,
   removePredictor,
   renamePredictor,
   setCardBadge,
@@ -23,6 +24,7 @@ import {
   togglePickReaction,
   toggleReaction,
   type RoomState,
+  type WcArcadeGame,
   type WcMatchEvent,
   type WcMatchOdds,
   type WorldCupState,
@@ -153,6 +155,10 @@ interface WorldCupStore {
   /** Pick (or change) the team you think wins the tournament. */
   pickChampion: (teamId: string) => Promise<void>;
   clearChampion: () => Promise<void>;
+
+  /** Record an arcade run's score as your new best (kept off the prediction
+   * points). No-op without an identity or if it doesn't beat your best. */
+  submitArcadeScore: (game: WcArcadeGame, score: number) => Promise<void>;
 }
 
 /** Apply a pure update to the embedded WorldCupState. */
@@ -500,6 +506,12 @@ export const useWorldCupStore = create<WorldCupStore>((set, get) => {
     async clearChampion() {
       const me = requireMe();
       await apply((s) => withWorldCup(s, (wc) => clearChampionPick(wc, me)));
+    },
+
+    async submitArcadeScore(game, score) {
+      const me = get().meId;
+      if (!me) return; // play freely, but best scores only save once you've a name
+      await apply((s) => withWorldCup(s, (wc) => recordArcadeScore(wc, game, me, score)));
     },
   };
 });

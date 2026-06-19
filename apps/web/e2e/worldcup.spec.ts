@@ -41,4 +41,21 @@ test.describe('@smoke World Cup', () => {
     await page.getByRole('tab', { name: /Fixtures/ }).click();
     await expect(page.getByRole('button', { name: /Banter/ }).first()).toBeVisible();
   });
+
+  test('@smoke arcade tab launches a playable mini-game', async ({ page }) => {
+    await page.goto('/world-cup');
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await page.keyboard.press('Escape');
+
+    await page.getByRole('tab', { name: /Arcade/ }).click();
+    await expect(page.getByRole('heading', { name: /Arcade/ })).toBeVisible();
+
+    // Launch the basketball game → canvas mounts and the Aim→Shoot flow works.
+    await page.getByRole('button', { name: /Free Throws/ }).click();
+    await expect(page.getByRole('img', { name: /basketball mini-game/ })).toBeVisible();
+    const action = page.getByRole('button', { name: /Aim/ });
+    await expect(action).toBeVisible();
+    await action.click();
+    await expect(page.getByRole('button', { name: /Shoot/ })).toBeVisible();
+  });
 });

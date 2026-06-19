@@ -135,6 +135,9 @@ export interface WorldCupState {
   /** Emoji reactions on a won player-card: "<matchId>|<predictorId>" → emoji →
    * reactor ids. Older boards omit this. */
   cardReactions?: Record<string, Record<string, string[]>>;
+  /** Arcade high scores (a self-contained side-show, not prediction points):
+   * game key → predictorId → best score. Older boards omit this. */
+  arcade?: Record<string, Record<string, number>>;
   createdAt: ISODateTime;
 }
 

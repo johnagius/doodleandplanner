@@ -102,6 +102,9 @@ export interface WcPredictor {
   claimed?: boolean;
   /** Profile-picture photo id (bytes stored in the repository's photo store). */
   avatarPhotoId?: string;
+  /** A won player-card the predictor shows off as a badge — just the squad
+   * player's id. Rendered by their name; only shows while they still hold it. */
+  cardBadge?: number;
 }
 
 /** The complete, serialisable World Cup state. */
@@ -379,6 +382,21 @@ export function setPredictorAvatar(
   return {
     ...state,
     predictors: state.predictors.map((p) => (p.id === predictorId ? { ...p, avatarPhotoId } : p)),
+  };
+}
+
+/** Set (or clear, with `undefined`) the won player-card a predictor shows off as
+ * their badge — stored as the squad player's id; ownership is checked at render. */
+export function setCardBadge(
+  state: WorldCupState,
+  predictorId: string,
+  playerId: number | undefined,
+): WorldCupState {
+  return {
+    ...state,
+    predictors: state.predictors.map((p) =>
+      p.id === predictorId ? { ...p, cardBadge: playerId } : p,
+    ),
   };
 }
 

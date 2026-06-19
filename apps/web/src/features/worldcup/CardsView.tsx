@@ -1,4 +1,5 @@
 import {
+  cardBadgeFor,
   cardLeaderboard,
   cardsWonBy,
   findTeam,
@@ -16,8 +17,10 @@ const MEDALS = ['🥇', '🥈', '🥉'];
  * player, collect them, and climb the "most cards" table. */
 export function CardsView({ wc }: { wc: WorldCupState }) {
   const meId = useWorldCupStore((s) => s.meId);
+  const setCardBadge = useWorldCupStore((s) => s.setCardBadge);
   const lb = cardLeaderboard(wc);
   const myCards = meId ? cardsWonBy(wc, meId) : [];
+  const myBadge = meId ? cardBadgeFor(wc, meId) : null;
   const anyCards = lb.some((r) => r.cards > 0);
 
   return (
@@ -64,11 +67,24 @@ export function CardsView({ wc }: { wc: WorldCupState }) {
       ) : (
         <div className="wc-card-grid">
           {myCards
-            .map((w) => ({ key: w.matchId, card: playerCard(w.player) }))
+            .map((w) => ({ w, card: playerCard(w.player) }))
             .sort((a, b) => b.card.overall - a.card.overall)
-            .map(({ key, card }) => (
-              <PlayerCardView key={key} card={card} wc={wc} />
-            ))}
+            .map(({ w, card }) => {
+              const isBadge = myBadge?.player.id === w.player.id;
+              return (
+                <div key={w.matchId} className="wc-card-cell">
+                  <PlayerCardView card={card} wc={wc} />
+                  <button
+                    type="button"
+                    className={`btn btn-sm wc-badge-toggle ${isBadge ? 'is-active' : ''}`}
+                    onClick={() => void setCardBadge(isBadge ? null : w.player.id)}
+                    aria-pressed={isBadge}
+                  >
+                    {isBadge ? '★ Your badge' : '☆ Set as badge'}
+                  </button>
+                </div>
+              );
+            })}
         </div>
       )}
       <p className="muted small" style={{ textAlign: 'center' }}>
@@ -121,5 +137,20 @@ export function PlayerCardView({ card, wc }: { card: WcPlayerCard; wc: WorldCupS
         ))}
       </div>
     </div>
+  );
+}
+
+/** A compact "flex" chip for a chosen player-card — shown by a predictor's name
+ * on the leaderboard. Tier-coloured, with the overall rating + nation flag. */
+export function CardBadge({ card, wc }: { card: WcPlayerCard; wc: WorldCupState }) {
+  const team = findTeam(wc, card.player.nat);
+  return (
+    <span
+      className={`wc-badge-chip tier-${card.tier}`}
+      title={`${card.player.name} · ${card.overall} ${card.player.pos}`}
+    >
+      <span className="wc-badge-chip-ovr">{card.overall}</span>
+      <span aria-hidden>{team?.flag ?? '⚽'}</span>
+    </span>
   );
 }

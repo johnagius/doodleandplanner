@@ -1,13 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import {
   allCardAwards,
+  cardBadgeFor,
   cardDraw,
   cardLeaderboard,
   cardsWonBy,
   playerCard,
 } from '../src/playerCards.js';
 import { WC_SQUADS } from '../src/squads.js';
-import { seedWorldCup, setPrediction, setResult, type WorldCupState } from '../src/worldcup.js';
+import {
+  seedWorldCup,
+  setCardBadge,
+  setPrediction,
+  setResult,
+  type WorldCupState,
+} from '../src/worldcup.js';
 
 const NOW = () => new Date('2026-06-01T00:00:00Z');
 type P = WorldCupState['predictors'][number];
@@ -94,6 +101,21 @@ describe('cardsWonBy + cardLeaderboard', () => {
     const awards = allCardAwards(s).filter((a) => a.matchId === 'g-A-1');
     expect(awards).toHaveLength(s.predictors.length); // a card each, not just one
     expect(new Set(awards.map((a) => a.player.id)).size).toBe(s.predictors.length); // all distinct
+  });
+
+  it('badges the chosen owned card, and ignores an unset or unowned pick', () => {
+    let s = seedWorldCup(NOW);
+    const john = s.predictors[0]!;
+    s = setPrediction(s, { matchId: 'g-A-1', predictorId: john.id, home: 2, away: 0, now: NOW });
+    s = setResult(s, { matchId: 'g-A-1', home: 2, away: 0 });
+    const playerId = cardsWonBy(s, john.id)[0]!.player.id;
+
+    expect(cardBadgeFor(s, john.id)).toBeNull(); // none set yet
+    s = setCardBadge(s, john.id, playerId);
+    expect(cardBadgeFor(s, john.id)?.player.id).toBe(playerId);
+    // A player they don't hold (e.g. a stale badge) must not render.
+    s = setCardBadge(s, john.id, -1);
+    expect(cardBadgeFor(s, john.id)).toBeNull();
   });
 
   it('never repeats a player across the whole game, even with everyone tying every match', () => {

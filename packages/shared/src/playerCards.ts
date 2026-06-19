@@ -119,6 +119,17 @@ export function cardsWonBy(state: WorldCupState, predictorId: string): WcWonCard
     .map((a) => ({ matchId: a.matchId, player: a.player }));
 }
 
+/**
+ * The won card a predictor is showing off as their badge, or null if they've set
+ * none — or no longer hold it (e.g. the organiser cleared that match's result),
+ * so a stale pick simply stops rendering rather than showing a phantom card.
+ */
+export function cardBadgeFor(state: WorldCupState, predictorId: string): WcWonCard | null {
+  const predictor = state.predictors.find((p) => p.id === predictorId);
+  if (!predictor || predictor.cardBadge == null) return null;
+  return cardsWonBy(state, predictorId).find((c) => c.player.id === predictor.cardBadge) ?? null;
+}
+
 export interface WcCardLeaderRow {
   predictorId: string;
   name: string;

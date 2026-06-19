@@ -1,5 +1,6 @@
 import {
   badgesFor,
+  cardBadgeFor,
   dayChampion,
   findMatch,
   findPredictor,
@@ -8,6 +9,7 @@ import {
   headToHead,
   leaderboardWithMovement,
   playedCount,
+  playerCard,
   playerForm,
   playerStats,
   rivalry,
@@ -21,6 +23,7 @@ import { Modal } from '../../components/Modal.js';
 import { useToast } from '../../components/Toast.js';
 import { useWorldCupStore } from '../../state/worldCupStore.js';
 import { Avatar } from './Avatar.js';
+import { CardBadge } from './CardsView.js';
 import { renderWcShareCard, shareWcCard } from './shareCard.js';
 import { formatDayLong } from './wcFormat.js';
 
@@ -172,6 +175,7 @@ export function Leaderboard({ wc }: { wc: WorldCupState }) {
       <ol className="wc-leaderboard">
         {rows.map((r, i) => {
           const badges = badgesFor(wc, r.predictorId);
+          const cardBadge = cardBadgeFor(wc, r.predictorId);
           return (
             <li key={r.predictorId}>
               <button
@@ -188,6 +192,7 @@ export function Leaderboard({ wc }: { wc: WorldCupState }) {
                 <span className="wc-leader-name">
                   <Avatar predictor={findPredictor(wc, r.predictorId)} size={32} />
                   {r.name}
+                  {cardBadge && <CardBadge card={playerCard(cardBadge.player)} wc={wc} />}
                   {badges.map((b) => (
                     <span key={b.id} className="wc-badge" title={b.label} aria-label={b.label}>
                       {b.emoji}

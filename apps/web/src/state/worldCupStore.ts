@@ -12,6 +12,7 @@ import {
   generateId,
   removePredictor,
   renamePredictor,
+  setCardBadge,
   setChampionPick,
   setPrediction,
   setPredictorAvatar,
@@ -127,6 +128,8 @@ interface WorldCupStore {
   removeName: (id: string) => Promise<void>;
   /** Upload an image as the current predictor's profile picture. */
   setAvatar: (file: Blob) => Promise<void>;
+  /** Show off a won player-card as your badge (or `null` to clear it). */
+  setCardBadge: (playerId: number | null) => Promise<void>;
 
   // Per-match comments — stored in RoomState.messages (tagged with matchId),
   // authored by the predictor.
@@ -415,6 +418,11 @@ export const useWorldCupStore = create<WorldCupStore>((set, get) => {
       const photoId = generateId('photo');
       await repo().uploadPhoto(WORLD_CUP_SLUG, photoId, blob);
       await apply((s) => withWorldCup(s, (wc) => setPredictorAvatar(wc, me, photoId)));
+    },
+
+    async setCardBadge(playerId) {
+      const me = requireMe();
+      await apply((s) => withWorldCup(s, (wc) => setCardBadge(wc, me, playerId ?? undefined)));
     },
 
     async postComment(matchId, text) {

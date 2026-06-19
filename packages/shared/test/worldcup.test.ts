@@ -58,6 +58,7 @@ import {
   scenarioBoard,
   scorePrediction,
   seedWorldCup,
+  setCardBadge,
   setPrediction,
   setResult,
   slotLabel,
@@ -947,6 +948,19 @@ describe('matchOfTheDay', () => {
   it('returns null when nothing is upcoming', () => {
     const s = stateOf([mk('past', 'BRA', 'MAR', '2026-06-09T00:00:00Z', 0)]);
     expect(matchOfTheDay(s, new Date('2026-06-10T00:00:00Z'))).toBeNull();
+  });
+});
+
+describe('setCardBadge', () => {
+  it('sets and clears a predictor’s badge without touching others', () => {
+    let s = seed();
+    const a = s.predictors[0]!;
+    const b = s.predictors[1]!;
+    s = setCardBadge(s, a.id, 12345);
+    expect(s.predictors.find((p) => p.id === a.id)!.cardBadge).toBe(12345);
+    expect(s.predictors.find((p) => p.id === b.id)!.cardBadge).toBeUndefined();
+    s = setCardBadge(s, a.id, undefined);
+    expect(s.predictors.find((p) => p.id === a.id)!.cardBadge).toBeUndefined();
   });
 });
 

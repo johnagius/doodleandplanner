@@ -3263,6 +3263,47 @@ label.field {
     transform: translateX(130%);
   }
 }
+
+/* "Set as badge" toggle under each of your cards + the compact flex chip the
+   chosen card shows as on the leaderboard. */
+.wc-card-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.wc-badge-toggle {
+  width: 100%;
+}
+.wc-badge-toggle.is-active {
+  background: rgba(245, 179, 1, 0.18);
+  border-color: rgba(245, 179, 1, 0.6);
+  font-weight: 700;
+}
+.wc-badge-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.02rem 0.32rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #2a2208;
+  vertical-align: middle;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+.wc-badge-chip.tier-gold {
+  background: linear-gradient(160deg, #fbe9a0, #d3a93b);
+}
+.wc-badge-chip.tier-silver {
+  background: linear-gradient(160deg, #eef1f4, #aab2bd);
+}
+.wc-badge-chip.tier-bronze {
+  background: linear-gradient(160deg, #f0cda0, #b07a3c);
+  color: #3a240c;
+}
+.wc-badge-chip-ovr {
+  font-weight: 900;
+}
 .wc-fifa-card {
   position: relative;
   border-radius: 14px;

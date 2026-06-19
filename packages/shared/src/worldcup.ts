@@ -129,6 +129,9 @@ export interface WorldCupState {
    * live feed so the fake-money betting game settles deterministically. Older
    * boards omit this. */
   odds?: Record<string, WcMatchOdds>;
+  /** Emoji reactions on a won player-card: "<matchId>|<predictorId>" → emoji →
+   * reactor ids. Older boards omit this. */
+  cardReactions?: Record<string, Record<string, string[]>>;
   createdAt: ISODateTime;
 }
 
@@ -2108,6 +2111,46 @@ export function toggleMatchReaction(
   if (Object.keys(forMatch).length) all[matchId] = forMatch;
   else delete all[matchId];
   return { ...state, matchReactions: all };
+}
+
+/** Emoji palette for reacting to a mate's won player-card. */
+export const WC_CARD_REACTIONS = ['🔥', '🐐', '😮', '👏'] as const;
+
+const cardReactionKey = (matchId: string, predictorId: string): string =>
+  `${matchId}|${predictorId}`;
+
+/** Toggle a reaction on a won player-card (keyed by the award's match + winner).
+ * Immutable; mirrors {@link toggleMatchReaction}. */
+export function toggleCardReaction(
+  state: WorldCupState,
+  matchId: string,
+  predictorId: string,
+  emoji: string,
+  reactorId: string,
+): WorldCupState {
+  const key = cardReactionKey(matchId, predictorId);
+  const all = { ...(state.cardReactions ?? {}) };
+  const forCard = { ...(all[key] ?? {}) };
+  const reactors = forCard[emoji] ?? [];
+  if (reactors.includes(reactorId)) {
+    const next = reactors.filter((id) => id !== reactorId);
+    if (next.length) forCard[emoji] = next;
+    else delete forCard[emoji];
+  } else {
+    forCard[emoji] = [...reactors, reactorId];
+  }
+  if (Object.keys(forCard).length) all[key] = forCard;
+  else delete all[key];
+  return { ...state, cardReactions: all };
+}
+
+/** Reactions on a won card: emoji → reactor ids (empty object when none). */
+export function cardReactionsFor(
+  state: WorldCupState,
+  matchId: string,
+  predictorId: string,
+): Record<string, string[]> {
+  return state.cardReactions?.[cardReactionKey(matchId, predictorId)] ?? {};
 }
 
 /** Toggle a reaction on a specific (revealed) prediction. Immutable; a no-op

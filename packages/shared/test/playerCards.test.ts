@@ -6,6 +6,7 @@ import {
   cardLeaderboard,
   cardsWonBy,
   playerCard,
+  recentCardAwards,
 } from '../src/playerCards.js';
 import { WC_SQUADS } from '../src/squads.js';
 import {
@@ -116,6 +117,27 @@ describe('cardsWonBy + cardLeaderboard', () => {
     // A player they don't hold (e.g. a stale badge) must not render.
     s = setCardBadge(s, john.id, -1);
     expect(cardBadgeFor(s, john.id)).toBeNull();
+  });
+
+  it('lists recent pulls newest-first, capped at the limit', () => {
+    let s = seedWorldCup(NOW);
+    const john = s.predictors[0]!;
+    const groupMatches = s.matches.filter((x) => x.stage === 'group').slice(0, 5);
+    for (const m of groupMatches) {
+      s = setPrediction(s, { matchId: m.id, predictorId: john.id, home: 2, away: 0, now: NOW });
+      s = setResult(s, { matchId: m.id, home: 2, away: 0 });
+    }
+    const all = allCardAwards(s);
+    expect(all).toHaveLength(5);
+    const recent = recentCardAwards(s, 3);
+    expect(recent).toHaveLength(3);
+    // Newest-first: the reverse tail of the match-ordered award list.
+    expect(recent.map((a) => a.matchId)).toEqual(
+      all
+        .slice(-3)
+        .reverse()
+        .map((a) => a.matchId),
+    );
   });
 
   it('never repeats a player across the whole game, even with everyone tying every match', () => {

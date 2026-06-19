@@ -1,9 +1,13 @@
 import {
+  WC_CARD_REACTIONS,
   cardBadgeFor,
   cardLeaderboard,
+  cardReactionsFor,
   cardsWonBy,
+  findPredictor,
   findTeam,
   playerCard,
+  recentCardAwards,
   type WcPlayerCard,
   type WorldCupState,
 } from '@dap/shared';
@@ -52,6 +56,8 @@ export function CardsView({ wc }: { wc: WorldCupState }) {
           </p>
         )}
       </div>
+
+      <LatestPulls wc={wc} />
 
       <h3 style={{ margin: '0.25rem 0 0' }}>
         {meId ? `Your cards (${myCards.length})` : 'Your cards'}
@@ -136,6 +142,67 @@ export function PlayerCardView({ card, wc }: { card: WcPlayerCard; wc: WorldCupS
           </span>
         ))}
       </div>
+    </div>
+  );
+}
+
+/** A live feed of everyone's most recent card pulls, newest first — the social
+ * home for reacting to what your mates landed. */
+function LatestPulls({ wc }: { wc: WorldCupState }) {
+  const meId = useWorldCupStore((s) => s.meId);
+  const reactCard = useWorldCupStore((s) => s.reactCard);
+  const awards = recentCardAwards(wc, 10);
+  if (awards.length === 0) return null;
+  return (
+    <div className="card stack">
+      <div className="row spread">
+        <h3 style={{ margin: 0 }}>✨ Latest pulls</h3>
+        <span className="muted small">React to what your mates pulled</span>
+      </div>
+      <ul className="wc-pulls">
+        {awards.map((a) => {
+          const card = playerCard(a.player);
+          const team = findTeam(wc, a.player.nat);
+          const reactions = cardReactionsFor(wc, a.matchId, a.predictorId);
+          return (
+            <li key={`${a.matchId}|${a.predictorId}`} className="wc-pull">
+              <span className={`wc-badge-chip tier-${card.tier}`}>
+                <span className="wc-badge-chip-ovr">{card.overall}</span>
+                <span aria-hidden>{team?.flag ?? '⚽'}</span>
+              </span>
+              <span className="wc-pull-who">
+                <strong>{a.player.name}</strong>
+                <span className="muted small">
+                  {' '}
+                  → {findPredictor(wc, a.predictorId)?.name ?? '?'}
+                </span>
+              </span>
+              <span className="wc-pull-react">
+                {WC_CARD_REACTIONS.map((e) => {
+                  const ids = reactions[e] ?? [];
+                  const mine = !!meId && ids.includes(meId);
+                  return (
+                    <button
+                      key={e}
+                      type="button"
+                      className={`wc-react-btn ${mine ? 'is-mine' : ''}`}
+                      onClick={() => {
+                        if (meId) void reactCard(a.matchId, a.predictorId, e);
+                      }}
+                      disabled={!meId}
+                      aria-pressed={mine}
+                      aria-label={`React ${e}`}
+                    >
+                      {e}
+                      {ids.length > 0 && <span className="wc-react-n"> {ids.length}</span>}
+                    </button>
+                  );
+                })}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 }

@@ -112,6 +112,12 @@ export function allCardAwards(state: WorldCupState): WcCardAward[] {
   return out;
 }
 
+/** The most recently won cards across everyone, newest first (for a live feed). */
+export function recentCardAwards(state: WorldCupState, limit = 10): WcCardAward[] {
+  const all = allCardAwards(state);
+  return all.slice(Math.max(0, all.length - limit)).reverse();
+}
+
 /** A predictor's collection — their share of {@link allCardAwards}. */
 export function cardsWonBy(state: WorldCupState, predictorId: string): WcWonCard[] {
   return allCardAwards(state)

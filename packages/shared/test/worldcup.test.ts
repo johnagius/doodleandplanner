@@ -37,6 +37,8 @@ import {
   teamRecord,
   toggleMatchReaction,
   togglePickReaction,
+  toggleCardReaction,
+  cardReactionsFor,
   defaultDay,
   findMatch,
   groupComplete,
@@ -948,6 +950,23 @@ describe('matchOfTheDay', () => {
   it('returns null when nothing is upcoming', () => {
     const s = stateOf([mk('past', 'BRA', 'MAR', '2026-06-09T00:00:00Z', 0)]);
     expect(matchOfTheDay(s, new Date('2026-06-10T00:00:00Z'))).toBeNull();
+  });
+});
+
+describe('toggleCardReaction', () => {
+  it('adds then removes a reactor, keyed by match + winner, cleaning up', () => {
+    let s = seed();
+    expect(cardReactionsFor(s, 'g-A-1', 'p1')).toEqual({});
+    s = toggleCardReaction(s, 'g-A-1', 'p1', '🔥', 'r1');
+    s = toggleCardReaction(s, 'g-A-1', 'p1', '🔥', 'r2');
+    expect(cardReactionsFor(s, 'g-A-1', 'p1')['🔥']).toEqual(['r1', 'r2']);
+    // A different winner's card is independent.
+    expect(cardReactionsFor(s, 'g-A-1', 'p2')).toEqual({});
+    // Toggling the same reactor off empties the emoji, then the whole card key.
+    s = toggleCardReaction(s, 'g-A-1', 'p1', '🔥', 'r1');
+    s = toggleCardReaction(s, 'g-A-1', 'p1', '🔥', 'r2');
+    expect(cardReactionsFor(s, 'g-A-1', 'p1')).toEqual({});
+    expect(s.cardReactions).toEqual({});
   });
 });
 

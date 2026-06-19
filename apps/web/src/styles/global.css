@@ -3304,6 +3304,57 @@ label.field {
 .wc-badge-chip-ovr {
   font-weight: 900;
 }
+
+/* "Latest pulls" feed — everyone's most recent cards, with quick reactions. */
+.wc-pulls {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.wc-pull {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.wc-pull-who {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wc-pull-react {
+  display: flex;
+  gap: 0.2rem;
+  flex-shrink: 0;
+}
+.wc-react-btn {
+  border: 1px solid var(--border);
+  background: transparent;
+  border-radius: 999px;
+  padding: 0.05rem 0.4rem;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  cursor: pointer;
+}
+.wc-react-btn:hover:not(:disabled) {
+  background: rgba(127, 127, 127, 0.14);
+}
+.wc-react-btn.is-mine {
+  background: rgba(245, 179, 1, 0.2);
+  border-color: rgba(245, 179, 1, 0.55);
+}
+.wc-react-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.wc-react-n {
+  font-weight: 700;
+  font-size: 0.75rem;
+}
 .wc-fifa-card {
   position: relative;
   border-radius: 14px;

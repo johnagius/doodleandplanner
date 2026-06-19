@@ -14,7 +14,7 @@
  */
 import { generateId } from './ids.js';
 import { toMs } from './time.js';
-import type { ISODateTime } from './types.js';
+import type { ISODateTime, Message } from './types.js';
 
 /** Tournament stages, ordered from earliest to latest. */
 export type WcStage = 'group' | 'r32' | 'r16' | 'qf' | 'sf' | 'third' | 'final';
@@ -1398,6 +1398,55 @@ export interface WcAchievement {
   have: number;
   need: number;
   earned: boolean;
+}
+
+/**
+ * Banter trophies, derived from a room's chat messages — which live alongside
+ * the World Cup state, not inside it, so the messages are passed in. Same shape
+ * as {@link achievements} so they sit in the one Trophy Cabinet. Pure; no
+ * scoring impact.
+ */
+export function banterAchievements(
+  messages: Message[] | undefined,
+  predictorId: string,
+): WcAchievement[] {
+  const mine = (messages ?? []).filter((m) => m.authorId === predictorId);
+  const comments = mine.length;
+  const gifs = mine.filter((m) => !!m.gifUrl).length;
+  const topReactions = mine.reduce((best, m) => {
+    const n = Object.values(m.reactions ?? {}).reduce((sum, ids) => sum + ids.length, 0);
+    return Math.max(best, n);
+  }, 0);
+  const defs: Array<Omit<WcAchievement, 'earned'>> = [
+    {
+      id: 'chatterbox',
+      emoji: '🗣️',
+      label: 'Chatterbox',
+      desc: 'Post 15 comments',
+      tier: 'silver',
+      have: comments,
+      need: 15,
+    },
+    {
+      id: 'comedian',
+      emoji: '🤡',
+      label: 'Comedian',
+      desc: 'Land 3 reactions on one comment',
+      tier: 'gold',
+      have: topReactions,
+      need: 3,
+    },
+    {
+      id: 'gif-lord',
+      emoji: '🎞️',
+      label: 'GIF Lord',
+      desc: 'Post 8 GIFs',
+      tier: 'silver',
+      have: gifs,
+      need: 8,
+    },
+  ];
+  return defs.map((d) => ({ ...d, earned: d.have >= d.need }));
 }
 
 /** Longest run of consecutive *resolved* picks the predictor got the result

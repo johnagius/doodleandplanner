@@ -2,6 +2,7 @@ import {
   WC_SCORE_LABEL,
   WC_STAGE_LABEL,
   achievements,
+  banterAchievements,
   colorForIndex,
   findMatch,
   findTeam,
@@ -61,6 +62,7 @@ function Move({ n }: { n: number }) {
  * they topped a day, and their performance broken down by day and by accuracy. */
 export function PerformanceView({ wc }: { wc: WorldCupState }) {
   const meId = useWorldCupStore((s) => s.meId);
+  const messages = useWorldCupStore((s) => s.state?.messages);
   const colorById = useMemo(
     () => new Map(wc.predictors.map((p, i) => [p.id, colorForIndex(i)])),
     [wc.predictors],
@@ -77,7 +79,10 @@ export function PerformanceView({ wc }: { wc: WorldCupState }) {
   const log = useMemo(() => playerGameLog(wc, selectedId), [wc, selectedId]);
   const stats = useMemo(() => playerStats(wc, selectedId), [wc, selectedId]);
   const breakdown = useMemo(() => playerBreakdown(wc, selectedId), [wc, selectedId]);
-  const trophies = useMemo(() => achievements(wc, selectedId), [wc, selectedId]);
+  const trophies = useMemo(
+    () => [...achievements(wc, selectedId), ...banterAchievements(messages, selectedId)],
+    [wc, selectedId, messages],
+  );
   const trophiesEarned = trophies.filter((a) => a.earned).length;
   const tlPlayer = t.players.find((p) => p.predictorId === selectedId) ?? null;
   const color = colorById.get(selectedId) ?? 'var(--primary)';

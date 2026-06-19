@@ -16,6 +16,7 @@ import {
   clearPrediction,
   clearResult,
   closestPredictors,
+  banterAchievements,
   banterPrompt,
   closestToScore,
   consensusScore,
@@ -74,6 +75,7 @@ import {
   type WcMatch,
   type WorldCupState,
 } from '../src/worldcup.js';
+import type { Message } from '../src/types.js';
 
 const NOW = () => new Date('2026-06-01T00:00:00Z');
 
@@ -968,6 +970,38 @@ describe('toggleCardReaction', () => {
     s = toggleCardReaction(s, 'g-A-1', 'p1', '🔥', 'r2');
     expect(cardReactionsFor(s, 'g-A-1', 'p1')).toEqual({});
     expect(s.cardReactions).toEqual({});
+  });
+});
+
+describe('banterAchievements', () => {
+  const msg = (authorId: string, extra: Partial<Message> = {}): Message => ({
+    id: `m${Math.random()}`,
+    roomId: 'r',
+    authorId,
+    text: 'hi',
+    createdAt: '2026-06-01T00:00:00.000Z',
+    ...extra,
+  });
+
+  it('tracks comments, GIFs and the best-reacted comment for the right person', () => {
+    const messages: Message[] = [
+      msg('me', { reactions: { '🔥': ['a', 'b', 'c'] } }), // 3 reactions → Comedian earned
+      msg('me', { text: '', gifUrl: 'https://media.giphy.com/media/x/giphy.gif' }),
+      msg('me'),
+      msg('other', { gifUrl: 'https://media.giphy.com/media/y/giphy.gif' }), // not mine
+    ];
+    const a = banterAchievements(messages, 'me');
+    const by = (id: string) => a.find((x) => x.id === id)!;
+    expect(by('chatterbox').have).toBe(3);
+    expect(by('gif-lord').have).toBe(1);
+    expect(by('comedian')).toMatchObject({ have: 3, need: 3, earned: true });
+    expect(by('chatterbox').earned).toBe(false); // 3 < 15
+  });
+
+  it('is safe with no messages', () => {
+    const a = banterAchievements(undefined, 'me');
+    expect(a).toHaveLength(3);
+    expect(a.every((x) => !x.earned && x.have === 0)).toBe(true);
   });
 });
 

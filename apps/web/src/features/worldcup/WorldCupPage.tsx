@@ -29,7 +29,6 @@ import { useTitleAlert } from '../../lib/useTitleAlert.js';
 import { useWorldCupStore } from '../../state/worldCupStore.js';
 import { Countdown } from './Countdown.js';
 import { useNow } from './useNow.js';
-import { ArcadeView } from './ArcadeView.js';
 import { BettingView } from './BettingView.js';
 import { BracketView } from './BracketView.js';
 import { CardRevealModal } from './CardRevealModal.js';
@@ -54,8 +53,7 @@ type Tab =
   | 'timeline'
   | 'performance'
   | 'cards'
-  | 'bets'
-  | 'arcade';
+  | 'bets';
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'fixtures', label: 'Fixtures', icon: '📅' },
@@ -66,7 +64,6 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'performance', label: 'Performance', icon: '📋' },
   { id: 'cards', label: 'Cards', icon: '🃏' },
   { id: 'bets', label: 'Bets', icon: '💶' },
-  { id: 'arcade', label: 'Arcade', icon: '🎮' },
 ];
 
 export function WorldCupPage() {
@@ -325,7 +322,6 @@ export function WorldCupPage() {
         {tab === 'performance' && <PerformanceView wc={wc} />}
         {tab === 'cards' && <CardsView wc={wc} />}
         {tab === 'bets' && <BettingView wc={wc} />}
-        {tab === 'arcade' && <ArcadeView wc={wc} />}
       </div>
 
       <BuildStamp />

@@ -906,7 +906,7 @@ describe('matchOfTheDay', () => {
     createdAt: '2026-01-01T00:00:00.000Z',
   });
 
-  it('hypes the biggest upcoming clash, with reasons', () => {
+  it('hypes the biggest clash among the day’s fixtures, with reasons', () => {
     const s = stateOf([
       mk('past', 'ESP', 'FRA', '2026-06-09T00:00:00Z', 0), // already kicked off — ignored
       mk('big', 'BRA', 'MAR', '2026-06-11T00:00:00Z', 1), // FIFA 6 v 7 — heavyweight + even
@@ -924,14 +924,24 @@ describe('matchOfTheDay', () => {
     expect(motd.reasons).toContain('FIFA #6 vs #7');
   });
 
-  it('falls back to the biggest of all upcoming when none are imminent', () => {
+  it('stays on the soonest day, not a flashier match days out', () => {
     const s = stateOf([
-      mk('big', 'BRA', 'MAR', '2026-06-20T00:00:00Z', 1), // heavyweight
-      mk('small', 'RSA', 'KOR', '2026-06-21T00:00:00Z', 2), // minnows
+      mk('today', 'RSA', 'KOR', '2026-06-19T18:00:00Z', 1), // minnows, but it kicks off today
+      mk('later', 'BRA', 'MAR', '2026-06-21T18:00:00Z', 2), // heavyweight, two days away
     ]);
-    // now is well over 60h before either match → no imminent games, so the whole
-    // upcoming list is considered and the heavyweight wins on hype.
-    expect(matchOfTheDay(s, new Date('2026-06-01T00:00:00Z'))!.matchId).toBe('big');
+    // The heavyweight outscores today's tie on hype and sits inside the old 60h
+    // window — but "Match of the Day" must headline today's fixture regardless.
+    expect(matchOfTheDay(s, new Date('2026-06-19T08:00:00Z'))!.matchId).toBe('today');
+  });
+
+  it('looks ahead to the next match day when today has none', () => {
+    const s = stateOf([
+      mk('soonest', 'RSA', 'KOR', '2026-06-20T00:00:00Z', 1), // minnows, next match day
+      mk('flashier', 'BRA', 'MAR', '2026-06-22T00:00:00Z', 2), // heavyweight, further out
+    ]);
+    // Nothing today → anchor on the soonest day with a match (06-20), not the
+    // bigger fixture two days later.
+    expect(matchOfTheDay(s, new Date('2026-06-01T00:00:00Z'))!.matchId).toBe('soonest');
   });
 
   it('returns null when nothing is upcoming', () => {

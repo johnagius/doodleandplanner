@@ -506,9 +506,10 @@ function FixturesView() {
   );
 }
 
-/** Pre-kickoff hype: the single biggest upcoming fixture (by stakes, FIFA ranks
- * and how even it is), with a live countdown and a jump to its day. Recomputed
- * at most once a minute; the countdown still ticks per second. */
+/** Pre-kickoff hype: today's biggest fixture (by stakes, FIFA ranks and how even
+ * it is) — or the next match day's when today has none — with a live countdown
+ * and a jump to its day. Recomputed at most once a minute; the countdown still
+ * ticks per second. */
 function Spotlight({ wc, onJump }: { wc: WorldCupState; onJump: (day: string) => void }) {
   const now = useNow(1000);
   const minute = Math.floor(now / 60_000);

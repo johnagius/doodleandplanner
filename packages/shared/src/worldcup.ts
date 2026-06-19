@@ -1908,23 +1908,23 @@ function hypeReasons(m: WcMatch): string[] {
 }
 
 /**
- * The single upcoming fixture most worth hyping — the "Match of the Day".
- * Among ready, not-yet-kicked-off matches it prefers the next `withinMs` (default
- * 60h) and falls back to the soonest, then picks the highest-"hype" one by stakes
- * (stage), quality (FIFA ranks) and how evenly matched it is. Pure; null when
- * nothing is coming up. (Knockout ties only qualify once both teams are known.)
+ * The single fixture most worth hyping right now — the "Match of the Day".
+ * Anchored to one calendar day: the soonest day that still has a match to come
+ * (today while today's games are ahead, otherwise the next match day — the same
+ * day the calendar opens to). Among that day's ready, not-yet-kicked-off fixtures
+ * it picks the highest-"hype" one by stakes (stage), quality (FIFA ranks) and how
+ * evenly matched it is — never a flashier game days away. Pure; null when nothing
+ * is coming up. (Knockout ties only qualify once both teams are known.)
  */
-export function matchOfTheDay(
-  state: WorldCupState,
-  now: Date = new Date(),
-  withinMs = 60 * 3_600_000,
-): WcMatchOfDay | null {
+export function matchOfTheDay(state: WorldCupState, now: Date = new Date()): WcMatchOfDay | null {
   const t = now.getTime();
   const upcoming = state.matches.filter((m) => isMatchReady(m) && toMs(m.kickoff) > t);
   if (upcoming.length === 0) return null;
-  const soon = upcoming.filter((m) => toMs(m.kickoff) - t <= withinMs);
-  const pool = soon.length ? soon : upcoming;
-  const best = pool
+  // Anchor on the soonest upcoming match's day so "of the Day" means this day's
+  // headliner, not a bigger fixture a couple of days out.
+  const day = matchDateKey(upcoming.reduce((a, b) => (toMs(b.kickoff) < toMs(a.kickoff) ? b : a)));
+  const best = upcoming
+    .filter((m) => matchDateKey(m) === day)
     .map((m) => ({ m, hype: matchHype(m) }))
     .sort(
       (a, b) => b.hype - a.hype || toMs(a.m.kickoff) - toMs(b.m.kickoff) || a.m.order - b.m.order,

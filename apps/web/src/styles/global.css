@@ -2404,6 +2404,7 @@ label.field {
 
 /* Match card */
 .wc-match {
+  position: relative;
   padding: 1rem 1.1rem;
   display: flex;
   flex-direction: column;
@@ -2411,6 +2412,81 @@ label.field {
 }
 .wc-match.is-final {
   border-color: color-mix(in srgb, var(--success) 35%, var(--border));
+}
+
+/* Live tap-to-react: a small emoji bar + a floating overlay over the whole card.
+   Float motion is opt-in via the media query; reduced-motion users get a fade. */
+.wc-live-react-bar {
+  display: flex;
+  gap: 0.3rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.wc-live-react-btn {
+  border: 1px solid var(--border);
+  background: transparent;
+  border-radius: 999px;
+  padding: 0.12rem 0.5rem;
+  font-size: 1.15rem;
+  line-height: 1.2;
+  cursor: pointer;
+  transition:
+    transform 120ms ease,
+    background 120ms ease;
+}
+.wc-live-react-btn:hover {
+  transform: translateY(-1px) scale(1.1);
+  background: rgba(127, 127, 127, 0.14);
+}
+.wc-live-react-btn:active {
+  transform: scale(0.95);
+}
+.wc-live-react-layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 4;
+}
+.wc-live-react-float {
+  position: absolute;
+  bottom: 14%;
+  font-size: 1.6rem;
+  opacity: 0;
+  animation: wc-react-fade 2600ms ease-out forwards;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .wc-live-react-float {
+    animation: wc-react-float 2600ms ease-out forwards;
+  }
+}
+@keyframes wc-react-fade {
+  0% {
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes wc-react-float {
+  0% {
+    opacity: 0;
+    transform: translateY(0) scale(0.8);
+  }
+  12% {
+    opacity: 1;
+    transform: translateY(-8px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-96px) scale(1.15);
+  }
 }
 .wc-match-top {
   display: flex;

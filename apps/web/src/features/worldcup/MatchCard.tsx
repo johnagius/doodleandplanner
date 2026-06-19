@@ -33,8 +33,9 @@ import {
   type WcTeam,
   type WorldCupState,
 } from '@dap/shared';
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useToast } from '../../components/Toast.js';
+import { getRepository } from '../../lib/storage/index.js';
 import { useWorldCupStore, type WcLiveInfo } from '../../state/worldCupStore.js';
 import { Avatar } from './Avatar.js';
 import { Countdown } from './Countdown.js';
@@ -45,6 +46,8 @@ import { ScenariosView } from './ScenariosView.js';
 import { ScoreStepper } from './ScoreStepper.js';
 import { useNow } from './useNow.js';
 import { formatKickoff, legibleScoreColor } from './wcFormat.js';
+import { WC_LIVE_REACTION_EMOJI, isLiveReaction, liveReaction } from './wcLiveReactions.js';
+import { WORLD_CUP_SLUG } from './worldCupRoom.js';
 
 const POINT_CLASS: Record<WcScoreCategory, string> = {
   exact: 'wc-pts-exact',
@@ -481,6 +484,7 @@ export function MatchCard({ matchId }: { matchId: string }) {
           {isLive && live!.home != null && (
             <CrownRace wc={wc} match={match} live={live!} meId={meId} />
           )}
+          {isLive && <LiveReactions matchId={match.id} />}
           <PredictionsRow
             wc={wc}
             match={match}
@@ -505,6 +509,80 @@ export function MatchCard({ matchId }: { matchId: string }) {
         <ScenariosView wc={wc} match={match} live={live} meId={meId} />
       )}
       {view === 'group' && isGroup && <GroupView wc={wc} group={match.group!} match={match} />}
+    </div>
+  );
+}
+
+/** A floating emoji on the local overlay (the wire payload is WcLiveReaction). */
+interface LiveFloat {
+  id: string;
+  emoji: string;
+  /** Horizontal position, 8–92% across the card. */
+  x: number;
+}
+
+const FLOAT_TTL_MS = 2600; // matches the CSS float animation
+const SEND_THROTTLE_MS = 200; // swallow frantic double-taps
+
+/**
+ * Live tap-to-react: while a match is in play, tapping an emoji floats it up the
+ * card for everyone watching. Ephemeral — broadcast over the shared presence
+ * channel, never persisted (no history/leaderboard/scoring impact). The Worker
+ * relays each frame to *other* sockets, so we add our own tap optimistically.
+ */
+function LiveReactions({ matchId }: { matchId: string }) {
+  const [floats, setFloats] = useState<LiveFloat[]>([]);
+  const lastSent = useRef(0);
+
+  const pushFloat = useCallback((emoji: string) => {
+    const id = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const x = 8 + Math.random() * 84;
+    setFloats((list) => [...list, { id, emoji, x }].slice(-24));
+    window.setTimeout(() => setFloats((list) => list.filter((f) => f.id !== id)), FLOAT_TTL_MS);
+  }, []);
+
+  // Receive other watchers' reactions for this match off the shared channel.
+  useEffect(() => {
+    const repo = getRepository();
+    if (!repo.subscribePresence) return;
+    return repo.subscribePresence(WORLD_CUP_SLUG, (payload) => {
+      if (isLiveReaction(payload) && payload.matchId === matchId) pushFloat(payload.emoji);
+    });
+  }, [matchId, pushFloat]);
+
+  const send = useCallback(
+    (emoji: string) => {
+      const now = Date.now();
+      if (now - lastSent.current < SEND_THROTTLE_MS) return;
+      lastSent.current = now;
+      getRepository().publishPresence?.(WORLD_CUP_SLUG, liveReaction(matchId, emoji, now));
+      pushFloat(emoji); // optimistic — the relay never echoes to the sender
+    },
+    [matchId, pushFloat],
+  );
+
+  return (
+    <div className="wc-live-react">
+      <div className="wc-live-react-bar" role="group" aria-label="Send a live reaction">
+        {WC_LIVE_REACTION_EMOJI.map((e) => (
+          <button
+            key={e}
+            type="button"
+            className="wc-live-react-btn"
+            onClick={() => send(e)}
+            aria-label={`React ${e}`}
+          >
+            {e}
+          </button>
+        ))}
+      </div>
+      <div className="wc-live-react-layer" aria-hidden>
+        {floats.map((f) => (
+          <span key={f.id} className="wc-live-react-float" style={{ left: `${f.x}%` }}>
+            {f.emoji}
+          </span>
+        ))}
+      </div>
     </div>
   );
 }

@@ -701,6 +701,40 @@ export interface WcMatchSummary {
   venueCity: string | null;
 }
 
+/** A goalscorer's tournament tally, for the Golden Boot board. */
+export interface WcScorer {
+  name: string;
+  /** Team code (from the first event we saw them in). */
+  teamTla: string;
+  goals: number;
+  assists: number;
+}
+
+/**
+ * Tournament goalscorers + assisters, aggregated from the match-event feed and
+ * ranked for a Golden Boot board: most goals, then most assists, then name. Own
+ * goals don't credit a goal (penalties do); players with neither are dropped.
+ */
+export function tournamentScorers(events: WcMatchEvent[]): WcScorer[] {
+  const byName = new Map<string, WcScorer>();
+  const entry = (name: string, teamTla: string): WcScorer => {
+    let s = byName.get(name);
+    if (!s) {
+      s = { name, teamTla, goals: 0, assists: 0 };
+      byName.set(name, s);
+    }
+    return s;
+  };
+  for (const e of events) {
+    if ((e.kind === 'goal' || e.kind === 'pen-goal') && e.player)
+      entry(e.player, e.teamTla).goals++;
+    if (e.assist) entry(e.assist, e.teamTla).assists++;
+  }
+  return [...byName.values()]
+    .filter((s) => s.goals + s.assists > 0)
+    .sort((a, b) => b.goals - a.goals || b.assists - a.assists || a.name.localeCompare(b.name));
+}
+
 /** One historical meeting between two teams (from the results feed). */
 export interface WcH2HMeeting {
   /** ISO date of the meeting. */

@@ -70,10 +70,12 @@ import {
   sourceLabel,
   thirdPlacedRanking,
   tournamentDays,
+  tournamentScorers,
   trophyCount,
   wcTimeline,
   winnerOf,
   type WcMatch,
+  type WcMatchEvent,
   type WorldCupState,
 } from '../src/worldcup.js';
 import type { Message } from '../src/types.js';
@@ -1528,5 +1530,44 @@ describe('removePredictor scrubbing', () => {
     const johnsPick = s.predictions.find((p) => p.predictorId === john.id)!;
     expect(johnsPick.reactions).toBeUndefined(); // Daniel's reaction scrubbed
     expect(s.matchReactions!['g-A-1']).toBeUndefined(); // emptied tally dropped
+  });
+});
+
+describe('tournamentScorers', () => {
+  const ev = (
+    kind: WcMatchEvent['kind'],
+    teamTla: string,
+    player: string,
+    assist?: string,
+  ): WcMatchEvent => ({
+    minute: "1'",
+    kind,
+    teamTla,
+    player,
+    assist,
+  });
+
+  it('ranks by goals, then assists, then name; penalties count, own goals do not', () => {
+    const events: WcMatchEvent[] = [
+      ev('goal', 'FRA', 'Mbappé', 'Griezmann'),
+      ev('pen-goal', 'FRA', 'Mbappé'),
+      ev('goal', 'ARG', 'Messi', 'Mbappé'), // Mbappé also picks up an assist
+      ev('goal', 'ARG', 'Messi'),
+      ev('own-goal', 'ENG', 'Maguire'), // own goal credits nobody a goal
+      ev('yellow', 'FRA', 'Kanté'), // cards are irrelevant here
+    ];
+    const table = tournamentScorers(events);
+    // Messi & Mbappé both on 2 goals; Mbappé has an assist so he ranks first.
+    expect(table.map((s) => s.name)).toEqual(['Mbappé', 'Messi', 'Griezmann']);
+    expect(table[0]).toMatchObject({ name: 'Mbappé', teamTla: 'FRA', goals: 2, assists: 1 });
+    expect(table[1]).toMatchObject({ name: 'Messi', teamTla: 'ARG', goals: 2, assists: 0 });
+    expect(table[2]).toMatchObject({ name: 'Griezmann', goals: 0, assists: 1 });
+    // Maguire's own goal didn't put him on the board.
+    expect(table.some((s) => s.name === 'Maguire')).toBe(false);
+  });
+
+  it('is empty when there are no goals or assists', () => {
+    expect(tournamentScorers([ev('yellow', 'FRA', 'Kanté')])).toEqual([]);
+    expect(tournamentScorers([])).toEqual([]);
   });
 });

@@ -2790,6 +2790,33 @@ label.field {
   text-align: center;
 }
 
+/* Golden Boot race */
+.wc-goldenboot {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.wc-gb-table th,
+.wc-gb-table td {
+  vertical-align: middle;
+}
+.wc-gb-rank {
+  text-align: center;
+  width: 2.2rem;
+  font-weight: 700;
+}
+.wc-gb-table .wc-gb-name {
+  text-align: left;
+}
+.wc-gb-goals,
+.wc-gb-assists {
+  text-align: center;
+  width: 2.4rem;
+}
+.wc-gb-goals {
+  font-weight: 800;
+}
+
 /* Altitude & climate comparison */
 .wc-climate {
   display: flex;

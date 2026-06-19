@@ -40,6 +40,7 @@ import { MatchCard } from './MatchCard.js';
 import { PerformanceView } from './PerformanceView.js';
 import { PredictorBar } from './PredictorBar.js';
 import { ScoringLegend } from './ScoringLegend.js';
+import { ScorersView } from './ScorersView.js';
 import { TimelineView } from './TimelineView.js';
 import { hasSession, installWcSaveAuth } from './wcAuthClient.js';
 import { mentions } from './wcBanter.js';
@@ -49,6 +50,7 @@ type Tab =
   | 'fixtures'
   | 'groups'
   | 'bracket'
+  | 'scorers'
   | 'leaderboard'
   | 'timeline'
   | 'performance'
@@ -59,6 +61,7 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'fixtures', label: 'Fixtures', icon: '📅' },
   { id: 'groups', label: 'Groups', icon: '🔢' },
   { id: 'bracket', label: 'Bracket', icon: '🏟️' },
+  { id: 'scorers', label: 'Scorers', icon: '🥇' },
   { id: 'leaderboard', label: 'Leaderboard', icon: '🏆' },
   { id: 'timeline', label: 'Timeline', icon: '📈' },
   { id: 'performance', label: 'Performance', icon: '📋' },
@@ -341,6 +344,7 @@ export function WorldCupPage() {
         {tab === 'fixtures' && <FixturesView />}
         {tab === 'groups' && <GroupTables wc={wc} />}
         {tab === 'bracket' && <BracketView wc={wc} />}
+        {tab === 'scorers' && <ScorersView wc={wc} />}
         {tab === 'leaderboard' && <Leaderboard wc={wc} />}
         {tab === 'timeline' && <TimelineView wc={wc} />}
         {tab === 'performance' && <PerformanceView wc={wc} />}

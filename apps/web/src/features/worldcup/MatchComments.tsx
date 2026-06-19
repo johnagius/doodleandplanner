@@ -4,6 +4,7 @@ import { useToast } from '../../components/Toast.js';
 import { getRepository } from '../../lib/storage/index.js';
 import { useWorldCupStore } from '../../state/worldCupStore.js';
 import { Avatar } from './Avatar.js';
+import { GifPicker } from './GifPicker.js';
 import {
   banterChips,
   commentSnippet,
@@ -11,7 +12,6 @@ import {
   mentionSegments,
   type WcMatchPhase,
 } from './wcBanter.js';
-import { WC_GIF_CATEGORIES, gifUrl } from './wcGifs.js';
 import { WORLD_CUP_SLUG } from './worldCupRoom.js';
 import { isTyping, typingLabel, typingPing } from './wcTyping.js';
 
@@ -76,12 +76,8 @@ export function MatchComments({ matchId, phase }: { matchId: string; phase: WcMa
   const [open, setOpen] = useState(false);
   const [text, setText] = useState('');
   const [gifOpen, setGifOpen] = useState(false);
-  const [gifCat, setGifCat] = useState(WC_GIF_CATEGORIES[0]!.key);
-  const [brokenGifs, setBrokenGifs] = useState<Set<string>>(() => new Set());
   const [mentionOpen, setMentionOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const activeGifs = (WC_GIF_CATEGORIES.find((c) => c.key === gifCat) ?? WC_GIF_CATEGORIES[0]!)
-    .gifs;
 
   const thread = (messages ?? []).filter((m) => m.matchId === matchId);
   const predictorOf = (id: string) => predictors.find((p) => p.id === id) ?? null;
@@ -104,9 +100,9 @@ export function MatchComments({ matchId, phase }: { matchId: string; phase: WcMa
     await post(text);
   }
 
-  async function sendGif(id: string) {
+  async function sendGif(url: string) {
     if (!meId) return;
-    await postGif(matchId, gifUrl(id));
+    await postGif(matchId, url);
     const err = useWorldCupStore.getState().error;
     if (err) show(err);
     else setGifOpen(false);
@@ -209,42 +205,7 @@ export function MatchComments({ matchId, phase }: { matchId: string; phase: WcMa
               ))}
             </div>
           )}
-          {meId && gifOpen && (
-            <div className="wc-gif-picker">
-              <div className="wc-gif-cats">
-                {WC_GIF_CATEGORIES.map((c) => (
-                  <button
-                    key={c.key}
-                    type="button"
-                    className={`wc-gif-cat ${gifCat === c.key ? 'is-active' : ''}`}
-                    onClick={() => setGifCat(c.key)}
-                  >
-                    {c.label}
-                  </button>
-                ))}
-              </div>
-              <div className="wc-gif-grid">
-                {activeGifs
-                  .filter((g) => !brokenGifs.has(g.id))
-                  .map((g) => (
-                    <button
-                      key={g.id}
-                      type="button"
-                      className="wc-gif-thumb"
-                      title={g.alt}
-                      onClick={() => void sendGif(g.id)}
-                    >
-                      <img
-                        src={gifUrl(g.id)}
-                        alt={g.alt}
-                        loading="lazy"
-                        onError={() => setBrokenGifs((b) => new Set(b).add(g.id))}
-                      />
-                    </button>
-                  ))}
-              </div>
-            </div>
-          )}
+          {meId && gifOpen && <GifPicker onPick={(url) => void sendGif(url)} />}
           {typers.length > 0 && (
             <div className="wc-typing small muted">✍️ {typingLabel(typers)}</div>
           )}

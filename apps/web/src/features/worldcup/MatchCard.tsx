@@ -39,6 +39,7 @@ import { getRepository } from '../../lib/storage/index.js';
 import { useWorldCupStore, type WcLiveInfo } from '../../state/worldCupStore.js';
 import { Avatar } from './Avatar.js';
 import { Countdown } from './Countdown.js';
+import { GifPicker } from './GifPicker.js';
 import { useHeadToHead, type H2HState } from './h2h.js';
 import { LineupView } from './LineupView.js';
 import { MatchComments } from './MatchComments.js';
@@ -1172,10 +1173,12 @@ function PickChip({
   canReact: boolean;
   liveScore?: { home: number; away: number };
 }) {
-  const { reactPick } = useWorldCupStore();
+  const { reactPick, reactPickGif } = useWorldCupStore();
   const [picker, setPicker] = useState(false);
+  const [gifOpen, setGifOpen] = useState(false);
   const predictor = wc.predictors.find((x) => x.id === pick.predictorId) ?? null;
   const name = predictor?.name ?? '?';
+  const gifReactions = Object.entries(pick.gifReactions ?? {});
   // Provisional points while a game is in play; real points once it's finished.
   const provisional = !match.result && !!liveScore;
   const scored = match.result
@@ -1218,7 +1221,7 @@ function PickChip({
         )}
       </span>
 
-      {(reactions.length > 0 || canReact) && (
+      {(reactions.length > 0 || gifReactions.length > 0 || canReact) && (
         <span className="wc-pick-reactions">
           {reactions.map(([emoji, who]) => (
             <button
@@ -1264,7 +1267,57 @@ function PickChip({
               )}
             </span>
           )}
+          {canReact && (
+            <button
+              type="button"
+              className={`reaction-add ${gifOpen ? 'is-active' : ''}`}
+              aria-expanded={gifOpen}
+              aria-label={`GIF-react to ${name}'s pick`}
+              onClick={() => setGifOpen((v) => !v)}
+            >
+              🎞
+            </button>
+          )}
         </span>
+      )}
+
+      {gifReactions.length > 0 && (
+        <span className="wc-pick-gifs">
+          {gifReactions.map(([rid, url]) => {
+            const mineGif = rid === meId;
+            const rn = wc.predictors.find((x) => x.id === rid)?.name ?? '?';
+            return (
+              <button
+                key={rid}
+                type="button"
+                className="wc-pick-gif"
+                title={mineGif ? 'Remove your GIF' : `${rn}'s reaction`}
+                onClick={() => {
+                  if (mineGif) void reactPickGif(match.id, pick.predictorId, null);
+                }}
+                disabled={!mineGif}
+              >
+                <img
+                  src={url}
+                  alt=""
+                  loading="lazy"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+              </button>
+            );
+          })}
+        </span>
+      )}
+
+      {canReact && gifOpen && (
+        <GifPicker
+          onPick={(url) => {
+            void reactPickGif(match.id, pick.predictorId, url);
+            setGifOpen(false);
+          }}
+        />
       )}
     </span>
   );

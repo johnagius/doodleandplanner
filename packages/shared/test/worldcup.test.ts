@@ -40,6 +40,7 @@ import {
   toggleMatchReaction,
   togglePickReaction,
   toggleCardReaction,
+  setPickGif,
   cardReactionsFor,
   defaultDay,
   findMatch,
@@ -953,6 +954,43 @@ describe('matchOfTheDay', () => {
   it('returns null when nothing is upcoming', () => {
     const s = stateOf([mk('past', 'BRA', 'MAR', '2026-06-09T00:00:00Z', 0)]);
     expect(matchOfTheDay(s, new Date('2026-06-10T00:00:00Z'))).toBeNull();
+  });
+});
+
+describe('setPickGif', () => {
+  it('sets, replaces and clears one GIF per reactor on a pick', () => {
+    let s = seed();
+    const m = 'g-A-1';
+    const owner = s.predictors[0]!.id;
+    s = setPrediction(s, {
+      matchId: m,
+      predictorId: owner,
+      home: 1,
+      away: 0,
+      now: () => new Date('2026-06-01T00:00:00Z'),
+    });
+    const gif = (id: string) => `https://media.giphy.com/media/${id}/giphy.gif`;
+
+    s = setPickGif(s, m, owner, 'r1', gif('a'));
+    s = setPickGif(s, m, owner, 'r2', gif('b'));
+    let pick = s.predictions.find((p) => p.matchId === m && p.predictorId === owner)!;
+    expect(pick.gifReactions).toEqual({ r1: gif('a'), r2: gif('b') });
+
+    // Same reactor reacting again replaces (still one each).
+    s = setPickGif(s, m, owner, 'r1', gif('c'));
+    pick = s.predictions.find((p) => p.matchId === m && p.predictorId === owner)!;
+    expect(pick.gifReactions!.r1).toBe(gif('c'));
+
+    // Clearing removes the reactor, and the last one drops the key entirely.
+    s = setPickGif(s, m, owner, 'r1', null);
+    s = setPickGif(s, m, owner, 'r2', null);
+    pick = s.predictions.find((p) => p.matchId === m && p.predictorId === owner)!;
+    expect(pick.gifReactions).toBeUndefined();
+  });
+
+  it('is a no-op for a missing prediction', () => {
+    const s = seed();
+    expect(setPickGif(s, 'g-A-1', 'nobody', 'r1', 'x')).toBe(s);
   });
 });
 

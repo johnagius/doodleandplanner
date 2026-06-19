@@ -3657,6 +3657,29 @@ label.field {
   border-radius: 8px;
   display: block;
 }
+.wc-pick-gifs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-top: 0.2rem;
+}
+.wc-pick-gif {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0;
+  overflow: hidden;
+  background: rgba(127, 127, 127, 0.1);
+  cursor: default;
+  line-height: 0;
+}
+.wc-pick-gif:not(:disabled) {
+  cursor: pointer;
+}
+.wc-pick-gif img {
+  height: 48px;
+  width: auto;
+  display: block;
+}
 
 /* Organiser result editor */
 .wc-result-editor {

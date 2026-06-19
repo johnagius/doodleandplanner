@@ -87,6 +87,9 @@ export interface WcPrediction {
   /** Emoji reactions from other predictors to this (revealed) pick: emoji →
    * reactor predictor ids. Only added once the match has kicked off. */
   reactions?: Record<string, string[]>;
+  /** GIF reactions to this (revealed) pick: reactor predictor id → GIF media
+   * URL (one GIF per reactor). Only added once the match has kicked off. */
+  gifReactions?: Record<string, string>;
 }
 
 /** A person making predictions. A name is "claimed" once someone verifies an
@@ -2296,6 +2299,34 @@ export function togglePickReaction(
   const updated: WcPrediction = { ...target };
   if (Object.keys(reactions).length) updated.reactions = reactions;
   else delete updated.reactions;
+  const predictions = [...state.predictions];
+  predictions[idx] = updated;
+  return { ...state, predictions };
+}
+
+/**
+ * Set (or clear, with `null`) a reactor's GIF reaction on a revealed pick — one
+ * GIF per reactor, so reacting again replaces it. Immutable; a no-op when no
+ * such prediction exists.
+ */
+export function setPickGif(
+  state: WorldCupState,
+  matchId: string,
+  predictorId: string,
+  reactorId: string,
+  url: string | null,
+): WorldCupState {
+  const idx = state.predictions.findIndex(
+    (p) => p.matchId === matchId && p.predictorId === predictorId,
+  );
+  if (idx === -1) return state;
+  const target = state.predictions[idx]!;
+  const gifs = { ...(target.gifReactions ?? {}) };
+  if (url) gifs[reactorId] = url;
+  else delete gifs[reactorId];
+  const updated: WcPrediction = { ...target };
+  if (Object.keys(gifs).length) updated.gifReactions = gifs;
+  else delete updated.gifReactions;
   const predictions = [...state.predictions];
   predictions[idx] = updated;
   return { ...state, predictions };

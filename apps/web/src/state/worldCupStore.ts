@@ -14,6 +14,7 @@ import {
   renamePredictor,
   setCardBadge,
   setChampionPick,
+  setPickGif,
   setPrediction,
   setPredictorAvatar,
   setResult,
@@ -146,6 +147,8 @@ interface WorldCupStore {
   reactPick: (matchId: string, predictorId: string, emoji: string) => Promise<void>;
   /** React to a mate's won player-card (keyed by the award's match + winner). */
   reactCard: (matchId: string, predictorId: string, emoji: string) => Promise<void>;
+  /** React to a mate's revealed pick with a GIF (or null to clear yours). */
+  reactPickGif: (matchId: string, predictorId: string, url: string | null) => Promise<void>;
 
   /** Pick (or change) the team you think wins the tournament. */
   pickChampion: (teamId: string) => Promise<void>;
@@ -482,6 +485,11 @@ export const useWorldCupStore = create<WorldCupStore>((set, get) => {
       await apply((s) =>
         withWorldCup(s, (wc) => toggleCardReaction(wc, matchId, predictorId, emoji, me)),
       );
+    },
+
+    async reactPickGif(matchId, predictorId, url) {
+      const me = requireMe();
+      await apply((s) => withWorldCup(s, (wc) => setPickGif(wc, matchId, predictorId, me, url)));
     },
 
     async pickChampion(teamId) {

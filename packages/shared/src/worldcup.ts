@@ -1995,6 +1995,74 @@ export function lockingSoon(
   return pendingForMe(state, predictorId, now).filter((m) => toMs(m.kickoff) - t <= withinMs);
 }
 
+function joinNames(names: string[]): string {
+  if (names.length <= 1) return names[0] ?? '';
+  if (names.length === 2) return `${names[0]} & ${names[1]}`;
+  return `${names.slice(0, -1).join(', ')} & ${names[names.length - 1]}`;
+}
+
+/**
+ * A single, data-driven banter prompt for a match thread — a conversation
+ * starter to thaw a cold thread. Respects the hidden-picks rule: it only
+ * references who picked what once the match has kicked off. Pure and
+ * deterministic for a given state + now; null when nothing pithy applies (the
+ * caller can fall back to a generic prompt).
+ */
+export function banterPrompt(
+  state: WorldCupState,
+  matchId: string,
+  now: Date = new Date(),
+): string | null {
+  const m = findMatch(state, matchId);
+  if (!m || !isMatchReady(m)) return null;
+  const home = findTeam(state, m.homeId);
+  const away = findTeam(state, m.awayId);
+  const nameOf = (id: string) => state.predictors.find((p) => p.id === id)?.name ?? 'Someone';
+  const preds = state.predictions.filter((p) => p.matchId === matchId);
+
+  // Full-time: salute the callers, or marvel at the chaos.
+  if (m.result) {
+    const exact = preds.filter((p) => scorePrediction(p, m.result!).category === 'exact');
+    if (exact.length > 0) {
+      return `🎯 ${joinNames(exact.map((p) => nameOf(p.predictorId)))} called the ${m.result.home}–${m.result.away}!`;
+    }
+    return `🙈 Nobody saw ${m.result.home}–${m.result.away} coming.`;
+  }
+
+  // Kicked off (picks now revealed) but no result yet: rib the bold pick.
+  if (isMatchLocked(m, now)) {
+    if (preds.length === 0) return '👀 Kicked off and not one prediction — bottlers.';
+    const bold = [...preds].sort((a, b) => b.home + b.away - (a.home + a.away))[0]!;
+    if (bold.home + bold.away >= 4) {
+      return `😅 ${nameOf(bold.predictorId)} went ${bold.home}–${bold.away} here — brave.`;
+    }
+    const first = preds[0]!;
+    if (preds.length > 1 && preds.every((p) => p.home === first.home && p.away === first.away)) {
+      return `🤝 Everyone's on ${first.home}–${first.away} — bold groupthink.`;
+    }
+    return '👀 Picks are locked in — who reads it right?';
+  }
+
+  // Pre-kickoff (picks hidden): nudge stragglers or tease by FIFA ranking.
+  const pend = pendingPredictors(state, matchId, now);
+  if (pend.length > 0 && pend.length <= 2 && state.predictors.length > pend.length) {
+    return `⏳ Still waiting on ${joinNames(pend.map((p) => p.name))} to call it…`;
+  }
+  const ra = fifaRankOf(m.homeId);
+  const rb = fifaRankOf(m.awayId);
+  if (ra != null && rb != null) {
+    if (Math.abs(ra - rb) <= 5) {
+      return `🔥 ${home?.name} #${ra} vs ${away?.name} #${rb} — coin flip?`;
+    }
+    if (Math.abs(ra - rb) >= 20) {
+      const favourite = ra < rb ? home : away;
+      const underdog = ra < rb ? away : home;
+      return `🐐 Can ${underdog?.name} upset ${favourite?.name}?`;
+    }
+  }
+  return null;
+}
+
 /** How many matches now have a result (for progress UI). */
 export function playedCount(state: WorldCupState): number {
   return state.matches.filter((m) => !!m.result).length;

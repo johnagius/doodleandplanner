@@ -1,4 +1,4 @@
-import { REACTION_EMOJI, type Message } from '@dap/shared';
+import { REACTION_EMOJI, banterPrompt, type Message } from '@dap/shared';
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { useToast } from '../../components/Toast.js';
 import { getRepository } from '../../lib/storage/index.js';
@@ -62,7 +62,8 @@ function useTyping(matchId: string, meName: string | null) {
  * banter chips so joining in needs no typing. */
 export function MatchComments({ matchId, phase }: { matchId: string; phase: WcMatchPhase }) {
   const messages = useWorldCupStore((s) => s.state?.messages);
-  const predictors = useWorldCupStore((s) => s.state?.worldCup?.predictors ?? []);
+  const wc = useWorldCupStore((s) => s.state?.worldCup);
+  const predictors = wc?.predictors ?? [];
   const meId = useWorldCupStore((s) => s.meId);
   const { postComment, postGif, reactComment, deleteComment } = useWorldCupStore();
   const { show } = useToast();
@@ -79,6 +80,7 @@ export function MatchComments({ matchId, phase }: { matchId: string; phase: WcMa
   const last = thread[thread.length - 1];
   const meName = (meId && predictorOf(meId)?.name) || null;
   const { typers, notifyTyping } = useTyping(matchId, meName);
+  const prompt = wc ? banterPrompt(wc, matchId) : null;
 
   async function post(body: string) {
     const trimmed = body.trim();
@@ -121,12 +123,13 @@ export function MatchComments({ matchId, phase }: { matchId: string; phase: WcMa
             {thread.length}
           </span>
         ) : (
-          <span className="wc-comments-preview muted">{emptyPrompt(phase)}</span>
+          <span className="wc-comments-preview muted">{prompt ?? emptyPrompt(phase)}</span>
         )}
       </button>
 
       {open && (
         <div className="stack wc-comments-body">
+          {prompt && <div className="wc-banter-prompt">💬 {prompt}</div>}
           {!meId && <div className="banner">Pick your name above to join the banter.</div>}
           {thread.length > 0 && (
             <div className="chat-log">

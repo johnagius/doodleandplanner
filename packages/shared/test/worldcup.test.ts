@@ -16,6 +16,7 @@ import {
   clearPrediction,
   clearResult,
   closestPredictors,
+  banterPrompt,
   closestToScore,
   consensusScore,
   fifaRankOf,
@@ -967,6 +968,68 @@ describe('toggleCardReaction', () => {
     s = toggleCardReaction(s, 'g-A-1', 'p1', '🔥', 'r2');
     expect(cardReactionsFor(s, 'g-A-1', 'p1')).toEqual({});
     expect(s.cardReactions).toEqual({});
+  });
+});
+
+describe('banterPrompt', () => {
+  const KICK = '2026-06-15T18:00:00Z';
+  const before = new Date('2026-06-15T10:00:00Z');
+  const after = new Date('2026-06-15T20:00:00Z');
+  const mk = (extra: Partial<WcMatch> = {}): WcMatch => ({
+    id: 'm1',
+    stage: 'group',
+    matchday: 1,
+    order: 1,
+    kickoff: KICK,
+    homeId: 'BRA',
+    awayId: 'ARG',
+    ...extra,
+  });
+  const stateWith = (m: WcMatch, predictions: WorldCupState['predictions']): WorldCupState => ({
+    season: '2026',
+    title: 'T',
+    teams: [],
+    matches: [m],
+    predictors: [
+      { id: 'p1', name: 'Ada' },
+      { id: 'p2', name: 'Bo' },
+    ],
+    predictions,
+    createdAt: '2026-01-01T00:00:00.000Z',
+  });
+  const pick = (
+    predictorId: string,
+    home: number,
+    away: number,
+  ): WorldCupState['predictions'][number] => ({
+    matchId: 'm1',
+    predictorId,
+    home,
+    away,
+    updatedAt: KICK,
+  });
+
+  it('salutes the exact callers at full-time', () => {
+    const s = stateWith(mk({ result: { home: 2, away: 1 } }), [pick('p1', 2, 1), pick('p2', 0, 0)]);
+    expect(banterPrompt(s, 'm1', after)).toBe('🎯 Ada called the 2–1!');
+  });
+
+  it('marvels at the chaos when nobody nailed it', () => {
+    const s = stateWith(mk({ result: { home: 2, away: 1 } }), [pick('p1', 0, 0)]);
+    expect(banterPrompt(s, 'm1', after)).toBe('🙈 Nobody saw 2–1 coming.');
+  });
+
+  it('ribs a bold pick once the match has kicked off', () => {
+    const s = stateWith(mk(), [pick('p1', 4, 3)]);
+    expect(banterPrompt(s, 'm1', after)).toBe('😅 Ada went 4–3 here — brave.');
+  });
+
+  it('never reveals picks before kickoff — nudges stragglers instead', () => {
+    const s = stateWith(mk(), [pick('p1', 4, 3)]);
+    // Bo still hasn't picked; Ada's bold 4-3 must NOT leak pre-kickoff.
+    const prompt = banterPrompt(s, 'm1', before);
+    expect(prompt).toBe('⏳ Still waiting on Bo to call it…');
+    expect(prompt).not.toContain('4');
   });
 });
 

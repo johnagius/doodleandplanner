@@ -3580,6 +3580,14 @@ label.field {
   font-style: italic;
   opacity: 0.85;
 }
+.wc-banter-prompt {
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 0.4rem 0.6rem;
+  border-radius: 8px;
+  background: rgba(127, 127, 127, 0.1);
+  border-left: 3px solid var(--accent, #4f46e5);
+}
 .wc-banter-chip.is-active {
   background: rgba(245, 179, 1, 0.2);
   border-color: rgba(245, 179, 1, 0.55);

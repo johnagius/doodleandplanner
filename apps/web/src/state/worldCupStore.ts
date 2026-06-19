@@ -135,6 +135,8 @@ interface WorldCupStore {
   // Per-match comments — stored in RoomState.messages (tagged with matchId),
   // authored by the predictor.
   postComment: (matchId: string, text: string) => Promise<void>;
+  /** Post a GIF (by media URL) into a match's banter thread. */
+  postGif: (matchId: string, gifUrl: string) => Promise<void>;
   reactComment: (messageId: string, emoji: string) => Promise<void>;
   deleteComment: (messageId: string) => Promise<void>;
 
@@ -435,6 +437,17 @@ export const useWorldCupStore = create<WorldCupStore>((set, get) => {
         messages: appendMessage(
           s.messages ?? [],
           createMessage({ roomId: s.room.id, authorId: me, text, matchId }),
+        ),
+      }));
+    },
+
+    async postGif(matchId, gifUrl) {
+      const me = requireMe();
+      await apply((s) => ({
+        ...s,
+        messages: appendMessage(
+          s.messages ?? [],
+          createMessage({ roomId: s.room.id, authorId: me, text: '', gifUrl, matchId }),
         ),
       }));
     },

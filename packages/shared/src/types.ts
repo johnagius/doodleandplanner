@@ -276,6 +276,9 @@ export interface Message {
   text: string;
   /** Optional attached photo (id into the room's photos / photo store). */
   photoId?: string;
+  /** Optional attached GIF as an external media URL (e.g. a Giphy hotlink).
+   * Unlike photos this stores just the URL, not bytes. */
+  gifUrl?: string;
   /** Optional World Cup match this comment belongs to (per-match banter). When
    * absent the message is a general room message. */
   matchId?: string;

@@ -29,6 +29,19 @@ describe('createMessage', () => {
     expect(msg.text).toBe('');
   });
 
+  it('allows a text-less message when a GIF is attached', () => {
+    const msg = createMessage({
+      roomId: 'r',
+      authorId: 'm',
+      text: '',
+      gifUrl: 'https://media.giphy.com/media/abc/giphy.gif',
+    });
+    expect(msg.gifUrl).toBe('https://media.giphy.com/media/abc/giphy.gif');
+    expect(msg.text).toBe('');
+    // Still rejects a wholly empty message.
+    expect(() => createMessage({ roomId: 'r', authorId: 'm', text: '' })).toThrow(/empty/);
+  });
+
   it('carries a matchId for per-match banter when given', () => {
     const tagged = createMessage({ roomId: 'r', authorId: 'm', text: 'goal!', matchId: 'g-A-1' });
     expect(tagged.matchId).toBe('g-A-1');

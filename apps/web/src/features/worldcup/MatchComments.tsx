@@ -5,6 +5,7 @@ import { getRepository } from '../../lib/storage/index.js';
 import { useWorldCupStore } from '../../state/worldCupStore.js';
 import { Avatar } from './Avatar.js';
 import { banterChips, commentSnippet, emptyPrompt, type WcMatchPhase } from './wcBanter.js';
+import { WC_GIF_CATEGORIES, gifUrl } from './wcGifs.js';
 import { WORLD_CUP_SLUG } from './worldCupRoom.js';
 import { isTyping, typingLabel, typingPing } from './wcTyping.js';
 
@@ -63,10 +64,15 @@ export function MatchComments({ matchId, phase }: { matchId: string; phase: WcMa
   const messages = useWorldCupStore((s) => s.state?.messages);
   const predictors = useWorldCupStore((s) => s.state?.worldCup?.predictors ?? []);
   const meId = useWorldCupStore((s) => s.meId);
-  const { postComment, reactComment, deleteComment } = useWorldCupStore();
+  const { postComment, postGif, reactComment, deleteComment } = useWorldCupStore();
   const { show } = useToast();
   const [open, setOpen] = useState(false);
   const [text, setText] = useState('');
+  const [gifOpen, setGifOpen] = useState(false);
+  const [gifCat, setGifCat] = useState(WC_GIF_CATEGORIES[0]!.key);
+  const [brokenGifs, setBrokenGifs] = useState<Set<string>>(() => new Set());
+  const activeGifs = (WC_GIF_CATEGORIES.find((c) => c.key === gifCat) ?? WC_GIF_CATEGORIES[0]!)
+    .gifs;
 
   const thread = (messages ?? []).filter((m) => m.matchId === matchId);
   const predictorOf = (id: string) => predictors.find((p) => p.id === id) ?? null;
@@ -88,6 +94,14 @@ export function MatchComments({ matchId, phase }: { matchId: string; phase: WcMa
     await post(text);
   }
 
+  async function sendGif(id: string) {
+    if (!meId) return;
+    await postGif(matchId, gifUrl(id));
+    const err = useWorldCupStore.getState().error;
+    if (err) show(err);
+    else setGifOpen(false);
+  }
+
   return (
     <div className="wc-comments">
       <button
@@ -103,7 +117,7 @@ export function MatchComments({ matchId, phase }: { matchId: string; phase: WcMa
         ) : last ? (
           <span className="wc-comments-preview">
             <strong>{predictorOf(last.authorId)?.name ?? 'Someone'}:</strong>{' '}
-            {commentSnippet(last.text)} · {thread.length}
+            {last.gifUrl && !last.text ? '🎞 GIF' : commentSnippet(last.text)} · {thread.length}
           </span>
         ) : (
           <span className="wc-comments-preview muted">{emptyPrompt(phase)}</span>
@@ -141,6 +155,50 @@ export function MatchComments({ matchId, phase }: { matchId: string; phase: WcMa
                   {c}
                 </button>
               ))}
+              <button
+                type="button"
+                className={`wc-banter-chip ${gifOpen ? 'is-active' : ''}`}
+                aria-expanded={gifOpen}
+                onClick={() => setGifOpen((v) => !v)}
+              >
+                🎞 GIF
+              </button>
+            </div>
+          )}
+          {meId && gifOpen && (
+            <div className="wc-gif-picker">
+              <div className="wc-gif-cats">
+                {WC_GIF_CATEGORIES.map((c) => (
+                  <button
+                    key={c.key}
+                    type="button"
+                    className={`wc-gif-cat ${gifCat === c.key ? 'is-active' : ''}`}
+                    onClick={() => setGifCat(c.key)}
+                  >
+                    {c.label}
+                  </button>
+                ))}
+              </div>
+              <div className="wc-gif-grid">
+                {activeGifs
+                  .filter((g) => !brokenGifs.has(g.id))
+                  .map((g) => (
+                    <button
+                      key={g.id}
+                      type="button"
+                      className="wc-gif-thumb"
+                      title={g.alt}
+                      onClick={() => void sendGif(g.id)}
+                    >
+                      <img
+                        src={gifUrl(g.id)}
+                        alt={g.alt}
+                        loading="lazy"
+                        onError={() => setBrokenGifs((b) => new Set(b).add(g.id))}
+                      />
+                    </button>
+                  ))}
+              </div>
             </div>
           )}
           {typers.length > 0 && (
@@ -203,7 +261,18 @@ function CommentMessage({
             </button>
           )}
         </div>
-        <div className="chat-text">{message.text}</div>
+        {message.text && <div className="chat-text">{message.text}</div>}
+        {message.gifUrl && (
+          <img
+            className="wc-comment-gif"
+            src={message.gifUrl}
+            alt=""
+            loading="lazy"
+            onError={(e) => {
+              e.currentTarget.style.display = 'none';
+            }}
+          />
+        )}
         <div className="chat-reactions">
           {reactions.map(([emoji, who]) => (
             <button

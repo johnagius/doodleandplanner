@@ -11,6 +11,8 @@ export interface CreateMessageInput {
   text: string;
   /** Optional attached photo id. */
   photoId?: string;
+  /** Optional attached GIF media URL. */
+  gifUrl?: string;
   /** Optional World Cup match id, for per-match banter threads. */
   matchId?: string;
   now?: () => Date;
@@ -18,7 +20,7 @@ export interface CreateMessageInput {
 
 export function createMessage(input: CreateMessageInput): Message {
   const text = input.text.trim();
-  if (!text && !input.photoId) throw new Error('Message cannot be empty');
+  if (!text && !input.photoId && !input.gifUrl) throw new Error('Message cannot be empty');
   if (text.length > MAX_MESSAGE_LENGTH) throw new Error('Message is too long');
   return {
     id: generateId('msg'),
@@ -26,6 +28,7 @@ export function createMessage(input: CreateMessageInput): Message {
     authorId: input.authorId,
     text,
     photoId: input.photoId,
+    gifUrl: input.gifUrl,
     matchId: input.matchId,
     createdAt: (input.now ?? (() => new Date()))().toISOString(),
   };

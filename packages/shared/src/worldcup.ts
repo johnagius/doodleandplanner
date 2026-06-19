@@ -658,6 +658,44 @@ export interface WcMatchEvent {
   assist?: string;
 }
 
+export interface WcPlayerEventStats {
+  goals: number;
+  assists: number;
+  yellow: number;
+  red: number;
+}
+
+/**
+ * A player's tournament goals/assists/cards aggregated from match events, matching
+ * the feed's display names best-effort: accent- and dot-insensitive, accepting an
+ * exact match or a "first-initial + surname" match ("L. Messi" ↔ "Lionel Messi").
+ * Own goals don't count as goals. Pure.
+ */
+export function playerEventStats(events: WcMatchEvent[], name: string): WcPlayerEventStats {
+  const norm = (s: string) =>
+    s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\./g, '').toLowerCase().trim();
+  const target = norm(name);
+  const parts = target.split(/\s+/).filter(Boolean);
+  const surname = parts[parts.length - 1] ?? '';
+  const initial = parts[0]?.[0] ?? '';
+  const isPlayer = (p?: string): boolean => {
+    if (!p) return false;
+    const n = norm(p);
+    if (n === target) return true;
+    const np = n.split(/\s+/).filter(Boolean);
+    const ns = np[np.length - 1] ?? '';
+    return surname.length > 2 && ns === surname && (np[0]?.[0] ?? '') === initial;
+  };
+  const stats: WcPlayerEventStats = { goals: 0, assists: 0, yellow: 0, red: 0 };
+  for (const e of events) {
+    if ((e.kind === 'goal' || e.kind === 'pen-goal') && isPlayer(e.player)) stats.goals++;
+    else if (e.kind === 'yellow' && isPlayer(e.player)) stats.yellow++;
+    else if (e.kind === 'red' && isPlayer(e.player)) stats.red++;
+    if (isPlayer(e.assist)) stats.assists++;
+  }
+  return stats;
+}
+
 /** One historical meeting between two teams (from the results feed). */
 export interface WcH2HMeeting {
   /** ISO date of the meeting. */

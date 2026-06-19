@@ -9,10 +9,13 @@ import {
   playerCard,
   recentCardAwards,
   type WcPlayerCard,
+  type WcSquadPlayer,
   type WorldCupState,
 } from '@dap/shared';
+import { useState } from 'react';
 import { EmptyState } from '../../components/EmptyState.js';
 import { useWorldCupStore } from '../../state/worldCupStore.js';
+import { PlayerProfileModal } from './PlayerProfileModal.js';
 import { usePlayerPhoto } from './playerPhoto.js';
 
 const MEDALS = ['🥇', '🥈', '🥉'];
@@ -26,9 +29,13 @@ export function CardsView({ wc }: { wc: WorldCupState }) {
   const myCards = meId ? cardsWonBy(wc, meId) : [];
   const myBadge = meId ? cardBadgeFor(wc, meId) : null;
   const anyCards = lb.some((r) => r.cards > 0);
+  const [profilePlayer, setProfilePlayer] = useState<WcSquadPlayer | null>(null);
 
   return (
     <div className="stack">
+      {profilePlayer && (
+        <PlayerProfileModal player={profilePlayer} wc={wc} onClose={() => setProfilePlayer(null)} />
+      )}
       <div className="card stack">
         <div className="row spread">
           <h3 style={{ margin: 0 }}>🃏 Card collectors</h3>
@@ -57,7 +64,7 @@ export function CardsView({ wc }: { wc: WorldCupState }) {
         )}
       </div>
 
-      <LatestPulls wc={wc} />
+      <LatestPulls wc={wc} onPlayer={setProfilePlayer} />
 
       <h3 style={{ margin: '0.25rem 0 0' }}>
         {meId ? `Your cards (${myCards.length})` : 'Your cards'}
@@ -79,7 +86,14 @@ export function CardsView({ wc }: { wc: WorldCupState }) {
               const isBadge = myBadge?.player.id === w.player.id;
               return (
                 <div key={w.matchId} className="wc-card-cell">
-                  <PlayerCardView card={card} wc={wc} />
+                  <button
+                    type="button"
+                    className="wc-card-open"
+                    onClick={() => setProfilePlayer(w.player)}
+                    title={`${w.player.name} — player info`}
+                  >
+                    <PlayerCardView card={card} wc={wc} />
+                  </button>
                   <button
                     type="button"
                     className={`btn btn-sm wc-badge-toggle ${isBadge ? 'is-active' : ''}`}
@@ -148,7 +162,13 @@ export function PlayerCardView({ card, wc }: { card: WcPlayerCard; wc: WorldCupS
 
 /** A live feed of everyone's most recent card pulls, newest first — the social
  * home for reacting to what your mates landed. */
-function LatestPulls({ wc }: { wc: WorldCupState }) {
+function LatestPulls({
+  wc,
+  onPlayer,
+}: {
+  wc: WorldCupState;
+  onPlayer: (p: WcSquadPlayer) => void;
+}) {
   const meId = useWorldCupStore((s) => s.meId);
   const reactCard = useWorldCupStore((s) => s.reactCard);
   const awards = recentCardAwards(wc, 10);
@@ -166,17 +186,24 @@ function LatestPulls({ wc }: { wc: WorldCupState }) {
           const reactions = cardReactionsFor(wc, a.matchId, a.predictorId);
           return (
             <li key={`${a.matchId}|${a.predictorId}`} className="wc-pull">
-              <span className={`wc-badge-chip tier-${card.tier}`}>
-                <span className="wc-badge-chip-ovr">{card.overall}</span>
-                <span aria-hidden>{team?.flag ?? '⚽'}</span>
-              </span>
-              <span className="wc-pull-who">
-                <strong>{a.player.name}</strong>
-                <span className="muted small">
-                  {' '}
-                  → {findPredictor(wc, a.predictorId)?.name ?? '?'}
+              <button
+                type="button"
+                className="wc-pull-open"
+                onClick={() => onPlayer(a.player)}
+                title={`${a.player.name} — player info`}
+              >
+                <span className={`wc-badge-chip tier-${card.tier}`}>
+                  <span className="wc-badge-chip-ovr">{card.overall}</span>
+                  <span aria-hidden>{team?.flag ?? '⚽'}</span>
                 </span>
-              </span>
+                <span className="wc-pull-who">
+                  <strong>{a.player.name}</strong>
+                  <span className="muted small">
+                    {' '}
+                    → {findPredictor(wc, a.predictorId)?.name ?? '?'}
+                  </span>
+                </span>
+              </button>
               <span className="wc-pull-react">
                 {WC_CARD_REACTIONS.map((e) => {
                   const ids = reactions[e] ?? [];

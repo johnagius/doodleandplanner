@@ -32,6 +32,7 @@ import {
   pendingForMe,
   pendingPredictors,
   playerBreakdown,
+  playerEventStats,
   playerForm,
   playerGameLog,
   playerStats,
@@ -74,6 +75,7 @@ import {
   wcTimeline,
   winnerOf,
   type WcMatch,
+  type WcMatchEvent,
   type WorldCupState,
 } from '../src/worldcup.js';
 import type { Message } from '../src/types.js';
@@ -1040,6 +1042,43 @@ describe('banterAchievements', () => {
     const a = banterAchievements(undefined, 'me');
     expect(a).toHaveLength(3);
     expect(a.every((x) => !x.earned && x.have === 0)).toBe(true);
+  });
+});
+
+describe('playerEventStats', () => {
+  it('tallies goals/assists/cards, matching accents and initial+surname, skipping own goals', () => {
+    const events: WcMatchEvent[] = [
+      { minute: "10'", kind: 'goal', teamTla: 'ARG', player: 'Lionel Messi' },
+      { minute: "22'", kind: 'pen-goal', teamTla: 'ARG', player: 'L. Messi' },
+      {
+        minute: "30'",
+        kind: 'goal',
+        teamTla: 'ARG',
+        player: 'Julian Alvarez',
+        assist: 'Lionel Messi',
+      },
+      { minute: "40'", kind: 'own-goal', teamTla: 'ARG', player: 'Lionel Messi' },
+      { minute: "55'", kind: 'yellow', teamTla: 'ARG', player: 'Lionel Messi' },
+      { minute: "60'", kind: 'red', teamTla: 'BRA', player: 'Casemiro' },
+    ];
+    expect(playerEventStats(events, 'Lionel Messi')).toEqual({
+      goals: 2,
+      assists: 1,
+      yellow: 1,
+      red: 0,
+    });
+    // Accent-insensitive matching.
+    const acc: WcMatchEvent[] = [
+      { minute: "5'", kind: 'goal', teamTla: 'BRA', player: 'Vinicius Junior' },
+    ];
+    expect(playerEventStats(acc, 'Vinícius Júnior').goals).toBe(1);
+    // A different player isn't credited.
+    expect(playerEventStats(events, 'Casemiro')).toEqual({
+      goals: 0,
+      assists: 0,
+      yellow: 0,
+      red: 1,
+    });
   });
 });
 

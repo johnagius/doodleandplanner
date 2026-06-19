@@ -3403,6 +3403,114 @@ label.field {
   font-weight: 700;
   font-size: 0.75rem;
 }
+
+/* Clickable player cards / pulls open the player profile modal. */
+.wc-card-open {
+  border: none;
+  background: none;
+  padding: 0;
+  width: 100%;
+  cursor: pointer;
+  display: block;
+  border-radius: 14px;
+  transition: transform 120ms ease;
+}
+.wc-card-open:hover {
+  transform: translateY(-2px);
+}
+.wc-pull-open {
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+.wc-pull-open:hover .wc-pull-who strong {
+  text-decoration: underline;
+}
+
+/* Player profile modal */
+.wc-pp-head {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+.wc-pp-photo {
+  width: 72px;
+  height: 72px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  flex: 0 0 auto;
+  background: linear-gradient(160deg, #eef1f4, #cbd2da);
+  font-size: 2rem;
+}
+.wc-pp-photo.tier-gold {
+  background: linear-gradient(160deg, #fbe9a0, #d3a93b);
+}
+.wc-pp-photo.tier-bronze {
+  background: linear-gradient(160deg, #f0cda0, #b07a3c);
+}
+.wc-pp-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.wc-pp-id {
+  flex: 1;
+  min-width: 0;
+}
+.wc-pp-name {
+  font-weight: 800;
+  font-size: 1.1rem;
+}
+.wc-pp-value {
+  font-weight: 700;
+  color: var(--accent, #4f46e5);
+  font-size: 0.85rem;
+}
+.wc-pp-ovr {
+  font-size: 2rem;
+  font-weight: 900;
+  flex: 0 0 auto;
+}
+.wc-pp-facts {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.4rem 1rem;
+}
+.wc-pp-facts > span {
+  display: flex;
+  flex-direction: column;
+}
+.wc-pp-wc {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.5rem 0.7rem;
+  border-radius: 10px;
+  background: rgba(127, 127, 127, 0.1);
+}
+.wc-pp-wc-line {
+  font-weight: 700;
+}
+.wc-pp-ratings {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.3rem;
+  font-size: 0.85rem;
+}
+.wc-pp-bio {
+  line-height: 1.4;
+}
 .wc-fifa-card {
   position: relative;
   border-radius: 14px;

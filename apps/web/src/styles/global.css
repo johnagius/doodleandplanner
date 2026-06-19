@@ -2632,6 +2632,24 @@ label.field {
   color: var(--primary-dark);
 }
 
+/* Watch-highlights link on finished matches */
+.wc-highlight {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  align-self: flex-start;
+  padding: 0.28rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-decoration: none;
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+.wc-highlight:hover {
+  filter: brightness(0.97);
+}
+
 /* Implied win probability (from the betting line) */
 .wc-winprob {
   display: flex;

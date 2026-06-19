@@ -47,6 +47,7 @@ import { Avatar } from './Avatar.js';
 import { Countdown } from './Countdown.js';
 import { GifPicker } from './GifPicker.js';
 import { useHeadToHead, type H2HState } from './h2h.js';
+import { useMatchHighlight } from './highlights.js';
 import { LineupView } from './LineupView.js';
 import { MatchComments } from './MatchComments.js';
 import { statBarPercents, useMatchSummary } from './matchSummary.js';
@@ -289,6 +290,18 @@ function CrownRace({
   );
 }
 
+/** A "watch highlights" link for a finished match, when TheSportsDB has a clip
+ * up. Renders nothing until (and unless) one exists. */
+function HighlightLink({ home, away, match }: { home?: WcTeam; away?: WcTeam; match: WcMatch }) {
+  const { url } = useMatchHighlight(home?.name, away?.name, match.kickoff, !!match.result);
+  if (!url) return null;
+  return (
+    <a className="wc-highlight" href={url} target="_blank" rel="noopener noreferrer">
+      ▶️ Watch highlights
+    </a>
+  );
+}
+
 /** Optional extras from the live feed: the pre-match odds line and the crowd. */
 function MatchFacts({ live, hasResult }: { live?: WcLiveInfo; hasResult: boolean }) {
   if (!live) return null;
@@ -483,6 +496,7 @@ export function MatchCard({ matchId }: { matchId: string }) {
           <CrowdPulse wc={wc} match={match} />
           <MatchEvents events={events} wc={wc} match={match} />
           <MatchFacts live={live} hasResult={!!result} />
+          {result && <HighlightLink home={home} away={away} match={match} />}
           {isLive && live!.home != null && live!.away != null && (
             <p className="muted small wc-live-caption">
               {live!.clock || live!.minute != null

@@ -53,6 +53,7 @@ import { PlayerProfileModal } from './PlayerProfileModal.js';
 import { ScenariosView } from './ScenariosView.js';
 import { ScoreStepper } from './ScoreStepper.js';
 import { useNow } from './useNow.js';
+import { useVenueForecast } from './weather.js';
 import { formatKickoff, legibleScoreColor } from './wcFormat.js';
 import { WC_LIVE_REACTION_EMOJI, isLiveReaction, liveReaction } from './wcLiveReactions.js';
 import { WORLD_CUP_SLUG } from './worldCupRoom.js';
@@ -1049,8 +1050,9 @@ function H2HView({ state, home, away }: { state: H2HState; home: WcTeam; away: W
 }
 
 /** Altitude & climate read for a fixture — who's built for the venue's altitude
- * and heat. All static data, so it's shown pre-game (no kickoff needed). */
+ * and heat, plus the live match-day forecast (Open-Meteo) when one's available. */
 function ClimateView({ match, home, away }: { match: WcMatch; home: WcTeam; away: WcTeam }) {
+  const { forecast } = useVenueForecast(match.venue, match.kickoff);
   const hc = teamClimate(home.id);
   const ac = teamClimate(away.id);
   if (!hc || !ac) return null;
@@ -1063,6 +1065,12 @@ function ClimateView({ match, home, away }: { match: WcMatch; home: WcTeam; away
       {venue && (
         <div className="wc-climate-venue">
           📍 {match.venue} · {m(venue.altitude)} · ~{venue.tempC}°C on match day
+        </div>
+      )}
+      {forecast && (
+        <div className="wc-forecast" title="Live forecast at kickoff (Open-Meteo)">
+          {forecast.emoji} Forecast at kickoff: <strong>{forecast.tempC}°C</strong> ·{' '}
+          {forecast.precipPct}% rain · {forecast.windKph} km/h wind
         </div>
       )}
       <table className="wc-cmp-table">

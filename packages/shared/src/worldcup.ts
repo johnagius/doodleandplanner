@@ -2772,11 +2772,35 @@ export const VENUE_CLIMATE: Record<string, WcClimate> = {
   Vancouver: { altitude: 4, tempC: 22 },
 };
 
+/** Host-stadium coordinates per venue (for a live match-day weather forecast).
+ * Keyed by the same venue names as VENUE_CLIMATE / match.venue. */
+export const VENUE_COORDS: Record<string, { lat: number; lon: number }> = {
+  Atlanta: { lat: 33.755, lon: -84.401 }, // Mercedes-Benz Stadium
+  'Bay Area': { lat: 37.403, lon: -121.97 }, // Levi's Stadium
+  Boston: { lat: 42.091, lon: -71.264 }, // Gillette Stadium
+  Dallas: { lat: 32.747, lon: -97.093 }, // AT&T Stadium
+  Guadalajara: { lat: 20.682, lon: -103.463 }, // Estadio Akron
+  Houston: { lat: 29.685, lon: -95.411 }, // NRG Stadium
+  'Kansas City': { lat: 39.049, lon: -94.484 }, // Arrowhead Stadium
+  'Los Angeles': { lat: 33.953, lon: -118.339 }, // SoFi Stadium
+  'Mexico City': { lat: 19.303, lon: -99.15 }, // Estadio Azteca
+  Miami: { lat: 25.958, lon: -80.239 }, // Hard Rock Stadium
+  Monterrey: { lat: 25.669, lon: -100.244 }, // Estadio BBVA
+  'New York New Jersey': { lat: 40.814, lon: -74.074 }, // MetLife Stadium
+  Philadelphia: { lat: 39.901, lon: -75.168 }, // Lincoln Financial Field
+  Seattle: { lat: 47.595, lon: -122.332 }, // Lumen Field
+  Toronto: { lat: 43.633, lon: -79.418 }, // BMO Field
+  Vancouver: { lat: 49.277, lon: -123.112 }, // BC Place
+};
+
 export function teamClimate(teamId: string | undefined): WcClimate | undefined {
   return teamId ? TEAM_CLIMATE[teamId] : undefined;
 }
 export function venueClimate(venue: string | undefined): WcClimate | undefined {
   return venue ? VENUE_CLIMATE[venue] : undefined;
+}
+export function venueCoords(venue: string | undefined): { lat: number; lon: number } | undefined {
+  return venue ? VENUE_COORDS[venue] : undefined;
 }
 
 export interface WcClimateEdge {

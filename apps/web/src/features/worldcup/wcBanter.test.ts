@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { banterChips, commentSnippet, emptyPrompt } from './wcBanter.js';
+import { banterChips, commentSnippet, emptyPrompt, mentionSegments, mentions } from './wcBanter.js';
 
 describe('wcBanter', () => {
   it('offers a non-empty set of chips for every phase', () => {
@@ -24,5 +24,21 @@ describe('wcBanter', () => {
     expect(emptyPrompt('pre')).not.toBe(emptyPrompt('live'));
     expect(emptyPrompt('ft')).not.toBe(emptyPrompt('pre'));
     expect(emptyPrompt('live')).toMatch(/\S/);
+  });
+
+  it('splits text into mention and plain segments', () => {
+    const seg = mentionSegments('lol @John get in', ['John', 'Bo']);
+    expect(seg).toEqual([
+      { text: 'lol ', mention: false },
+      { text: '@John', mention: true },
+      { text: ' get in', mention: false },
+    ]);
+  });
+
+  it('matches mentions case-insensitively but only a whole name with @', () => {
+    expect(mentions('nice one @bo', 'Bo')).toBe(true);
+    expect(mentions('Bonjour', 'Bo')).toBe(false); // no @, and not a whole-word match
+    expect(mentions('@Johnny', 'John')).toBe(false); // @John must end on a boundary
+    expect(mentions('plain text', 'John')).toBe(false);
   });
 });

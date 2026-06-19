@@ -4,7 +4,13 @@ import { useToast } from '../../components/Toast.js';
 import { getRepository } from '../../lib/storage/index.js';
 import { useWorldCupStore } from '../../state/worldCupStore.js';
 import { Avatar } from './Avatar.js';
-import { banterChips, commentSnippet, emptyPrompt, type WcMatchPhase } from './wcBanter.js';
+import {
+  banterChips,
+  commentSnippet,
+  emptyPrompt,
+  mentionSegments,
+  type WcMatchPhase,
+} from './wcBanter.js';
 import { WC_GIF_CATEGORIES, gifUrl } from './wcGifs.js';
 import { WORLD_CUP_SLUG } from './worldCupRoom.js';
 import { isTyping, typingLabel, typingPing } from './wcTyping.js';
@@ -72,6 +78,8 @@ export function MatchComments({ matchId, phase }: { matchId: string; phase: WcMa
   const [gifOpen, setGifOpen] = useState(false);
   const [gifCat, setGifCat] = useState(WC_GIF_CATEGORIES[0]!.key);
   const [brokenGifs, setBrokenGifs] = useState<Set<string>>(() => new Set());
+  const [mentionOpen, setMentionOpen] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
   const activeGifs = (WC_GIF_CATEGORIES.find((c) => c.key === gifCat) ?? WC_GIF_CATEGORIES[0]!)
     .gifs;
 
@@ -102,6 +110,13 @@ export function MatchComments({ matchId, phase }: { matchId: string; phase: WcMa
     const err = useWorldCupStore.getState().error;
     if (err) show(err);
     else setGifOpen(false);
+  }
+
+  const others = predictors.filter((p) => p.id !== meId);
+  function insertMention(name: string) {
+    setText((t) => `${t}${t && !t.endsWith(' ') ? ' ' : ''}@${name} `);
+    setMentionOpen(false);
+    inputRef.current?.focus();
   }
 
   return (
@@ -139,6 +154,7 @@ export function MatchComments({ matchId, phase }: { matchId: string; phase: WcMa
                   message={m}
                   predictor={predictorOf(m.authorId)}
                   meId={meId}
+                  names={predictors.map((p) => p.name)}
                   onReact={(emoji) => {
                     if (meId) void reactComment(m.id, emoji);
                   }}
@@ -167,6 +183,30 @@ export function MatchComments({ matchId, phase }: { matchId: string; phase: WcMa
               >
                 🎞 GIF
               </button>
+              {others.length > 0 && (
+                <button
+                  type="button"
+                  className={`wc-banter-chip ${mentionOpen ? 'is-active' : ''}`}
+                  aria-expanded={mentionOpen}
+                  onClick={() => setMentionOpen((v) => !v)}
+                >
+                  @ Mention
+                </button>
+              )}
+            </div>
+          )}
+          {meId && mentionOpen && others.length > 0 && (
+            <div className="wc-banter-chips wc-mention-row">
+              {others.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  className="wc-banter-chip"
+                  onClick={() => insertMention(p.name)}
+                >
+                  @{p.name}
+                </button>
+              ))}
             </div>
           )}
           {meId && gifOpen && (
@@ -210,6 +250,7 @@ export function MatchComments({ matchId, phase }: { matchId: string; phase: WcMa
           )}
           <form className="row" onSubmit={submit} style={{ gap: '0.4rem' }}>
             <input
+              ref={inputRef}
               className="input"
               value={text}
               onChange={(e) => {
@@ -255,12 +296,14 @@ function CommentMessage({
   message,
   predictor,
   meId,
+  names,
   onReact,
   onDelete,
 }: {
   message: Message;
   predictor: { name: string; avatarPhotoId?: string } | null;
   meId: string | null;
+  names: string[];
   onReact: (emoji: string) => void;
   onDelete: () => void;
 }) {
@@ -281,7 +324,19 @@ function CommentMessage({
             </button>
           )}
         </div>
-        {message.text && <div className="chat-text">{message.text}</div>}
+        {message.text && (
+          <div className="chat-text">
+            {mentionSegments(message.text, names).map((s, i) =>
+              s.mention ? (
+                <span key={i} className="wc-mention">
+                  {s.text}
+                </span>
+              ) : (
+                <span key={i}>{s.text}</span>
+              ),
+            )}
+          </div>
+        )}
         {message.gifUrl && (
           <img
             className="wc-comment-gif"

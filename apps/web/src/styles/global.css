@@ -3588,6 +3588,13 @@ label.field {
   background: rgba(127, 127, 127, 0.1);
   border-left: 3px solid var(--accent, #4f46e5);
 }
+.wc-mention {
+  font-weight: 700;
+  color: var(--accent, #4f46e5);
+}
+.wc-mention-row {
+  margin-top: -0.1rem;
+}
 .wc-banter-chip.is-active {
   background: rgba(245, 179, 1, 0.2);
   border-color: rgba(245, 179, 1, 0.55);

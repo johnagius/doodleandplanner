@@ -22,6 +22,40 @@ export function commentSnippet(text: string, max = 42): string {
   return t.length > max ? `${t.slice(0, max - 1)}…` : t;
 }
 
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+export interface MentionSegment {
+  text: string;
+  mention: boolean;
+}
+
+/**
+ * Split `text` into runs, flagging "@Name" mentions of any known predictor name
+ * (case-insensitive, longest names first so "@Jo" can't shadow "@John"). Pure,
+ * so it's used both to render highlights and to detect pings.
+ */
+export function mentionSegments(text: string, names: string[]): MentionSegment[] {
+  const valid = [...new Set(names.filter(Boolean))].sort((a, b) => b.length - a.length);
+  if (valid.length === 0) return [{ text, mention: false }];
+  const re = new RegExp(`@(${valid.map(escapeRegex).join('|')})\\b`, 'gi');
+  const out: MentionSegment[] = [];
+  let last = 0;
+  for (let m = re.exec(text); m; m = re.exec(text)) {
+    if (m.index > last) out.push({ text: text.slice(last, m.index), mention: false });
+    out.push({ text: m[0], mention: true });
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) out.push({ text: text.slice(last), mention: false });
+  return out.length > 0 ? out : [{ text, mention: false }];
+}
+
+/** Whether `text` @-mentions `name`. */
+export function mentions(text: string, name: string): boolean {
+  return mentionSegments(text, [name]).some((s) => s.mention);
+}
+
 /** An inviting, phase-aware prompt shown when a thread is empty. */
 export function emptyPrompt(phase: WcMatchPhase): string {
   switch (phase) {

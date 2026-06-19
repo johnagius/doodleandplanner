@@ -15,6 +15,8 @@ import {
   predictionCount,
   scorePrediction,
   tournamentDays,
+  type Message,
+  type WcPredictor,
   type WcWonCard,
   type WorldCupState,
 } from '@dap/shared';
@@ -40,6 +42,7 @@ import { PredictorBar } from './PredictorBar.js';
 import { ScoringLegend } from './ScoringLegend.js';
 import { TimelineView } from './TimelineView.js';
 import { hasSession, installWcSaveAuth } from './wcAuthClient.js';
+import { mentions } from './wcBanter.js';
 import { formatDayLong, formatKickoff } from './wcFormat.js';
 
 type Tab =
@@ -138,6 +141,9 @@ export function WorldCupPage() {
     setConfettiKey((k) => k + 1);
   }, []);
   useCardWinCelebration(wc, meId, onCardsWon);
+
+  // Ping me when a mate @mentions me in any match thread.
+  useMentionPing(state?.messages, wc?.predictors ?? [], meId, toast.show);
 
   if (loading && !wc) {
     return (
@@ -445,6 +451,47 @@ function useCardWinCelebration(
     for (const w of fresh) seen.current.add(keyOf(w));
     if (fresh.length > 0) onWin(fresh);
   }, [wc, meId, onWin]);
+}
+
+/**
+ * Toast me when a mate *newly* @mentions me in any match thread this session.
+ * Same baseline-on-first-look trick as the celebrations, so a reload never
+ * re-pings old mentions; re-baselines on identity change.
+ */
+function useMentionPing(
+  messages: Message[] | undefined,
+  predictors: WcPredictor[],
+  meId: string | null,
+  onPing: (message: string) => void,
+) {
+  const seen = useRef<Set<string> | null>(null);
+  const lastMe = useRef<string | null>(null);
+  const meName = predictors.find((p) => p.id === meId)?.name ?? null;
+
+  useEffect(() => {
+    if (!messages || !meId || !meName) {
+      seen.current = null;
+      lastMe.current = meId;
+      return;
+    }
+    if (lastMe.current !== meId) {
+      seen.current = null;
+      lastMe.current = meId;
+    }
+    const atMe = messages.filter(
+      (m) => m.authorId !== meId && !!m.text && mentions(m.text, meName),
+    );
+    if (seen.current === null) {
+      seen.current = new Set(atMe.map((m) => m.id)); // baseline silently
+      return;
+    }
+    const fresh = atMe.filter((m) => !seen.current!.has(m.id));
+    for (const m of fresh) seen.current.add(m.id);
+    if (fresh.length > 0) {
+      const author = predictors.find((p) => p.id === fresh[fresh.length - 1]!.authorId)?.name;
+      onPing(`💬 ${author ?? 'Someone'} mentioned you`);
+    }
+  }, [messages, predictors, meId, meName, onPing]);
 }
 
 /** "🇧🇷 BRA 2–1 ARG 🇦🇷" for a resolved match, for a celebration toast. */

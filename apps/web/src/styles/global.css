@@ -2737,6 +2737,21 @@ label.field {
 .wc-msbar.right i {
   background: var(--accent);
 }
+.wc-recentform {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.wc-rf-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+}
+.wc-rf-team {
+  font-weight: 700;
+}
 .wc-leaders-cols {
   display: grid;
   grid-template-columns: 1fr 1fr;

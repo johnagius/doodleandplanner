@@ -490,6 +490,16 @@ describe('parseEspnSummary + orientMatchSummary', () => {
         ],
       },
     ],
+    lastFiveGames: [
+      {
+        team: { abbreviation: 'USA' },
+        events: [
+          { gameDate: '2026-03-28T19:30Z', opponent: { abbreviation: 'BEL', displayName: 'Belgium' }, score: '2-5', atVs: 'vs', gameResult: 'L', competitionName: '2026 International Friendly' }, // prettier-ignore
+          { gameDate: '2026-03-25T19:30Z', opponent: { abbreviation: 'CAN', displayName: 'Canada' }, score: '3-1', atVs: '@', gameResult: 'W' }, // prettier-ignore
+          { opponent: { abbreviation: 'MEX' }, gameResult: 'X' }, // unknown result → dropped
+        ],
+      },
+    ],
     gameInfo: {
       officials: [
         { fullName: 'Assistant One', position: { name: 'Assistant Referee 1' } },
@@ -511,6 +521,10 @@ describe('parseEspnSummary + orientMatchSummary', () => {
     expect(usaShots).toMatchObject({ name: 'Sergiño Dest', value: '4' });
     expect(p.leaders.some((l) => l.name === 'Someone Else')).toBe(false);
     expect(p.leaders.find((l) => l.category === 'Saves')).toMatchObject({ name: 'Matt Turner', value: '1' }); // prettier-ignore
+    // Recent form: only events with a real W/D/L result, home/away from atVs.
+    expect(p.lastFive.USA).toHaveLength(2);
+    expect(p.lastFive.USA![0]).toMatchObject({ opponentTla: 'BEL', result: 'L', score: '2-5', home: true }); // prettier-ignore
+    expect(p.lastFive.USA![1]).toMatchObject({ opponentTla: 'CAN', result: 'W', home: false });
   });
 
   it('orients stats to the board home/away, mirroring when flipped', () => {
@@ -524,6 +538,10 @@ describe('parseEspnSummary + orientMatchSummary', () => {
     // Flipping the orientation swaps the two sides.
     const flipped = orientMatchSummary(p, 'AUS', 'USA');
     expect(flipped.stats.find((r) => r.key === 'shots')).toMatchObject({ home: 4, away: 12 });
+    // Recent form is oriented to the board's home/away too.
+    expect(s.recent.home).toHaveLength(2);
+    expect(s.recent.away).toHaveLength(0);
+    expect(flipped.recent.away).toHaveLength(2);
   });
 
   it('drops a stat row that neither side reports', () => {

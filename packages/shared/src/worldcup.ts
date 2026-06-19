@@ -672,6 +672,22 @@ export interface WcMatchStatRow {
   pct: boolean;
 }
 
+/** One of a team's recent results (their actual last-5, from the live feed). */
+export interface WcRecentResult {
+  /** ISO date of the game. */
+  date: string;
+  /** Opponent team code and display name. */
+  opponentTla: string;
+  opponent: string;
+  result: 'W' | 'D' | 'L';
+  /** Scoreline as the feed gives it, e.g. "2-1". */
+  score: string;
+  /** True when this team played at home. */
+  home: boolean;
+  /** Competition name, e.g. "2026 International Friendly". */
+  competition: string;
+}
+
 /** A standout performer in a match — the team's leader in some category. */
 export interface WcMatchLeader {
   /** Canonical team code the player belongs to. */
@@ -694,6 +710,8 @@ export interface WcMatchSummary {
   stats: WcMatchStatRow[];
   /** Each team's standout performers (top of each category). */
   leaders: WcMatchLeader[];
+  /** Each side's actual last-5 results (broader than this group's games). */
+  recent: { home: WcRecentResult[]; away: WcRecentResult[] };
   /** Match referee, when listed. */
   referee: string | null;
   venue: string | null;

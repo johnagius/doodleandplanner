@@ -15,6 +15,7 @@ import type {
   WcMatchOdds,
   WcMatchStatRow,
   WcMatchSummary,
+  WcRecentResult,
 } from '@dap/shared';
 
 /**
@@ -365,9 +366,22 @@ interface EspnOfficial {
   displayName?: string;
   position?: { name?: string; id?: string };
 }
+interface EspnLastFiveEvent {
+  gameDate?: string;
+  opponent?: { abbreviation?: string; displayName?: string };
+  score?: string;
+  atVs?: string;
+  gameResult?: string;
+  competitionName?: string;
+}
+interface EspnLastFiveTeam {
+  team?: { abbreviation?: string };
+  events?: EspnLastFiveEvent[];
+}
 interface EspnSummary {
   boxscore?: { teams?: EspnBoxscoreTeam[] };
   leaders?: EspnLeaderTeam[];
+  lastFiveGames?: EspnLastFiveTeam[];
   gameInfo?: {
     officials?: EspnOfficial[];
     venue?: { fullName?: string; address?: { city?: string; country?: string } };
@@ -401,6 +415,8 @@ export interface EspnSummaryParsed {
   /** ESPN stat name → value, keyed by team code. */
   teamStats: Record<string, Record<string, number | null>>;
   leaders: WcMatchLeader[];
+  /** Each team's actual last-5 results, keyed by team code. */
+  lastFive: Record<string, WcRecentResult[]>;
   referee: string | null;
   venue: string | null;
   venueCity: string | null;
@@ -434,6 +450,28 @@ export function parseEspnSummary(raw: unknown): EspnSummaryParsed {
     }
   }
 
+  const lastFive: Record<string, WcRecentResult[]> = {};
+  for (const t of s.lastFiveGames ?? []) {
+    const code = t.team?.abbreviation ? alias(t.team.abbreviation) : null;
+    if (!code) continue;
+    const list: WcRecentResult[] = [];
+    for (const e of t.events ?? []) {
+      const result =
+        e.gameResult === 'W' || e.gameResult === 'L' || e.gameResult === 'D' ? e.gameResult : null;
+      if (!result) continue;
+      list.push({
+        date: e.gameDate ?? '',
+        opponentTla: e.opponent?.abbreviation ? alias(e.opponent.abbreviation) : '',
+        opponent: e.opponent?.displayName ?? e.opponent?.abbreviation ?? '',
+        result,
+        score: e.score ?? '',
+        home: e.atVs !== '@',
+        competition: e.competitionName ?? '',
+      });
+    }
+    if (list.length) lastFive[code] = list;
+  }
+
   const officials = s.gameInfo?.officials ?? [];
   const ref =
     officials.find((o) => (o.position?.name ?? '').toLowerCase() === 'referee') ?? officials[0];
@@ -444,6 +482,7 @@ export function parseEspnSummary(raw: unknown): EspnSummaryParsed {
   return {
     teamStats,
     leaders,
+    lastFive,
     referee: ref?.fullName ?? ref?.displayName ?? null,
     venue,
     venueCity: [city, country].filter(Boolean).join(', ') || null,
@@ -469,6 +508,7 @@ export function orientMatchSummary(
     awayTla,
     stats: rows,
     leaders: parsed.leaders,
+    recent: { home: parsed.lastFive[homeTla] ?? [], away: parsed.lastFive[awayTla] ?? [] },
     referee: parsed.referee,
     venue: parsed.venue,
     venueCity: parsed.venueCity,

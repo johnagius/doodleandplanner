@@ -33,6 +33,7 @@ import {
   type WcMatchOdds,
   type WcMatchStatRow,
   type WcMatchSummary,
+  type WcRecentResult,
   type WcScoreCategory,
   type WcSquadPlayer,
   type WcTeam,
@@ -945,8 +946,46 @@ function StarPerformers({
   );
 }
 
-/** The live match detail mined from ESPN's summary: team stats, standout
- * performers and the referee. Renders nothing until the game's underway. */
+/** A team's actual last-5 results as W/D/L pills, opponent + score on hover. */
+function RecentForm({
+  recent,
+  home,
+  away,
+}: {
+  recent: WcMatchSummary['recent'];
+  home: WcTeam;
+  away: WcTeam;
+}) {
+  if (recent.home.length === 0 && recent.away.length === 0) return null;
+  const row = (team: WcTeam, list: WcRecentResult[]) => (
+    <div className="wc-rf-row">
+      <span className="wc-rf-team">
+        <span aria-hidden>{team.flag}</span> {team.id}
+      </span>
+      <span className="wc-form" aria-label={`${team.name} recent form`}>
+        {list.slice(0, 5).map((r, i) => (
+          <span
+            key={i}
+            className={`wc-form-dot wc-form-${r.result}`}
+            title={`${r.home ? 'vs' : '@'} ${r.opponentTla} ${r.score}${r.competition ? ` · ${r.competition}` : ''}`}
+          >
+            {r.result}
+          </span>
+        ))}
+      </span>
+    </div>
+  );
+  return (
+    <div className="wc-recentform">
+      <div className="wc-md-head">📋 Recent form · last 5</div>
+      {row(home, recent.home)}
+      {row(away, recent.away)}
+    </div>
+  );
+}
+
+/** The match detail mined from ESPN's summary: recent form (pre-match), then
+ * team stats, standout performers and the referee once the game's underway. */
 function MatchDetail({
   summary,
   home,
@@ -965,9 +1004,11 @@ function MatchDetail({
   if (!summary) return null;
   const hasStats = summary.stats.length > 0;
   const hasLeaders = summary.leaders.length > 0;
-  if (!hasStats && !hasLeaders && !summary.referee && !summary.venue) return null;
+  const hasRecent = summary.recent.home.length > 0 || summary.recent.away.length > 0;
+  if (!hasStats && !hasLeaders && !hasRecent && !summary.referee && !summary.venue) return null;
   return (
     <div className="wc-matchdetail">
+      <RecentForm recent={summary.recent} home={home} away={away} />
       {hasStats && (
         <>
           <div className="wc-md-head">📊 Match stats</div>

@@ -31,6 +31,7 @@ import { Countdown } from './Countdown.js';
 import { useNow } from './useNow.js';
 import { BettingView } from './BettingView.js';
 import { BracketView } from './BracketView.js';
+import { BuzzStrip } from './BuzzStrip.js';
 import { CardRevealModal } from './CardRevealModal.js';
 import { CardsView } from './CardsView.js';
 import { GroupTables } from './GroupTables.js';
@@ -600,6 +601,7 @@ function FixturesView() {
   return (
     <div className="stack">
       <Spotlight wc={wc} onJump={jumpToDay} />
+      <BuzzStrip />
 
       <div ref={topRef}>
         <DayNav

@@ -15,6 +15,7 @@ import type {
   WcMatchOdds,
   WcMatchStatRow,
   WcMatchSummary,
+  WcNewsArticle,
   WcRecentResult,
 } from '@dap/shared';
 
@@ -513,6 +514,34 @@ export function orientMatchSummary(
     venue: parsed.venue,
     venueCity: parsed.venueCity,
   };
+}
+
+interface EspnNewsArticle {
+  headline?: string;
+  description?: string;
+  published?: string;
+  type?: string;
+  links?: { web?: { href?: string }; mobile?: { href?: string } };
+  images?: { url?: string }[];
+}
+
+/** Parse ESPN's soccer news feed into our compact article shape, newest first
+ * as the feed gives them. Drops anything missing a headline or a link. */
+export function parseEspnNews(raw: unknown): WcNewsArticle[] {
+  const articles = (raw as { articles?: EspnNewsArticle[] } | null)?.articles ?? [];
+  const out: WcNewsArticle[] = [];
+  for (const a of articles) {
+    const url = a.links?.web?.href ?? a.links?.mobile?.href;
+    if (!a.headline || !url) continue;
+    out.push({
+      headline: a.headline,
+      description: a.description ?? '',
+      published: a.published ?? '',
+      url,
+      image: a.images?.find((i) => i.url)?.url ?? null,
+    });
+  }
+  return out;
 }
 
 /**

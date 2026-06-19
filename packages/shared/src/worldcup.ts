@@ -728,6 +728,18 @@ export interface WcScorer {
   assists: number;
 }
 
+/** One World Cup news article (from ESPN's keyless news feed), for the Buzz strip. */
+export interface WcNewsArticle {
+  headline: string;
+  description: string;
+  /** ISO publish time. */
+  published: string;
+  /** Link to the full story. */
+  url: string;
+  /** Thumbnail image URL, when present. */
+  image: string | null;
+}
+
 /**
  * Tournament goalscorers + assisters, aggregated from the match-event feed and
  * ranked for a Golden Boot board: most goals, then most assists, then name. Own

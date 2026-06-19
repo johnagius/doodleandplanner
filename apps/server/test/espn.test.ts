@@ -6,6 +6,7 @@ import {
   parseEspnEventIds,
   parseEspnLineups,
   parseEspnMatchEvents,
+  parseEspnNews,
   parseEspnScoreboard,
   parseEspnSummary,
 } from '../src/espn.js';
@@ -565,6 +566,42 @@ describe('parseEspnSummary + orientMatchSummary', () => {
     expect(p.teamStats).toEqual({});
     expect(orientMatchSummary(p, 'USA', 'AUS').stats).toEqual([]);
     expect(parseEspnSummary(null).leaders).toEqual([]);
+  });
+});
+
+describe('parseEspnNews', () => {
+  it('maps articles to headline/url/image and drops incomplete ones', () => {
+    const out = parseEspnNews({
+      articles: [
+        {
+          headline: 'USMNT roll into the last 16',
+          description: 'A statement win.',
+          published: '2026-06-19T21:18:30Z',
+          links: { web: { href: 'https://espn.com/story/1' } },
+          images: [{ url: 'https://a.espncdn.com/photo/1.jpg' }],
+        },
+        { headline: 'No link here', images: [] }, // no url → dropped
+        { description: 'No headline', links: { web: { href: 'https://espn.com/story/2' } } }, // dropped
+        {
+          headline: 'Mobile-only link, no image',
+          links: { mobile: { href: 'https://m.espn.com/story/3' } },
+        },
+      ],
+    });
+    expect(out).toHaveLength(2);
+    expect(out[0]).toEqual({
+      headline: 'USMNT roll into the last 16',
+      description: 'A statement win.',
+      published: '2026-06-19T21:18:30Z',
+      url: 'https://espn.com/story/1',
+      image: 'https://a.espncdn.com/photo/1.jpg',
+    });
+    expect(out[1]).toMatchObject({ url: 'https://m.espn.com/story/3', image: null });
+  });
+
+  it('is unfazed by an empty or junk payload', () => {
+    expect(parseEspnNews({})).toEqual([]);
+    expect(parseEspnNews(null)).toEqual([]);
   });
 });
 

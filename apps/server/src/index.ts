@@ -9,6 +9,7 @@ import {
   parseEspnEventIds,
   parseEspnLineups,
   parseEspnMatchEvents,
+  parseEspnNews,
   parseEspnScoreboard,
   parseEspnSummary,
   type EspnSummaryParsed,
@@ -18,7 +19,14 @@ import { parseTmValueM } from './transfermarkt.js';
 import { RoomDurableObject, type Env } from './roomObject.js';
 import { corsHeaders, json, route } from './router.js';
 import { marketValueM } from '@dap/shared';
-import type { WcLineup, WcLineupPlayer, WcMatchEvent, WcTeamH2H, WcLiveScore } from '@dap/shared';
+import type {
+  WcLineup,
+  WcLineupPlayer,
+  WcMatchEvent,
+  WcNewsArticle,
+  WcTeamH2H,
+  WcLiveScore,
+} from '@dap/shared';
 
 const ESPN_UA = { 'User-Agent': 'doodleandplanner/1.0 (+world-cup board)' };
 const ESPN_SUMMARY = 'https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/summary';
@@ -33,6 +41,10 @@ let scoresCache: { at: number; scores: WcLiveScore[] } | null = null;
 const SCORES_TTL_MS = 15_000;
 
 const ESPN_BASE = 'https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard';
+const ESPN_NEWS = 'https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/news';
+// WC headlines for the Buzz strip — shared + cached ~10 min (news barely moves).
+let newsCache: { at: number; articles: WcNewsArticle[] } | null = null;
+const NEWS_TTL_MS = 10 * 60_000;
 // Whole-tournament window for goals/cards (one call, cached ~1 min, shared).
 const WC_EVENTS_RANGE = '20260611-20260719';
 let eventsCache: { at: number; events: Record<string, WcMatchEvent[]> } | null = null;
@@ -287,6 +299,23 @@ async function worldCupMatch(
   return json({ summary, fetchedAt: isoStamp(entry?.at) }, {}, cors);
 }
 
+/** World Cup headlines for the Buzz strip, from ESPN's keyless news feed. */
+async function worldCupNews(cors: Record<string, string>): Promise<Response> {
+  if (!newsCache || Date.now() - newsCache.at >= NEWS_TTL_MS) {
+    try {
+      const res = await fetch(ESPN_NEWS, { headers: ESPN_UA });
+      if (res.ok) newsCache = { at: Date.now(), articles: parseEspnNews(await res.json()) };
+    } catch {
+      /* keep any stale entry */
+    }
+  }
+  return json(
+    { articles: newsCache?.articles ?? [], fetchedAt: isoStamp(newsCache?.at) },
+    {},
+    cors,
+  );
+}
+
 /** One player's Transfermarkt value (€M), cached; null when unresolved. A real
  * value is cached hard (24h); a miss/timeout is cached only briefly so a flaky
  * upstream doesn't pin a player to "—" all day. */
@@ -356,6 +385,7 @@ export default {
         cors,
       );
     }
+    if (r.kind === 'wc-news') return worldCupNews(cors);
     if (r.kind === 'wc-values') return worldCupValues(url.searchParams.get('names') ?? '', cors);
     if (r.kind === 'wc-h2h') {
       return worldCupH2H(

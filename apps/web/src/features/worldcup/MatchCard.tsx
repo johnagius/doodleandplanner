@@ -54,6 +54,7 @@ import { statBarPercents, useMatchSummary } from './matchSummary.js';
 import { PlayerProfileModal } from './PlayerProfileModal.js';
 import { ScenariosView } from './ScenariosView.js';
 import { ScoreStepper } from './ScoreStepper.js';
+import { TeamProfileModal } from './TeamProfileModal.js';
 import { useNow } from './useNow.js';
 import { useVenueForecast } from './weather.js';
 import { formatKickoff, legibleScoreColor } from './wcFormat.js';
@@ -331,6 +332,7 @@ export function MatchCard({ matchId }: { matchId: string }) {
   const { show } = useToast();
   const now = useNow();
   const [view, setView] = useState<CardView>('match');
+  const [profileTeam, setProfileTeam] = useState<WcTeam | null>(null);
 
   if (!wc) return null;
   const match = wc.matches.find((m) => m.id === matchId);
@@ -408,7 +410,12 @@ export function MatchCard({ matchId }: { matchId: string }) {
       />
 
       <div className="wc-fixture">
-        <TeamSide wc={wc} team={home} placeholder={slotLabel(wc, match.homeId, match.homeSource)} />
+        <TeamSide
+          wc={wc}
+          team={home}
+          placeholder={slotLabel(wc, match.homeId, match.homeSource)}
+          onOpen={setProfileTeam}
+        />
 
         <div className="wc-centre">
           {result ? (
@@ -453,8 +460,12 @@ export function MatchCard({ matchId }: { matchId: string }) {
           team={away}
           placeholder={slotLabel(wc, match.awayId, match.awaySource)}
           align="right"
+          onOpen={setProfileTeam}
         />
       </div>
+      {profileTeam && (
+        <TeamProfileModal team={profileTeam} wc={wc} onClose={() => setProfileTeam(null)} />
+      )}
 
       {result?.advancesId && (
         <div className="wc-pens muted small">
@@ -661,11 +672,13 @@ function TeamSide({
   team,
   placeholder,
   align,
+  onOpen,
 }: {
   wc: WorldCupState;
   team: WcTeam | undefined;
   placeholder: string;
   align?: 'right';
+  onOpen?: (team: WcTeam) => void;
 }) {
   return (
     <div className={`wc-team ${align === 'right' ? 'wc-team-right' : ''}`}>
@@ -673,9 +686,20 @@ function TeamSide({
         {team ? team.flag : '⚽'}
       </span>
       <span className="wc-team-info">
-        <span className={`wc-team-name ${team ? '' : 'muted'}`}>
-          {team ? team.name : placeholder}
-        </span>
+        {team && onOpen ? (
+          <button
+            type="button"
+            className="wc-team-name wc-team-name-btn"
+            onClick={() => onOpen(team)}
+            title={`${team.name} — team profile`}
+          >
+            {team.name}
+          </button>
+        ) : (
+          <span className={`wc-team-name ${team ? '' : 'muted'}`}>
+            {team ? team.name : placeholder}
+          </span>
+        )}
         {team && <TeamContext wc={wc} teamId={team.id} />}
       </span>
     </div>

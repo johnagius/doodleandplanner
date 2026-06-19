@@ -47,9 +47,11 @@ describe('route', () => {
     expect(route('GET', '/api/football/events')).toEqual({ kind: 'wc-events' });
     expect(route('GET', '/api/football/lineups')).toEqual({ kind: 'wc-lineups' });
     expect(route('GET', '/api/football/match')).toEqual({ kind: 'wc-match' });
+    expect(route('GET', '/api/football/news')).toEqual({ kind: 'wc-news' });
     expect(route('GET', '/api/football/h2h')).toEqual({ kind: 'wc-h2h' });
     expect(route('POST', '/api/football/events')).toEqual({ kind: 'not-found' });
     expect(route('POST', '/api/football/match')).toEqual({ kind: 'not-found' });
+    expect(route('POST', '/api/football/news')).toEqual({ kind: 'not-found' });
   });
 });
 

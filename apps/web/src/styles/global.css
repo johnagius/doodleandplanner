@@ -706,20 +706,30 @@ label.field {
   border-radius: 999px;
 }
 /* World Cup section tabs: a sticky, single-row, swipeable strip (sticks just
-   under the global topbar via an inline `top`). */
+   under the global topbar via an inline `top`). Compact + a right-edge fade so
+   the overflow reads as "scroll for more", not a clipped tab. */
 .wc-tabs {
   position: sticky;
   z-index: 10;
   flex-wrap: nowrap;
+  gap: 0.1rem;
+  padding: 0.3rem;
   overflow-x: auto;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 18px), transparent 100%);
+  mask-image: linear-gradient(to right, #000 calc(100% - 18px), transparent 100%);
 }
 .wc-tabs::-webkit-scrollbar {
   display: none;
 }
 .wc-tabs .tab {
   flex: 0 0 auto;
+  padding: 0.45rem 0.65rem;
+  font-size: 0.9rem;
+}
+.wc-tabs .tab-label {
+  gap: 0.3rem;
 }
 .wc-tab-live {
   display: inline-block;

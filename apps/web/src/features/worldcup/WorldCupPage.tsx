@@ -1,6 +1,7 @@
 import {
   WC_TIMEZONE,
   achievements,
+  cardsWonBy,
   defaultDay,
   fifaRankOf,
   findMatch,
@@ -14,6 +15,7 @@ import {
   predictionCount,
   scorePrediction,
   tournamentDays,
+  type WcWonCard,
   type WorldCupState,
 } from '@dap/shared';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -27,6 +29,7 @@ import { Countdown } from './Countdown.js';
 import { useNow } from './useNow.js';
 import { BettingView } from './BettingView.js';
 import { BracketView } from './BracketView.js';
+import { CardRevealModal } from './CardRevealModal.js';
 import { CardsView } from './CardsView.js';
 import { GroupTables } from './GroupTables.js';
 import { IdentityModal } from './IdentityModal.js';
@@ -128,6 +131,14 @@ export function WorldCupPage() {
   useExactCelebration(wc, meId, celebrate);
   useTrophyCelebration(wc, meId, celebrate);
 
+  // Pack-opening reveal for cards I newly win: queue them up + pop confetti.
+  const [revealCards, setRevealCards] = useState<WcWonCard[]>([]);
+  const onCardsWon = useCallback((cards: WcWonCard[]) => {
+    setRevealCards((q) => [...q, ...cards]);
+    setConfettiKey((k) => k + 1);
+  }, []);
+  useCardWinCelebration(wc, meId, onCardsWon);
+
   if (loading && !wc) {
     return (
       <div className="container container-narrow">
@@ -173,6 +184,7 @@ export function WorldCupPage() {
   return (
     <div className="container">
       <Confetti fireKey={confettiKey} />
+      <CardRevealModal cards={revealCards} wc={wc} onClose={() => setRevealCards([])} />
       <IdentityModal
         open={(!meId && !identityAsked) || identityOpen}
         onClose={() => {
@@ -397,6 +409,42 @@ function useTrophyCelebration(
       onCelebrate(`🏅 ${fresh.length} trophies unlocked!`);
     }
   }, [wc, meId, onCelebrate]);
+}
+
+/**
+ * Hand `onWin` the cards the current player has *newly* won this session, for a
+ * pack-opening reveal. Same baseline-on-first-look trick as the other
+ * celebrations, so a reload never re-reveals the whole collection; re-baselines
+ * on identity change. Cards stay purely derived from results.
+ */
+function useCardWinCelebration(
+  wc: WorldCupState | null,
+  meId: string | null,
+  onWin: (cards: WcWonCard[]) => void,
+) {
+  const seen = useRef<Set<string> | null>(null);
+  const lastMe = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!wc || !meId) {
+      seen.current = null;
+      lastMe.current = meId;
+      return;
+    }
+    if (lastMe.current !== meId) {
+      seen.current = null;
+      lastMe.current = meId;
+    }
+    const keyOf = (w: WcWonCard) => `${w.matchId}|${w.player.id}`;
+    const won = cardsWonBy(wc, meId);
+    if (seen.current === null) {
+      seen.current = new Set(won.map(keyOf)); // baseline silently
+      return;
+    }
+    const fresh = won.filter((w) => !seen.current!.has(keyOf(w)));
+    for (const w of fresh) seen.current.add(keyOf(w));
+    if (fresh.length > 0) onWin(fresh);
+  }, [wc, meId, onWin]);
 }
 
 /** "🇧🇷 BRA 2–1 ARG 🇦🇷" for a resolved match, for a celebration toast. */

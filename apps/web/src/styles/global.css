@@ -3144,6 +3144,49 @@ label.field {
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   gap: 0.8rem;
 }
+
+/* Pack-opening reveal: the new card flips in with a single shine sweep. Motion
+   is opt-in via the media query, so reduced-motion users just see it appear. */
+.wc-card-reveal-grid {
+  justify-items: center;
+}
+.wc-card-reveal-item {
+  perspective: 800px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .wc-card-reveal-item .wc-fifa-card {
+    animation: wc-card-flip-in 600ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+  .wc-card-reveal-item .wc-fifa-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      115deg,
+      transparent 38%,
+      rgba(255, 255, 255, 0.6) 50%,
+      transparent 62%
+    );
+    transform: translateX(-130%);
+    animation: wc-card-shine 900ms ease-out 520ms both;
+    pointer-events: none;
+  }
+}
+@keyframes wc-card-flip-in {
+  from {
+    transform: rotateY(90deg) scale(0.92);
+    opacity: 0;
+  }
+  to {
+    transform: rotateY(0) scale(1);
+    opacity: 1;
+  }
+}
+@keyframes wc-card-shine {
+  to {
+    transform: translateX(130%);
+  }
+}
 .wc-fifa-card {
   position: relative;
   border-radius: 14px;

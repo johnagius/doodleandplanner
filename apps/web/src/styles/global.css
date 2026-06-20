@@ -1343,25 +1343,134 @@ label.field {
   font-weight: 700;
   color: var(--muted);
 }
-.wc-room-watchers {
+/* The big screen — the scoreboard plays here, framed like a cinema screen. The
+   screen is always bright, so its text is dark regardless of app theme. */
+.wc-stage {
+  padding: 0.5rem;
+  border-radius: var(--radius-lg);
+  border: 2px solid color-mix(in srgb, var(--c, var(--primary)) 45%, #1b1f2a);
+  background: linear-gradient(180deg, #ffffff, #e9edff);
+  color: #1a1f2e;
+  box-shadow:
+    0 0 0 4px rgba(15, 18, 30, 0.28),
+    0 24px 48px -22px color-mix(in srgb, var(--c, var(--primary)) 60%, transparent);
+}
+.wc-stage .wc-room-scoreboard {
+  background: transparent;
+  border: none;
+}
+.wc-stage .wc-room-status {
+  color: #41506f;
+}
+
+/* The amphitheatre — red theatre seats facing the screen. */
+.wc-amphi {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1.6rem 0.5rem 0.25rem; /* headroom for speech bubbles */
+}
+.wc-seats {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: 0.3rem;
+  justify-content: center;
+  gap: 0.9rem 0.7rem;
+  max-width: 32rem;
   margin: 0;
-  font-size: 0.9rem;
-  color: var(--muted);
+  padding: 0;
+  list-style: none;
 }
-.wc-room-watcher {
+.wc-seat {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  width: 3rem;
+}
+.wc-seat-occupant,
+.wc-seat-empty {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 34px;
+  border-radius: 0.7rem 0.7rem 0.3rem 0.3rem;
+  background: linear-gradient(180deg, #d2402f, #9c2a20);
+  box-shadow:
+    inset 0 -5px 7px rgba(0, 0, 0, 0.28),
+    0 4px 7px -4px rgba(0, 0, 0, 0.45);
+}
+.wc-seat-empty {
+  background: linear-gradient(180deg, #8f3a31, #6e2a23);
+  opacity: 0.5;
+}
+.wc-seat.is-me .wc-seat-occupant {
+  outline: 2px solid var(--c, var(--primary));
+  outline-offset: 2px;
+}
+.wc-seat-anon {
   display: inline-grid;
   place-items: center;
-  width: 1.5rem;
-  height: 1.5rem;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
-  background: var(--primary-soft);
-  color: var(--text);
-  font-size: 0.7rem;
+  background: rgba(255, 255, 255, 0.9);
+  color: #7a1f17;
+  font-size: 0.8rem;
   font-weight: 800;
+}
+.wc-seat-name {
+  max-width: 3.2rem;
+  overflow: hidden;
+  font-size: 0.65rem;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--muted);
+}
+.wc-seat.is-me .wc-seat-name {
+  font-weight: 800;
+  color: var(--primary);
+}
+.wc-seat-bubble {
+  position: absolute;
+  bottom: calc(100% + 7px);
+  left: 50%;
+  z-index: 3;
+  width: max-content;
+  max-width: 11rem;
+  padding: 0.35rem 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: 0.7rem;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.72rem;
+  line-height: 1.25;
+  transform: translateX(-50%);
+  box-shadow: 0 8px 18px -8px rgba(0, 0, 0, 0.45);
+  animation: wc-bubble-pop 0.25s ease;
+}
+.wc-seat-bubble::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  border: 6px solid transparent;
+  border-top-color: var(--surface);
+  transform: translateX(-50%);
+}
+@keyframes wc-bubble-pop {
+  from {
+    opacity: 0;
+  }
+}
+.wc-amphi-caption {
+  margin: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .wc-seat-bubble {
+    animation: none;
+  }
 }
 .wc-room-lockin {
   margin: 0;

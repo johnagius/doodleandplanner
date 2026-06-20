@@ -11,12 +11,21 @@ import { findTeam, isMatchReady, type WcMatch, type WcTeam, type WorldCupState }
 import type { CSSProperties } from 'react';
 import { Modal } from '../../components/Modal.js';
 import { useWorldCupStore, type WcLiveInfo } from '../../state/worldCupStore.js';
+import { CinemaSeats } from './CinemaSeats.js';
 import { GoalOverlay } from './GoalOverlay.js';
 import { LiveBoard } from './LiveBoard.js';
-import { CrownRace, LiveReactions, SweatMeter, WinProbBar } from './MatchCard.js';
+import {
+  CrownRace,
+  GroupView,
+  LiveReactions,
+  MatchEvents,
+  StatsView,
+  SweatMeter,
+} from './MatchCard.js';
 import { MatchComments } from './MatchComments.js';
 import { PreMatchHype } from './PreMatchHype.js';
 import { StakesBanner } from './StakesBanner.js';
+import { useCommentBubbles } from './useCommentBubbles.js';
 import { useMatchRoom } from './useMatchRoom.js';
 import { useNow } from './useNow.js';
 import { useWatchers } from './useWatchers.js';
@@ -62,6 +71,7 @@ function RoomInner({
 }) {
   const meId = useWorldCupStore((s) => s.meId);
   const live = useWorldCupStore((s) => s.live[match.id]);
+  const events = useWorldCupStore((s) => s.matchEvents[match.id]);
   const now = useNow();
 
   const home = findTeam(wc, match.homeId);
@@ -69,7 +79,6 @@ function RoomInner({
   const result = match.result;
   const isLive = !result && !!live && (live.status === 'IN_PLAY' || live.status === 'PAUSED');
   const ready = isMatchReady(match);
-  const odds = live?.odds ?? wc.odds?.[match.id] ?? null;
   // Tint the room with the home team's brand colour when the feed carries it.
   const accent = live?.homeColor ? legibleScoreColor(live.homeColor) : null;
 
@@ -78,7 +87,7 @@ function RoomInner({
     match.id,
     mePredictor ? { id: mePredictor.id, name: mePredictor.name } : null,
   );
-  const watching = watchers.length + 1; // +1 for me
+  const bubbles = useCommentBubbles(match.id);
 
   const title = (
     <span className="wc-room-title-text">
@@ -98,42 +107,41 @@ function RoomInner({
     >
       <div className="wc-room" style={accent ? ({ ['--c']: accent } as CSSProperties) : undefined}>
         {isLive && <GoalOverlay wc={wc} match={match} meId={meId} />}
-        <div className="wc-room-scoreboard">
-          <Side team={home} align="left" />
-          <div className="wc-room-centre">
-            <div className="wc-room-score">
-              {result ? (
-                <span>
-                  {result.home}
-                  <i className="wc-room-dash">–</i>
-                  {result.away}
-                </span>
-              ) : isLive && live!.home != null ? (
-                <span className="is-live">
-                  <span style={{ color: legibleScoreColor(live!.homeColor) }}>{live!.home}</span>
-                  <i className="wc-room-dash">–</i>
-                  <span style={{ color: legibleScoreColor(live!.awayColor) }}>{live!.away}</span>
-                </span>
-              ) : (
-                <span className="wc-room-vs">v</span>
-              )}
+        <div className="wc-stage">
+          <div className="wc-room-scoreboard">
+            <Side team={home} align="left" />
+            <div className="wc-room-centre">
+              <div className="wc-room-score">
+                {result ? (
+                  <span>
+                    {result.home}
+                    <i className="wc-room-dash">–</i>
+                    {result.away}
+                  </span>
+                ) : isLive && live!.home != null ? (
+                  <span className="is-live">
+                    <span style={{ color: legibleScoreColor(live!.homeColor) }}>{live!.home}</span>
+                    <i className="wc-room-dash">–</i>
+                    <span style={{ color: legibleScoreColor(live!.awayColor) }}>{live!.away}</span>
+                  </span>
+                ) : (
+                  <span className="wc-room-vs">v</span>
+                )}
+              </div>
+              <div className="wc-room-status">
+                {result ? 'Full time' : isLive ? liveStatus(live!) : '⏳ Build-up'}
+              </div>
             </div>
-            <div className="wc-room-status">
-              {result ? 'Full time' : isLive ? liveStatus(live!) : '⏳ Build-up'}
-            </div>
+            <Side team={away} align="right" />
           </div>
-          <Side team={away} align="right" />
         </div>
 
-        <p className="wc-room-watchers" aria-live="polite">
-          <span aria-hidden>👀</span>{' '}
-          {watching === 1 ? "You're watching" : `${watching} watching now`}
-          {watchers.slice(0, 8).map((w) => (
-            <span key={w.memberId} className="wc-room-watcher" title={w.name ?? 'Someone'}>
-              {w.name ? w.name.slice(0, 1).toUpperCase() : '•'}
-            </span>
-          ))}
-        </p>
+        <CinemaSeats
+          wc={wc}
+          me={mePredictor ? { id: mePredictor.id, name: mePredictor.name } : null}
+          watchers={watchers}
+          bubbles={bubbles}
+        />
 
         {!result && <StakesBanner wc={wc} meId={meId} match={match} />}
 
@@ -141,11 +149,31 @@ function RoomInner({
 
         {isLive && (
           <div className="wc-room-live">
-            {odds && home && away && <WinProbBar odds={odds} home={home} away={away} />}
             <SweatMeter wc={wc} match={match} live={live!} />
             <CrownRace wc={wc} match={match} live={live!} meId={meId} />
             <LiveReactions matchId={match.id} />
           </div>
+        )}
+
+        {events && events.length > 0 && (
+          <section className="wc-room-section" aria-label="Live commentary">
+            <h3 className="wc-room-h">📣 Commentary</h3>
+            <MatchEvents events={events} wc={wc} match={match} />
+          </section>
+        )}
+
+        {ready && (
+          <section className="wc-room-section" aria-label="Match stats">
+            <h3 className="wc-room-h">📊 Stats</h3>
+            <StatsView wc={wc} match={match} live={live} />
+          </section>
+        )}
+
+        {match.stage === 'group' && match.group && (
+          <section className="wc-room-section" aria-label="Group picture">
+            <h3 className="wc-room-h">🔢 What it means for the group</h3>
+            <GroupView wc={wc} group={match.group} match={match} />
+          </section>
         )}
 
         <section className="wc-room-section" aria-label="Live standings">

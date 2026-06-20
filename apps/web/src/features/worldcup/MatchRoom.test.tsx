@@ -1,4 +1,4 @@
-import { createRoom, emptyRoomState, type WorldCupState } from '@dap/shared';
+import { createRoom, emptyRoomState, type WcMatchEvent, type WorldCupState } from '@dap/shared';
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
@@ -100,14 +100,30 @@ describe('MatchRoom', () => {
     const score = dialog.querySelector('.wc-room-score');
     expect(score?.textContent).toContain('1');
     expect(score?.textContent).toContain('0');
-    // Presence + the live-folded board with both predictors.
-    expect(dialog.querySelector('.wc-room-watchers')?.textContent).toMatch(/watching/i);
+    // The amphitheatre seats the audience (me included).
+    expect(dialog.querySelector('.wc-amphi')).not.toBeNull();
+    expect(dialog.querySelector('.wc-seat.is-me')).not.toBeNull();
     const board = dialog.querySelector('.wc-room-board');
     expect(board).not.toBeNull();
     expect(board?.textContent).toContain('John');
     expect(board?.textContent).toContain('Daniel');
     // Personal stakes banner is present.
     expect(dialog.querySelector('.wc-stakes')?.textContent).toMatch(/You're/);
+  });
+
+  it('shows the cinema commentary feed and group picture for a live group match', async () => {
+    await seed({ status: 'IN_PLAY', minute: 30, home: 1, away: 0 });
+    const goal: WcMatchEvent = { minute: "23'", kind: 'goal', teamTla: 'AAA', player: 'Striker' };
+    useWorldCupStore.setState({ matchEvents: { 'g-A-1': [goal] } });
+    renderRoom();
+    act(() => useMatchRoom.getState().open('g-A-1'));
+
+    const dialog = await screen.findByRole('dialog');
+    // Commentary feed renders the goal; the screen frames the scoreboard.
+    expect(dialog.querySelector('.wc-events')?.textContent).toContain('Striker');
+    expect(dialog.querySelector('.wc-stage')).not.toBeNull();
+    // Group implications panel (this is a group-stage match).
+    expect(dialog.querySelector('.wc-groupview')).not.toBeNull();
   });
 
   it('closes on the close button', async () => {

@@ -135,7 +135,7 @@ const EVENT_TAG: Partial<Record<WcMatchEvent['kind'], string>> = {
 /** Goals + cards for a played/in-play game (from the live feed), interleaved
  *  with the prediction-table flips each goal caused — so you can watch the
  *  standings shuffle in step with the match. */
-function MatchEvents({
+export function MatchEvents({
   events,
   wc,
   match,
@@ -774,7 +774,15 @@ function FormDots({ form }: { form: Array<'W' | 'D' | 'L'> }) {
 /** "Stats" view: implied win probability, the live team match stats + standout
  * performers (from ESPN once the game's underway), the two teams' tournament
  * form & record, and the historical head-to-head. */
-function StatsView({ wc, match, live }: { wc: WorldCupState; match: WcMatch; live?: WcLiveInfo }) {
+export function StatsView({
+  wc,
+  match,
+  live,
+}: {
+  wc: WorldCupState;
+  match: WcMatch;
+  live?: WcLiveInfo;
+}) {
   const home = findTeam(wc, match.homeId);
   const away = findTeam(wc, match.awayId);
   const h2h = useHeadToHead(home?.id, away?.id);
@@ -1261,7 +1269,15 @@ function outlookLabel(o: WcGroupOutlookRow): { icon: string; text: string; cls: 
 /** "Group" view: the live standings for this match's group (top 2 highlighted,
  * the two teams playing here emphasised), plus the permutations of what the
  * remaining games can still produce. */
-function GroupView({ wc, group, match }: { wc: WorldCupState; group: string; match: WcMatch }) {
+export function GroupView({
+  wc,
+  group,
+  match,
+}: {
+  wc: WorldCupState;
+  group: string;
+  match: WcMatch;
+}) {
   const rows = groupStandings(wc, group);
   const here = new Set([match.homeId, match.awayId].filter(Boolean));
   const outlook = groupOutlook(wc, group);

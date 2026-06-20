@@ -134,6 +134,7 @@ describe('pickCinemaMatch', () => {
   });
   const future = new Date(Date.now() + 86_400_000).toISOString();
   const past = new Date(Date.now() - 86_400_000).toISOString();
+  const justNow = new Date(Date.now() - 60_000).toISOString();
 
   it('prefers an in-play match over everything', () => {
     const wc = { ...base, matches: [mk('soon', future), mk('now', past)] } as never;
@@ -154,5 +155,18 @@ describe('pickCinemaMatch', () => {
     const wc = { ...base, matches: [mk('done', past), mk('live', past)] } as never;
     const live = { done: { status: 'FINISHED' }, live: { status: 'IN_PLAY' } };
     expect(pickCinemaMatch(wc, live, 'done')?.id).toBe('live');
+  });
+
+  it('holds on a match that just kicked off rather than skipping to the next fixture', () => {
+    const wc = { ...base, matches: [mk('kicked', justNow), mk('next', future)] } as never;
+    // Feed hasn't flipped 'kicked' to in-play yet — it's still the match being played.
+    expect(pickCinemaMatch(wc, {})?.id).toBe('kicked');
+  });
+
+  it('never offers a feed-finished match as the next pick', () => {
+    const wc = { ...base, matches: [mk('over', justNow), mk('next', future)] } as never;
+    const live = { over: { status: 'FINISHED' } };
+    // Without a linger id, a just-finished game must not masquerade as the current match.
+    expect(pickCinemaMatch(wc, live)?.id).toBe('next');
   });
 });

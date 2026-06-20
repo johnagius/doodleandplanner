@@ -34,11 +34,16 @@ function isInPlay(s: string | undefined): boolean {
   return s === 'IN_PLAY' || s === 'PAUSED';
 }
 
+/** Grace after kickoff to keep a match selected while the feed catches up to in-play. */
+const KICKOFF_GRACE_MS = 20 * 60_000;
+
 const REACTIONS = ['🔥', '⚽', '😱', '👏', '🙌'];
 
 /**
  * The one match the Cinema concerns: the current in-play game, else a match that
- * *just* finished (so Full Time gets its moment), else the next up.
+ * *just* finished (so Full Time gets its moment), else the one being played now
+ * (kicked off, feed yet to flip to in-play), else the next up. A game the feed
+ * marks FINISHED is never offered as "next" — only the linger can hold on it.
  */
 export function pickCinemaMatch(
   wc: WorldCupState,
@@ -52,12 +57,24 @@ export function pickCinemaMatch(
     if (lingering) return lingering;
   }
   const now = Date.now();
-  const unplayed = wc.matches.filter((m) => !m.result && !Number.isNaN(Date.parse(m.kickoff)));
-  const future = unplayed
+  const pending = wc.matches.filter(
+    (m) =>
+      !m.result && liveMap[m.id]?.status !== 'FINISHED' && !Number.isNaN(Date.parse(m.kickoff)),
+  );
+  // A match whose kickoff has just passed is the one being played now — hold on it
+  // through the lag before the feed flips to in-play, rather than skipping ahead.
+  const justKicked = pending
+    .filter((m) => {
+      const t = Date.parse(m.kickoff);
+      return t <= now && now - t <= KICKOFF_GRACE_MS;
+    })
+    .sort((a, b) => Date.parse(b.kickoff) - Date.parse(a.kickoff));
+  if (justKicked[0]) return justKicked[0];
+  const future = pending
     .filter((m) => Date.parse(m.kickoff) >= now)
     .sort((a, b) => Date.parse(a.kickoff) - Date.parse(b.kickoff));
   if (future[0]) return future[0];
-  const recent = [...unplayed].sort((a, b) => Date.parse(b.kickoff) - Date.parse(a.kickoff));
+  const recent = [...pending].sort((a, b) => Date.parse(b.kickoff) - Date.parse(a.kickoff));
   return recent[0] ?? wc.matches.find((m) => !m.result) ?? null;
 }
 

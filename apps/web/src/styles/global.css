@@ -1290,7 +1290,7 @@ label.field {
   background:
     radial-gradient(
       120% 140% at 50% 0%,
-      color-mix(in srgb, var(--primary) 16%, transparent),
+      color-mix(in srgb, var(--c, var(--primary)) 18%, transparent),
       transparent 60%
     ),
     var(--surface);
@@ -1513,6 +1513,60 @@ label.field {
 .wc-stakes-if strong {
   color: var(--primary);
 }
+.wc-hype {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  text-align: center;
+}
+.wc-hype-countdown {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+}
+.wc-hype-kick {
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.wc-hype-clock {
+  font-size: clamp(1.6rem, 7vw, 2.6rem);
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+.wc-lockin-ritual {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  width: 100%;
+  max-width: 26rem;
+}
+.wc-lockin-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+.wc-lockin-bar {
+  height: 0.6rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--c, var(--primary)) 14%, transparent);
+}
+.wc-lockin-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--c, var(--primary));
+  transition: width 0.5s ease;
+}
+.wc-lockin-pending {
+  margin: 0;
+}
 @media (max-width: 600px) {
   .wc-room-panel {
     position: fixed;
@@ -1530,7 +1584,8 @@ label.field {
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .wc-room-bar > span {
+  .wc-room-bar > span,
+  .wc-lockin-bar > span {
     transition: none;
   }
   .wc-goal-flash,

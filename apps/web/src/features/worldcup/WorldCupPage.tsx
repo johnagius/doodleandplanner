@@ -803,9 +803,17 @@ function Spotlight({ wc, onJump }: { wc: WorldCupState; onJump: (day: string) =>
         <span className="muted small">
           🗳 {picks}/{wc.predictors.length} have picked it
         </span>
-        <button className="btn btn-sm" onClick={() => onJump(matchDateKey(m))}>
-          See fixture →
-        </button>
+        <span className="row" style={{ gap: '0.4rem' }}>
+          <button
+            className="btn btn-sm btn-primary wc-room-open"
+            onClick={() => useMatchRoom.getState().open(m.id)}
+          >
+            ⤢ Build-up
+          </button>
+          <button className="btn btn-sm" onClick={() => onJump(matchDateKey(m))}>
+            See fixture →
+          </button>
+        </span>
       </div>
     </div>
   );

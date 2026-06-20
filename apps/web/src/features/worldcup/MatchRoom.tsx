@@ -7,21 +7,15 @@
  * untouched. Pre-match / in-play / full-time states are derived exactly as the
  * fixture card does.
  */
-import {
-  findTeam,
-  isMatchReady,
-  predictionCount,
-  type WcMatch,
-  type WcTeam,
-  type WorldCupState,
-} from '@dap/shared';
+import { findTeam, isMatchReady, type WcMatch, type WcTeam, type WorldCupState } from '@dap/shared';
+import type { CSSProperties } from 'react';
 import { Modal } from '../../components/Modal.js';
 import { useWorldCupStore, type WcLiveInfo } from '../../state/worldCupStore.js';
-import { Countdown } from './Countdown.js';
 import { GoalOverlay } from './GoalOverlay.js';
 import { LiveBoard } from './LiveBoard.js';
 import { CrownRace, LiveReactions, SweatMeter, WinProbBar } from './MatchCard.js';
 import { MatchComments } from './MatchComments.js';
+import { PreMatchHype } from './PreMatchHype.js';
 import { StakesBanner } from './StakesBanner.js';
 import { useMatchRoom } from './useMatchRoom.js';
 import { useNow } from './useNow.js';
@@ -76,6 +70,8 @@ function RoomInner({
   const isLive = !result && !!live && (live.status === 'IN_PLAY' || live.status === 'PAUSED');
   const ready = isMatchReady(match);
   const odds = live?.odds ?? wc.odds?.[match.id] ?? null;
+  // Tint the room with the home team's brand colour when the feed carries it.
+  const accent = live?.homeColor ? legibleScoreColor(live.homeColor) : null;
 
   const mePredictor = meId ? (wc.predictors.find((p) => p.id === meId) ?? null) : null;
   const watchers = useWatchers(
@@ -100,7 +96,7 @@ function RoomInner({
       className="wc-room-panel"
       labelledBy="wc-room-title"
     >
-      <div className="wc-room">
+      <div className="wc-room" style={accent ? ({ ['--c']: accent } as CSSProperties) : undefined}>
         {isLive && <GoalOverlay wc={wc} match={match} meId={meId} />}
         <div className="wc-room-scoreboard">
           <Side team={home} align="left" />
@@ -123,13 +119,7 @@ function RoomInner({
               )}
             </div>
             <div className="wc-room-status">
-              {result ? (
-                'Full time'
-              ) : isLive ? (
-                liveStatus(live!)
-              ) : (
-                <Countdown kickoff={match.kickoff} now={now} />
-              )}
+              {result ? 'Full time' : isLive ? liveStatus(live!) : '⏳ Build-up'}
             </div>
           </div>
           <Side team={away} align="right" />
@@ -147,12 +137,7 @@ function RoomInner({
 
         {!result && <StakesBanner wc={wc} meId={meId} match={match} />}
 
-        {!result && !isLive && ready && (
-          <p className="wc-room-lockin">
-            <span aria-hidden>🗳</span> Picks locking in… {predictionCount(wc, match.id)} of{' '}
-            {wc.predictors.length} are in
-          </p>
-        )}
+        {!result && !isLive && ready && <PreMatchHype wc={wc} match={match} now={now} />}
 
         {isLive && (
           <div className="wc-room-live">

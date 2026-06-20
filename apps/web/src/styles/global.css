@@ -6551,6 +6551,13 @@ label.field {
 .wc-amph-spot {
   mix-blend-mode: screen;
 }
+.wc-amph-light {
+  mix-blend-mode: screen;
+}
+.wc-amph-light-halo {
+  mix-blend-mode: screen;
+  opacity: 0.5;
+}
 .wc-amph-screen {
   position: absolute;
   top: 4%;

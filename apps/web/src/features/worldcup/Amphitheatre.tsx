@@ -214,6 +214,20 @@ export function Amphitheatre({
     r: i % 5 === 0 ? 1.5 : 0.8,
   }));
 
+  // A few phone/camera lights twinkling in the stands — the concert-crowd touch.
+  const lights = Array.from({ length: 16 }, (_, i) => {
+    const tier = 1 + (i % 3);
+    const t = TIERS[tier]!;
+    const u = -0.86 + frac(i * 17.3 + 4.1) * 1.72;
+    const pt = seatPt(t.rx, t.ry, u);
+    return {
+      x: pt.x,
+      y: pt.y - (5 + tier) * 1.25,
+      warm: frac(i * 3.1) > 0.5,
+      key: `l${i}`,
+    };
+  });
+
   return (
     <div className="wc-amph">
       <svg
@@ -315,6 +329,26 @@ export function Amphitheatre({
             {crowd[tier]!.map((c) => (
               <Spectator key={c.key} x={c.x} y={c.y} s={c.s} arms={c.arms} fill={c.fill} />
             ))}
+          </g>
+        ))}
+
+        {/* Phone/camera lights twinkling in the stands. */}
+        {lights.map((l) => (
+          <g key={l.key}>
+            <circle
+              className="wc-amph-light-halo"
+              cx={l.x}
+              cy={l.y}
+              r={3.4}
+              fill={l.warm ? '#ffe7a8' : '#bfe0ff'}
+            />
+            <circle
+              className="wc-amph-light"
+              cx={l.x}
+              cy={l.y}
+              r={1.2}
+              fill={l.warm ? '#fff6da' : '#e6f3ff'}
+            />
           </g>
         ))}
 

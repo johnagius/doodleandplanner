@@ -57,6 +57,35 @@ describe('HighlightOverlay', () => {
     expect(card?.textContent).toContain('Bland');
   });
 
+  it('treats a second yellow as a sending-off', () => {
+    setEvents([{ minute: "20'", kind: 'yellow', teamTla: 'AAA', player: 'Hardman' }]);
+    const { container } = render(<HighlightOverlay wc={wc} match={match} />);
+    act(() =>
+      setEvents([
+        { minute: "20'", kind: 'yellow', teamTla: 'AAA', player: 'Hardman' },
+        { minute: "55'", kind: 'yellow', teamTla: 'AAA', player: 'Hardman' },
+      ]),
+    );
+    const card = container.querySelector('.wc-highlight');
+    expect(card?.textContent).toContain('Second yellow!');
+    expect(card?.textContent).toContain('down to ten');
+    expect(container.querySelector('.wc-highlight.is-red')).not.toBeNull();
+  });
+
+  it('counts a team down to nine on a second dismissal', () => {
+    setEvents([]);
+    const { container } = render(<HighlightOverlay wc={wc} match={match} />);
+    act(() => setEvents([{ minute: "30'", kind: 'red', teamTla: 'BBB', player: 'Keeper' }]));
+    expect(container.querySelector('.wc-highlight')?.textContent).toContain('down to ten');
+    act(() =>
+      setEvents([
+        { minute: "30'", kind: 'red', teamTla: 'BBB', player: 'Keeper' },
+        { minute: "70'", kind: 'red', teamTla: 'BBB', player: 'Sweeper' },
+      ]),
+    );
+    expect(container.querySelector('.wc-highlight')?.textContent).toContain('down to nine');
+  });
+
   it('leaves goals to the goal overlay', () => {
     setEvents([]);
     const { container } = render(<HighlightOverlay wc={wc} match={match} />);

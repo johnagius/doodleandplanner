@@ -19,6 +19,11 @@ interface Card {
   red: boolean;
 }
 
+/** How many a team's down to, in words (ten / nine …), for the sent-off card. */
+function downToWord(n: number): string {
+  return ({ 7: 'seven', 8: 'eight', 9: 'nine', 10: 'ten' } as Record<number, string>)[n] ?? `${n}`;
+}
+
 export function HighlightOverlay({ wc, match }: { wc: WorldCupState; match: WcMatch }) {
   const live = useWorldCupStore((s) => s.live[match.id]);
   const liveRef = useRef(live);
@@ -33,16 +38,17 @@ export function HighlightOverlay({ wc, match }: { wc: WorldCupState; match: WcMa
       const color = legibleScoreColor(
         h.teamTla === match.homeId ? liveRef.current?.homeColor : liveRef.current?.awayColor,
       );
-      const red = h.kind === 'red';
+      const off = h.sentOff;
+      const downTo = off && h.playersLeft != null ? ` — down to ${downToWord(h.playersLeft)}` : '';
       idRef.current += 1;
       const id = idRef.current;
       setCard({
         id,
-        icon: red ? '🟥' : '🟨',
-        title: red ? 'Red card!' : 'Booking',
-        sub: `${h.minute} · ${h.player}${red ? ' — down to ten' : ''} · ${team}`,
+        icon: off ? '🟥' : '🟨',
+        title: h.secondYellow ? 'Second yellow!' : off ? 'Red card!' : 'Booking',
+        sub: `${h.minute} · ${h.player}${downTo} · ${team}`,
         color,
-        red,
+        red: off,
       });
       window.setTimeout(() => setCard((c) => (c && c.id === id ? null : c)), 3500);
     },

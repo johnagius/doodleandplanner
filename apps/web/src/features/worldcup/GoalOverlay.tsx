@@ -17,6 +17,7 @@ interface Flash {
   id: number;
   score: string;
   scorer: string | null;
+  assist: string | null;
   team: string | null;
   color: string | undefined;
   pts: number | null;
@@ -56,7 +57,9 @@ export function GoalOverlay({
       const goals = (eventsRef.current ?? []).filter(
         (e) => (e.kind === 'goal' || e.kind === 'pen-goal') && e.teamTla === teamTla,
       );
-      const scorer = goals.length ? (goals[goals.length - 1]!.player ?? null) : null;
+      const lastGoal = goals[goals.length - 1];
+      const scorer = lastGoal?.player ?? null;
+      const assist = lastGoal?.assist ?? null;
       const team = findTeam(wc, teamTla)?.name ?? null;
       const color = legibleScoreColor(
         g.side === 'home' ? liveRef.current?.homeColor : liveRef.current?.awayColor,
@@ -64,7 +67,7 @@ export function GoalOverlay({
 
       idRef.current += 1;
       const id = idRef.current;
-      setFlash({ id, score: `${g.total.home}–${g.total.away}`, scorer, team, color, pts });
+      setFlash({ id, score: `${g.total.home}–${g.total.away}`, scorer, assist, team, color, pts });
       playSound('goal');
       vibrate([40, 30, 90]);
       window.setTimeout(() => setFlash((f) => (f && f.id === id ? null : f)), 2600);
@@ -82,7 +85,9 @@ export function GoalOverlay({
       </span>
       {(flash.scorer || flash.team) && (
         <span className="wc-goal-scorer">
-          {flash.scorer ? `${flash.scorer} · ${flash.team ?? ''}` : flash.team}
+          {flash.scorer
+            ? `${flash.scorer}${flash.assist ? ` (${flash.assist})` : ''} · ${flash.team ?? ''}`
+            : flash.team}
         </span>
       )}
       <span className="wc-goal-score">{flash.score}</span>

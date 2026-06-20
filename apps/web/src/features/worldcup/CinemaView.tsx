@@ -17,8 +17,8 @@ import { Amphitheatre } from './Amphitheatre.js';
 import { CinemaFeed } from './CinemaFeed.js';
 import { Countdown } from './Countdown.js';
 import { GoalOverlay } from './GoalOverlay.js';
+import { HighlightOverlay } from './HighlightOverlay.js';
 import { useGoalEvents } from './liveGoals.js';
-import { useLiveLeaderboard } from './liveStandings.js';
 import { StageReactions } from './StageReactions.js';
 import { StakesBanner } from './StakesBanner.js';
 import { useCommentBubbles } from './useCommentBubbles.js';
@@ -97,8 +97,6 @@ function CinemaStage({ wc, match }: { wc: WorldCupState; match: WcMatch }) {
   const isLive = !result && !!live && isInPlay(live.status);
   const accent = live?.homeColor ? legibleScoreColor(live.homeColor) : null;
 
-  const standings = useLiveLeaderboard(wc);
-  const leader = standings[0] && standings[0].points > 0 ? standings[0] : null;
   const mePredictor = meId ? (wc.predictors.find((p) => p.id === meId) ?? null) : null;
   const watchers = useWatchers(
     match.id,
@@ -129,12 +127,8 @@ function CinemaStage({ wc, match }: { wc: WorldCupState; match: WcMatch }) {
         >
           <div className="wc-screen">
             {isLive && <GoalOverlay wc={wc} match={match} meId={meId} />}
+            {isLive && <HighlightOverlay wc={wc} match={match} />}
             {isLive && <StageReactions matchId={match.id} />}
-            {leader && (
-              <div className="wc-stage-leader" aria-live="polite">
-                👑 {leader.name} leads
-              </div>
-            )}
 
             <div className="wc-screen-head">
               <span className="wc-screen-side">

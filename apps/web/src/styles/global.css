@@ -6465,6 +6465,47 @@ label.field {
   background: var(--surface);
   color: var(--text);
 }
+/* The stakes strip — a thin, always-on line on the screen under the score. */
+.wc-screen-stakes .banner {
+  margin: 0;
+  padding: 0.25rem 0.55rem;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  color: #eaf0ff;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.wc-screen-stakes .wc-stakes-if strong,
+.wc-screen-stakes .wc-stakes-rank strong {
+  color: color-mix(in srgb, var(--neon) 65%, #fff);
+}
+/* The pre-kickoff build-up, centred on the big screen. */
+.wc-screen-buildup {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  padding: 0.9rem;
+  overflow-y: auto;
+}
+.wc-screen-buildup .wc-hype {
+  width: 100%;
+  gap: 1.1rem;
+  color: #eaf0ff;
+}
+.wc-screen-buildup .wc-hype-kick,
+.wc-screen-buildup .wc-lockin-pending {
+  color: #b9c2e6;
+}
+.wc-screen-buildup .wc-hype-clock {
+  font-size: clamp(2.2rem, 9vw, 3.6rem);
+  text-shadow: 0 0 26px color-mix(in srgb, var(--neon) 55%, transparent);
+}
+.wc-screen-buildup .wc-lockin-bar {
+  background: color-mix(in srgb, var(--neon) 16%, rgba(255, 255, 255, 0.06));
+}
+.wc-screen-buildup .wc-lockin-bar > span {
+  background: var(--neon);
+}
 .wc-cinema-composer {
   display: flex;
   gap: 0.5rem;
@@ -6661,14 +6702,26 @@ label.field {
   }
 }
 @media (max-width: 640px) {
+  /* Phone: the screen (the show) dominates vertically and stays readable; the
+     crowd becomes a lit front-row strip beneath it. */
   .wc-amph {
-    aspect-ratio: 1 / 1;
-    max-height: 78vh;
+    aspect-ratio: 3 / 4;
+    max-height: 82vh;
   }
   .wc-amph-screen {
-    width: 94%;
-    height: 48%;
-    top: 2.5%;
+    width: 95%;
+    height: 60%;
+    top: 2%;
+  }
+  .wc-amph-screen .wc-screen {
+    padding: 0.45rem 0.5rem;
+    gap: 0.3rem;
+  }
+  .wc-screen-stakes .banner {
+    font-size: 0.72rem;
+  }
+  .wc-screen-buildup .wc-hype-clock {
+    font-size: clamp(1.7rem, 8vw, 2.4rem);
   }
   .wc-amph-name {
     max-width: 3rem;

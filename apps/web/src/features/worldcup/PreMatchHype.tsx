@@ -22,6 +22,7 @@ export function PreMatchHype({
   const total = wc.predictors.length;
   const pending = pendingPredictors(wc, match.id, new Date(now)); // names only
   const pct = total ? Math.round((inCount / total) * 100) : 0;
+  const toKick = new Date(match.kickoff).getTime() - now;
 
   // A one-shot anthem sting when the build-up opens (opt-in; silent by default).
   const stung = useRef(false);
@@ -34,10 +35,19 @@ export function PreMatchHype({
   return (
     <div className="wc-hype">
       <div className="wc-hype-countdown">
-        <span className="wc-hype-kick">⏳ Kicks off in</span>
-        <span className="wc-hype-clock">
-          <Countdown kickoff={match.kickoff} now={now} />
-        </span>
+        {toKick > 0 ? (
+          <>
+            <span className="wc-hype-kick">⏳ Kicks off in</span>
+            <span className="wc-hype-clock">
+              <Countdown kickoff={match.kickoff} now={now} />
+            </span>
+          </>
+        ) : (
+          <>
+            <span className="wc-hype-kick">🔜 Kicking off</span>
+            <span className="wc-hype-clock">Any moment</span>
+          </>
+        )}
       </div>
 
       <div className="wc-lockin-ritual">

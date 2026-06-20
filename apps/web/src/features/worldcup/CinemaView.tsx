@@ -202,6 +202,12 @@ function CinemaStage({ wc, match }: { wc: WorldCupState; match: WcMatch }) {
             </span>
           </div>
 
+          {!result && meId && (
+            <div className="wc-screen-stakes">
+              <StakesBanner wc={wc} meId={meId} match={match} compact />
+            </div>
+          )}
+
           <div className="wc-screen-channels" role="tablist" aria-label="Screen channels">
             {channels
               .filter((c) => c.show)
@@ -221,7 +227,13 @@ function CinemaStage({ wc, match }: { wc: WorldCupState; match: WcMatch }) {
 
           <div className="wc-screen-body">
             {active === 'feed' ? (
-              <CinemaFeed wc={wc} match={match} />
+              isLive || result ? (
+                <CinemaFeed wc={wc} match={match} />
+              ) : (
+                <div className="wc-screen-buildup">
+                  <PreMatchHype wc={wc} match={match} now={now} />
+                </div>
+              )
             ) : (
               <div className="wc-screen-panel">
                 {active === 'stats' && <StatsView wc={wc} match={match} live={live} />}
@@ -234,9 +246,6 @@ function CinemaStage({ wc, match }: { wc: WorldCupState; match: WcMatch }) {
           </div>
         </div>
       </Amphitheatre>
-
-      {!result && <StakesBanner wc={wc} meId={meId} match={match} />}
-      {!result && !isLive && ready && <PreMatchHype wc={wc} match={match} now={now} />}
 
       <form className="wc-cinema-composer" onSubmit={sendComment}>
         <input

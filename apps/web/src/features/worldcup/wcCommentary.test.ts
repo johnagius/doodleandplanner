@@ -50,4 +50,11 @@ describe('buildCommentary', () => {
     expect(lines[0]?.icon).toBe('🏁');
     expect(lines[0]?.text).toContain('Full time');
   });
+
+  it('stays silent before kickoff — no faked "under way" line', () => {
+    expect(buildCommentary(wc, match, undefined, undefined)).toHaveLength(0);
+    // A scheduled feed entry (no minute/score yet) is still pre-match.
+    const scheduled: WcLiveInfo = { status: 'SCHEDULED' } as unknown as WcLiveInfo;
+    expect(buildCommentary(wc, match, scheduled, [])).toHaveLength(0);
+  });
 });

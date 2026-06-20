@@ -60,6 +60,19 @@ export function buildCommentary(
   const nameOf = (tla: string) => findTeam(wc, tla)?.name ?? tla;
   const lines: CommentaryLine[] = [];
 
+  // Has the match actually started? Before kickoff there's no play to narrate —
+  // the build-up owns the screen, so don't fake a "we're under way" line.
+  const started =
+    !!match.result ||
+    (events?.length ?? 0) > 0 ||
+    live?.status === 'IN_PLAY' ||
+    live?.status === 'PAUSED' ||
+    (live?.minute ?? 0) > 0 ||
+    (live?.home ?? 0) > 0 ||
+    (live?.away ?? 0) > 0;
+
+  if (!started) return lines;
+
   lines.push({
     id: 'ko',
     minute: "0'",

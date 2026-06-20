@@ -152,6 +152,36 @@ describe('buildIntervalReport', () => {
     expect(data!.star).toBeNull();
   });
 
+  it('builds a referee / venue / attendance footnote', () => {
+    const summary = {
+      homeTla: 'ENG',
+      awayTla: 'ESP',
+      stats: [],
+      leaders: [],
+      recent: { home: [], away: [] },
+      referee: 'M. Oliver',
+      venue: 'Wembley Stadium',
+      venueCity: 'London, England',
+    } as WcMatchSummary;
+    const data = buildIntervalReport(
+      wc,
+      match,
+      { status: 'FINISHED', home: 1, away: 0, attendance: 84000 },
+      [],
+      summary,
+    );
+    expect(data!.meta).toEqual([
+      '🧑‍⚖️ M. Oliver',
+      '📍 Wembley Stadium, London, England',
+      '👥 84,000',
+    ]);
+  });
+
+  it('omits the footnote when there is no detail', () => {
+    const data = buildIntervalReport(wc, match, { status: 'PAUSED', home: 0, away: 0 }, [], null);
+    expect(data!.meta).toEqual([]);
+  });
+
   it('surfaces the headline stats, dropping unknown or empty rows', () => {
     const summary = {
       homeTla: 'ENG',

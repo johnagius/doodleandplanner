@@ -78,7 +78,7 @@ describe('IntervalReport', () => {
 
   it('reads Full Time from a finished match, with verdict and star', async () => {
     useWorldCupStore.setState({
-      live: { m1: { status: 'FINISHED', minute: null, home: 2, away: 1 } },
+      live: { m1: { status: 'FINISHED', minute: null, home: 2, away: 1, attendance: 81000 } },
       matchEvents: {
         m1: [
           { minute: "12'", kind: 'goal', teamTla: 'ENG', player: 'Kane' },
@@ -98,6 +98,8 @@ describe('IntervalReport', () => {
       'Star of the match',
     );
     expect(container.querySelector('.wc-interval-star')?.textContent).toContain('Kane');
+    // Attendance lands in the broadcast footnote.
+    expect(container.querySelector('.wc-interval-meta')?.textContent).toContain('81,000');
   });
 
   it('blows a single whistle when a half ends while watching — never on open', async () => {

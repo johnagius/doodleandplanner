@@ -151,6 +151,14 @@ export function IntervalReport({ wc, match }: { wc: WorldCupState; match: WcMatc
           </div>
         )}
 
+        {data.meta.length > 0 && (
+          <div className="wc-interval-meta">
+            {data.meta.map((bit) => (
+              <span key={bit}>{bit}</span>
+            ))}
+          </div>
+        )}
+
         <div className="wc-interval-foot">
           {data.phase === 'ft' ? 'That’s full time' : 'Back underway shortly'} · tap ✕ to watch the
           room

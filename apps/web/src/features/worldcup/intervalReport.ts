@@ -69,12 +69,15 @@ export interface IntervalReportData {
   verdict: IntervalVerdict | null;
   /** The standout performer — top match rating, else the leading scorer; null if neither. */
   star: IntervalStar | null;
+  /** Broadcast footnote bits (referee, venue, attendance); empty without detail. */
+  meta: string[];
 }
 
 interface LiveLike {
   status?: string;
   home?: number | null;
   away?: number | null;
+  attendance?: number | null;
 }
 
 /** Which break we're at, if any. Full Time wins over Half Time. */
@@ -208,6 +211,18 @@ export function buildIntervalReport(
     });
   }
 
+  const meta: string[] = [];
+  if (summary?.referee) meta.push(`🧑‍⚖️ ${summary.referee}`);
+  const place = summary?.venue
+    ? summary.venueCity
+      ? `${summary.venue}, ${summary.venueCity}`
+      : summary.venue
+    : (summary?.venueCity ?? null);
+  if (place) meta.push(`📍 ${place}`);
+  if (live?.attendance && live.attendance > 0) {
+    meta.push(`👥 ${live.attendance.toLocaleString('en-GB')}`);
+  }
+
   const homeName = home?.name ?? match.homeId ?? 'TBD';
   const awayName = away?.name ?? match.awayId ?? 'TBD';
   let verdict: IntervalVerdict | null = null;
@@ -237,6 +252,7 @@ export function buildIntervalReport(
     stats,
     verdict,
     star: pickStar(summary, events),
+    meta,
   };
 }
 

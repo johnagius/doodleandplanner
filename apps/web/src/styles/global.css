@@ -2041,6 +2041,15 @@ label.field {
 .wc-interval-star-note {
   color: #aab4d4;
 }
+.wc-interval-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.3rem 0.8rem;
+  width: 100%;
+  font-size: 0.74rem;
+  color: #9aa4c6;
+}
 .wc-interval-foot {
   font-size: 0.72rem;
   color: #8c97bd;

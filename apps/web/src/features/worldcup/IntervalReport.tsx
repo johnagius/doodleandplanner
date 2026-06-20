@@ -18,6 +18,7 @@ import {
   type IntervalStat,
 } from './intervalReport.js';
 import { useMatchSummary } from './matchSummary.js';
+import { legibleScoreColor } from './wcFormat.js';
 
 export function IntervalReport({ wc, match }: { wc: WorldCupState; match: WcMatch }) {
   const live = useWorldCupStore((s) => s.live[match.id]);
@@ -25,6 +26,8 @@ export function IntervalReport({ wc, match }: { wc: WorldCupState; match: WcMatc
   const home = findTeam(wc, match.homeId);
   const away = findTeam(wc, match.awayId);
   const { summary } = useMatchSummary(home?.id, away?.id);
+  const homeAccent = legibleScoreColor(live?.homeColor);
+  const awayAccent = legibleScoreColor(live?.awayColor);
 
   const data = useMemo(
     () => buildIntervalReport(wc, match, live, events, summary),
@@ -64,9 +67,9 @@ export function IntervalReport({ wc, match }: { wc: WorldCupState; match: WcMatc
             <span className="wc-interval-name">{data.home.name}</span>
           </span>
           <span className="wc-interval-nums">
-            <b>{data.home.score}</b>
+            <b style={homeAccent ? { color: homeAccent } : undefined}>{data.home.score}</b>
             <i>–</i>
-            <b>{data.away.score}</b>
+            <b style={awayAccent ? { color: awayAccent } : undefined}>{data.away.score}</b>
           </span>
           <span className="wc-interval-team wc-interval-team-r">
             <span className="wc-interval-flag" aria-hidden>
@@ -93,7 +96,7 @@ export function IntervalReport({ wc, match }: { wc: WorldCupState; match: WcMatc
         {data.stats.length > 0 && (
           <div className="wc-interval-stats">
             {data.stats.map((s) => (
-              <StatRow key={s.label} stat={s} />
+              <StatRow key={s.label} stat={s} homeAccent={homeAccent} awayAccent={awayAccent} />
             ))}
           </div>
         )}
@@ -117,15 +120,29 @@ function ScorerList({ goals, right }: { goals: IntervalGoal[]; right?: boolean }
   );
 }
 
-function StatRow({ stat }: { stat: IntervalStat }) {
+function StatRow({
+  stat,
+  homeAccent,
+  awayAccent,
+}: {
+  stat: IntervalStat;
+  homeAccent?: string;
+  awayAccent?: string;
+}) {
   return (
     <div className="wc-interval-stat">
       <span className="wc-interval-stat-v">{statValue(stat, 'home')}</span>
       <span className="wc-interval-stat-label">{stat.label}</span>
       <span className="wc-interval-stat-v wc-interval-stat-v-r">{statValue(stat, 'away')}</span>
       <div className="wc-interval-bar">
-        <span className="wc-interval-bar-h" style={{ width: `${stat.homePct}%` }} />
-        <span className="wc-interval-bar-a" style={{ width: `${stat.awayPct}%` }} />
+        <span
+          className="wc-interval-bar-h"
+          style={{ width: `${stat.homePct}%`, ...(homeAccent ? { background: homeAccent } : {}) }}
+        />
+        <span
+          className="wc-interval-bar-a"
+          style={{ width: `${stat.awayPct}%`, ...(awayAccent ? { background: awayAccent } : {}) }}
+        />
       </div>
     </div>
   );

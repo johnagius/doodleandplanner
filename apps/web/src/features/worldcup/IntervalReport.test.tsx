@@ -45,7 +45,9 @@ describe('IntervalReport', () => {
 
   it('takes over the screen at half time with the score and scorers', async () => {
     useWorldCupStore.setState({
-      live: { m1: { status: 'PAUSED', minute: 45, home: 1, away: 0 } },
+      live: {
+        m1: { status: 'PAUSED', minute: 45, home: 1, away: 0, homeColor: '#d11a2a' },
+      },
       matchEvents: { m1: [{ minute: "23'", kind: 'goal', teamTla: 'ENG', player: 'Kane' }] },
     });
     const { container } = await renderReport();
@@ -53,6 +55,9 @@ describe('IntervalReport', () => {
     expect(screen.getByText(/Half Time/)).toBeInTheDocument();
     expect(container.textContent).toContain('Kane');
     expect(container.textContent).toContain('England');
+    // The home score is tinted with the team's brand colour.
+    const homeNum = container.querySelector('.wc-interval-nums b');
+    expect((homeNum as HTMLElement | null)?.style.color).toBeTruthy();
   });
 
   it('can be dismissed to watch the room', async () => {

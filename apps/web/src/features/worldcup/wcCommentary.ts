@@ -190,6 +190,33 @@ export function buildCommentary(
     });
   });
 
+  // Period beats — keep the ticker alive through goalless stretches. Driven by
+  // the live clock (which only ticks while in play), they slot into the timeline
+  // at the moment they're reached and never appear after the result is in.
+  const mins = live?.minute ?? 0;
+  if (!match.result) {
+    if (mins > 45 && live?.status !== 'PAUSED') {
+      lines.push({
+        id: 'sh',
+        minute: "46'",
+        sort: 45.5,
+        icon: '🔄',
+        tone: 'status',
+        text: 'Back under way — second half!',
+      });
+    }
+    if (mins >= 80) {
+      lines.push({
+        id: 'closing',
+        minute: "80'",
+        sort: 80,
+        icon: '⏳',
+        tone: 'status',
+        text: 'Into the closing stages — squeaky-bum time!',
+      });
+    }
+  }
+
   if (match.result) {
     lines.push({
       id: 'ft',

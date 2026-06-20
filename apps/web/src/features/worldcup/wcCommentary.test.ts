@@ -86,4 +86,33 @@ describe('buildCommentary', () => {
     expect(second).toContain('from the penalty spot');
     expect(second).toContain("extends Aland's lead");
   });
+
+  it('adds period beats through a goalless second half', () => {
+    const lines = buildCommentary(
+      wc,
+      match,
+      { status: 'IN_PLAY', minute: 82, home: 0, away: 0 },
+      [],
+    );
+    expect(lines.find((l) => l.id === 'sh')?.text).toContain('second half');
+    expect(lines.find((l) => l.id === 'closing')?.text).toContain('closing stages');
+  });
+
+  it('holds period beats in the first half and after full time', () => {
+    const first = buildCommentary(
+      wc,
+      match,
+      { status: 'IN_PLAY', minute: 20, home: 0, away: 0 },
+      [],
+    );
+    expect(first.find((l) => l.id === 'sh')).toBeUndefined();
+    expect(first.find((l) => l.id === 'closing')).toBeUndefined();
+    const done = buildCommentary(
+      wc,
+      { ...match, result: { home: 0, away: 0 } } as WcMatch,
+      { status: 'FINISHED', minute: null, home: 0, away: 0 },
+      [],
+    );
+    expect(done.find((l) => l.id === 'closing')).toBeUndefined();
+  });
 });

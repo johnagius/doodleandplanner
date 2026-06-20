@@ -31,10 +31,50 @@ const GOAL_FLAVOUR = [
   'Cool as you like!',
   'The bench is up!',
   'Bedlam in the stands!',
+  'Unstoppable!',
+  'The keeper had no chance!',
+  'Sends the crowd wild!',
 ];
 
 function pick(seed: number): string {
   return GOAL_FLAVOUR[Math.abs(Math.round(seed)) % GOAL_FLAVOUR.length]!;
+}
+
+/**
+ * A context-aware goal line: reads the scoreline state (opener / equaliser /
+ * go-ahead / extends / consolation), flags a brace or hat-trick, notes a penalty,
+ * and adds a touch of late drama. `scored`/`opp` are the post-goal tallies for the
+ * side that scored; `h`/`a` is the board score; `n` is the scorer's tally so far.
+ */
+function goalNarration(
+  team: string,
+  player: string,
+  side: 'home' | 'away' | null,
+  h: number,
+  a: number,
+  pen: boolean,
+  n: number,
+  minute: number,
+): string {
+  const scored = side === 'away' ? a : h;
+  const opp = side === 'away' ? h : a;
+  const total = h + a;
+  const lead =
+    total === 1
+      ? `opens the scoring for ${team}`
+      : scored === opp
+        ? `levels it for ${team}`
+        : scored - opp === 1
+          ? `puts ${team} ahead`
+          : scored > opp
+            ? `extends ${team}'s lead`
+            : `pulls one back for ${team}`;
+  const head = n === 3 ? 'Hat-trick!' : scored === opp ? 'Equaliser!' : 'GOAL!';
+  const tally =
+    n === 3 ? ` ${player} has the match ball!` : n === 2 ? ` ${player}'s second of the game.` : '';
+  const spot = pen ? ', from the penalty spot' : '';
+  const late = minute >= 85 ? ' Late, late drama!' : '';
+  return `${head} ${player} ${lead}${spot} — ${h}–${a}.${tally} ${pick(minute)}${late}`;
 }
 
 function ordinal(n: number): string {
@@ -84,6 +124,7 @@ export function buildCommentary(
 
   let h = 0;
   let a = 0;
+  const playerGoals = new Map<string, number>();
   const sorted = [...(events ?? [])].sort((x, y) => minuteValue(x.minute) - minuteValue(y.minute));
   sorted.forEach((e, i) => {
     const m = minuteValue(e.minute);
@@ -91,14 +132,15 @@ export function buildCommentary(
     if (e.kind === 'goal' || e.kind === 'pen-goal') {
       if (side === 'home') h++;
       else if (side === 'away') a++;
-      const pen = e.kind === 'pen-goal' ? ' from the spot' : '';
+      const n = (playerGoals.get(e.player) ?? 0) + 1;
+      playerGoals.set(e.player, n);
       lines.push({
         id: `g${i}`,
         minute: e.minute,
         sort: m,
         icon: '⚽',
         tone: 'goal',
-        text: `GOAL! ${e.player}${pen} for ${nameOf(e.teamTla)} — ${h}–${a}. ${pick(m)}`,
+        text: goalNarration(nameOf(e.teamTla), e.player, side, h, a, e.kind === 'pen-goal', n, m),
       });
     } else if (e.kind === 'own-goal') {
       if (side === 'home') a++;

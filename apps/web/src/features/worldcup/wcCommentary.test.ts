@@ -57,4 +57,33 @@ describe('buildCommentary', () => {
     const scheduled: WcLiveInfo = { status: 'SCHEDULED' } as unknown as WcLiveInfo;
     expect(buildCommentary(wc, match, scheduled, [])).toHaveLength(0);
   });
+
+  it('reads the scoreline — an opener, then an equaliser', () => {
+    const events: WcMatchEvent[] = [
+      { minute: "10'", kind: 'goal', teamTla: 'AAA', player: 'Striker' },
+      { minute: "20'", kind: 'goal', teamTla: 'BBB', player: 'Winger' },
+    ];
+    const live: WcLiveInfo = { status: 'IN_PLAY', minute: 25, home: 1, away: 1 };
+    const lines = buildCommentary(wc, match, live, events);
+    expect(lines.find((l) => l.text.includes('Striker'))?.text).toContain(
+      'opens the scoring for Aland',
+    );
+    const eq = lines.find((l) => l.text.includes('Winger'))?.text ?? '';
+    expect(eq).toContain('Equaliser!');
+    expect(eq).toContain('levels it for Bland');
+  });
+
+  it('flags a brace and notes a penalty', () => {
+    const events: WcMatchEvent[] = [
+      { minute: "15'", kind: 'goal', teamTla: 'AAA', player: 'Striker' },
+      { minute: "40'", kind: 'pen-goal', teamTla: 'AAA', player: 'Striker' },
+    ];
+    const live: WcLiveInfo = { status: 'IN_PLAY', minute: 45, home: 2, away: 0 };
+    const second =
+      buildCommentary(wc, match, live, events).find((l) => l.text.includes('second of the game'))
+        ?.text ?? '';
+    expect(second).toContain("Striker's second of the game");
+    expect(second).toContain('from the penalty spot');
+    expect(second).toContain("extends Aland's lead");
+  });
 });

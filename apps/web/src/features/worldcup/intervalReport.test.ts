@@ -56,6 +56,8 @@ describe('buildIntervalReport', () => {
     expect(data!.home.goals[0]!.player).toBe('Kane');
     expect(data!.away.goals).toHaveLength(0);
     expect(data!.stats).toHaveLength(0);
+    // No verdict at the half — it isn't over yet.
+    expect(data!.verdict).toBeNull();
   });
 
   it('credits own goals to the other side and labels pens/OGs, sorted by minute', () => {
@@ -89,6 +91,20 @@ describe('buildIntervalReport', () => {
     expect(data!.label).toBe('Full Time');
     expect(data!.home.score).toBe(2);
     expect(data!.away.score).toBe(1);
+    expect(data!.verdict).toEqual({ winner: 'home', text: 'England win' });
+  });
+
+  it('calls a draw "Honours even" and names the away winner', () => {
+    const draw = buildIntervalReport(wc, match, { status: 'FINISHED', home: 1, away: 1 }, [], null);
+    expect(draw!.verdict).toEqual({ winner: null, text: 'Honours even' });
+    const awayWin = buildIntervalReport(
+      wc,
+      match,
+      { status: 'FINISHED', home: 0, away: 2 },
+      [],
+      null,
+    );
+    expect(awayWin!.verdict).toEqual({ winner: 'away', text: 'Spain win' });
   });
 
   it('surfaces the headline stats, dropping unknown or empty rows', () => {

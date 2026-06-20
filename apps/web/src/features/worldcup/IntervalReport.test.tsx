@@ -79,5 +79,9 @@ describe('IntervalReport', () => {
     const { container } = await renderReport();
     expect(screen.getByText(/Full Time/)).toBeInTheDocument();
     expect(container.querySelector('.wc-interval')?.className).toContain('is-ft');
+    // A verdict names the winner and the winning side is emphasised.
+    expect(container.textContent).toContain('England win');
+    expect(container.querySelector('.wc-interval-team.is-win')?.textContent).toContain('England');
+    expect(container.querySelector('.wc-interval-team.is-lose')?.textContent).toContain('Spain');
   });
 });

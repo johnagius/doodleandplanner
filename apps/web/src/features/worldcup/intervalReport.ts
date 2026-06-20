@@ -42,6 +42,13 @@ export interface IntervalStat {
   pct: boolean;
 }
 
+export interface IntervalVerdict {
+  /** Which side won, or null for a draw. */
+  winner: 'home' | 'away' | null;
+  /** Short line, e.g. "England win" | "Honours even". */
+  text: string;
+}
+
 export interface IntervalReportData {
   phase: IntervalPhase;
   /** "Half Time" | "Full Time". */
@@ -50,6 +57,8 @@ export interface IntervalReportData {
   away: IntervalSide;
   /** A few headline stats (possession, shots, on target); empty before stats land. */
   stats: IntervalStat[];
+  /** The result in words — only at Full Time, null at the half. */
+  verdict: IntervalVerdict | null;
 }
 
 interface LiveLike {
@@ -142,24 +151,34 @@ export function buildIntervalReport(
     });
   }
 
+  const homeName = home?.name ?? match.homeId ?? 'TBD';
+  const awayName = away?.name ?? match.awayId ?? 'TBD';
+  let verdict: IntervalVerdict | null = null;
+  if (phase === 'ft') {
+    if (score.home > score.away) verdict = { winner: 'home', text: `${homeName} win` };
+    else if (score.away > score.home) verdict = { winner: 'away', text: `${awayName} win` };
+    else verdict = { winner: null, text: 'Honours even' };
+  }
+
   return {
     phase,
     label: phase === 'ft' ? 'Full Time' : 'Half Time',
     home: {
       tla: match.homeId ?? '',
-      name: home?.name ?? match.homeId ?? 'TBD',
+      name: homeName,
       flag: home?.flag ?? '⚽',
       score: score.home,
       goals: homeGoals,
     },
     away: {
       tla: match.awayId ?? '',
-      name: away?.name ?? match.awayId ?? 'TBD',
+      name: awayName,
       flag: away?.flag ?? '⚽',
       score: score.away,
       goals: awayGoals,
     },
     stats,
+    verdict,
   };
 }
 

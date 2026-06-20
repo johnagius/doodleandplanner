@@ -1907,6 +1907,13 @@ label.field {
   justify-content: flex-end;
   text-align: right;
 }
+/* Full-Time emphasis: the winner stands up, the loser steps back. */
+.wc-interval-team.is-win {
+  font-weight: 800;
+}
+.wc-interval-team.is-lose {
+  opacity: 0.6;
+}
 .wc-interval-flag {
   font-size: 1.5rem;
 }
@@ -1926,6 +1933,12 @@ label.field {
   font-style: normal;
   opacity: 0.5;
 }
+.wc-interval-verdict {
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  color: #eaf0ff;
+}
 .wc-interval-scorers {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
@@ -1940,12 +1953,16 @@ label.field {
   flex-direction: column;
   gap: 0.2rem;
   margin: 0;
-  padding: 0;
+  padding: 0 0 0 0.5rem;
   list-style: none;
+  border-inline-start: 2px solid var(--side, transparent);
   font-size: 0.86rem;
   color: #d7def6;
 }
 .wc-interval-side-r {
+  padding: 0 0.5rem 0 0;
+  border-inline-start: none;
+  border-inline-end: 2px solid var(--side, transparent);
   text-align: right;
 }
 .wc-interval-ball {

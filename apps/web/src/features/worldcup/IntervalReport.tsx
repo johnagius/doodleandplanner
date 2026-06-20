@@ -7,7 +7,7 @@
  * the room), and it clears itself when the second half gets going. Pure display.
  */
 import { findTeam, type WcMatch, type WorldCupState } from '@dap/shared';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { useWorldCupStore } from '../../state/worldCupStore.js';
 import {
   buildIntervalReport,
@@ -43,6 +43,10 @@ export function IntervalReport({ wc, match }: { wc: WorldCupState; match: WcMatc
 
   if (!data || dismissed === data.phase) return null;
   const goalless = data.home.goals.length === 0 && data.away.goals.length === 0;
+  const winner = data.verdict?.winner ?? null;
+  const homeCls = winner === 'home' ? 'is-win' : winner === 'away' ? 'is-lose' : '';
+  const awayCls = winner === 'away' ? 'is-win' : winner === 'home' ? 'is-lose' : '';
+  const verdictColor = winner === 'home' ? homeAccent : winner === 'away' ? awayAccent : undefined;
 
   return (
     <div className={`wc-interval is-${data.phase}`} role="status" aria-live="polite">
@@ -60,7 +64,7 @@ export function IntervalReport({ wc, match }: { wc: WorldCupState; match: WcMatc
         </div>
 
         <div className="wc-interval-score">
-          <span className="wc-interval-team">
+          <span className={`wc-interval-team ${homeCls}`}>
             <span className="wc-interval-flag" aria-hidden>
               {data.home.flag}
             </span>
@@ -71,7 +75,7 @@ export function IntervalReport({ wc, match }: { wc: WorldCupState; match: WcMatc
             <i>–</i>
             <b style={awayAccent ? { color: awayAccent } : undefined}>{data.away.score}</b>
           </span>
-          <span className="wc-interval-team wc-interval-team-r">
+          <span className={`wc-interval-team wc-interval-team-r ${awayCls}`}>
             <span className="wc-interval-flag" aria-hidden>
               {data.away.flag}
             </span>
@@ -79,17 +83,26 @@ export function IntervalReport({ wc, match }: { wc: WorldCupState; match: WcMatc
           </span>
         </div>
 
+        {data.verdict && (
+          <div
+            className="wc-interval-verdict"
+            style={verdictColor ? { color: verdictColor } : undefined}
+          >
+            {data.verdict.winner ? '🏆' : '🤝'} {data.verdict.text}
+          </div>
+        )}
+
         {goalless ? (
           <p className="wc-interval-goalless">
             {data.phase === 'ft' ? 'Goalless draw' : 'Still goalless'}
           </p>
         ) : (
           <div className="wc-interval-scorers">
-            <ScorerList goals={data.home.goals} />
+            <ScorerList goals={data.home.goals} accent={homeAccent} />
             <span className="wc-interval-ball" aria-hidden>
               ⚽
             </span>
-            <ScorerList goals={data.away.goals} right />
+            <ScorerList goals={data.away.goals} right accent={awayAccent} />
           </div>
         )}
 
@@ -110,9 +123,20 @@ export function IntervalReport({ wc, match }: { wc: WorldCupState; match: WcMatc
   );
 }
 
-function ScorerList({ goals, right }: { goals: IntervalGoal[]; right?: boolean }) {
+function ScorerList({
+  goals,
+  right,
+  accent,
+}: {
+  goals: IntervalGoal[];
+  right?: boolean;
+  accent?: string;
+}) {
   return (
-    <ul className={`wc-interval-side ${right ? 'wc-interval-side-r' : ''}`}>
+    <ul
+      className={`wc-interval-side ${right ? 'wc-interval-side-r' : ''}`}
+      style={accent ? ({ ['--side']: accent } as CSSProperties) : undefined}
+    >
       {goals.map((g, i) => (
         <li key={`${g.player}-${g.minute}-${i}`}>{goalLabel(g)}</li>
       ))}

@@ -11,7 +11,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 const SOUND_KEY = 'dap:wc:sound';
 
-export type WcSoundKind = 'goal' | 'exact' | 'rankup' | 'whistle' | 'anthem';
+export type WcSoundKind = 'goal' | 'exact' | 'rankup' | 'whistle' | 'fulltime' | 'anthem';
 
 function readEnabled(): boolean {
   try {
@@ -165,6 +165,14 @@ const PATTERNS: Record<WcSoundKind, () => void> = {
   whistle: () => {
     tone({ freq: 2000, dur: 0.16, type: 'square', gain: 0.08 });
     tone({ freq: 2100, dur: 0.18, type: 'square', gain: 0.08, delay: 0.04 });
+  },
+  // Three blasts — the long peep of full time.
+  fulltime: () => {
+    for (let i = 0; i < 3; i++) {
+      const at = i * 0.22;
+      tone({ freq: 2000, dur: 0.16, type: 'square', gain: 0.08, delay: at });
+      tone({ freq: 2100, dur: 0.18, type: 'square', gain: 0.08, delay: at + 0.04 });
+    }
   },
   // A little fanfare sting for pre-match hype.
   anthem: () => {

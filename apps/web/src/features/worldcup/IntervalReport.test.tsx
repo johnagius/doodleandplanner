@@ -1,8 +1,11 @@
 import type { WcMatch, WorldCupState } from '@dap/shared';
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useWorldCupStore } from '../../state/worldCupStore.js';
 import { IntervalReport } from './IntervalReport.js';
+import { playSound } from './wcSound.js';
+
+vi.mock('./wcSound.js', () => ({ playSound: vi.fn(), vibrate: vi.fn() }));
 
 const wc = {
   teams: [
@@ -32,6 +35,7 @@ async function renderReport(m: WcMatch = match) {
 
 beforeEach(() => {
   useWorldCupStore.setState({ live: {}, matchEvents: {} });
+  vi.clearAllMocks();
 });
 
 describe('IntervalReport', () => {
@@ -94,5 +98,38 @@ describe('IntervalReport', () => {
       'Star of the match',
     );
     expect(container.querySelector('.wc-interval-star')?.textContent).toContain('Kane');
+  });
+
+  it('blows a single whistle when a half ends while watching — never on open', async () => {
+    useWorldCupStore.setState({
+      live: { m1: { status: 'IN_PLAY', minute: 45, home: 0, away: 0 } },
+    });
+    await renderReport();
+    expect(playSound).not.toHaveBeenCalled();
+    await act(async () => {
+      useWorldCupStore.setState({
+        live: { m1: { status: 'PAUSED', minute: 45, home: 0, away: 0 } },
+      });
+    });
+    expect(playSound).toHaveBeenCalledWith('whistle');
+  });
+
+  it('gives full time the three-blast cue', async () => {
+    useWorldCupStore.setState({
+      live: { m1: { status: 'IN_PLAY', minute: 90, home: 2, away: 1 } },
+    });
+    await renderReport();
+    await act(async () => {
+      useWorldCupStore.setState({
+        live: { m1: { status: 'FINISHED', minute: null, home: 2, away: 1 } },
+      });
+    });
+    expect(playSound).toHaveBeenCalledWith('fulltime');
+  });
+
+  it('does not whistle merely for opening at a break', async () => {
+    useWorldCupStore.setState({ live: { m1: { status: 'PAUSED', minute: 45, home: 0, away: 0 } } });
+    await renderReport();
+    expect(playSound).not.toHaveBeenCalled();
   });
 });

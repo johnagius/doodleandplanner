@@ -7,7 +7,7 @@
  * the room), and it clears itself when the second half gets going. Pure display.
  */
 import { findTeam, type WcMatch, type WorldCupState } from '@dap/shared';
-import { useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useWorldCupStore } from '../../state/worldCupStore.js';
 import {
   buildIntervalReport,
@@ -19,6 +19,7 @@ import {
 } from './intervalReport.js';
 import { useMatchSummary } from './matchSummary.js';
 import { legibleScoreColor } from './wcFormat.js';
+import { playSound, vibrate } from './wcSound.js';
 
 export function IntervalReport({ wc, match }: { wc: WorldCupState; match: WcMatch }) {
   const live = useWorldCupStore((s) => s.live[match.id]);
@@ -39,6 +40,22 @@ export function IntervalReport({ wc, match }: { wc: WorldCupState; match: WcMatc
   const [dismissed, setDismissed] = useState<IntervalPhase | null>(null);
   useEffect(() => {
     if (!phase) setDismissed(null);
+  }, [phase]);
+
+  // Blow the whistle the moment a half/match ends *while we're watching*. The
+  // first run baselines silently, so opening at a break never fires a false cue.
+  const prevPhase = useRef<IntervalPhase | null | undefined>(undefined);
+  useEffect(() => {
+    const prev = prevPhase.current;
+    prevPhase.current = phase;
+    if (prev === undefined || !phase || phase === prev) return;
+    if (phase === 'ft') {
+      playSound('fulltime');
+      vibrate([60, 40, 60, 40, 140]);
+    } else {
+      playSound('whistle');
+      vibrate([70]);
+    }
   }, [phase]);
 
   if (!data || dismissed === data.phase) return null;

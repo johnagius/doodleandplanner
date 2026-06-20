@@ -15,12 +15,12 @@ import { useToast } from '../../components/Toast.js';
 import { useWorldCupStore } from '../../state/worldCupStore.js';
 import { Amphitheatre } from './Amphitheatre.js';
 import { CinemaFeed } from './CinemaFeed.js';
-import { Countdown } from './Countdown.js';
 import { GoalOverlay } from './GoalOverlay.js';
 import { HighlightOverlay } from './HighlightOverlay.js';
 import { IntervalReport } from './IntervalReport.js';
 import { KickoffCue } from './KickoffCue.js';
 import { useGoalEvents } from './liveGoals.js';
+import { PreMatchHype } from './PreMatchHype.js';
 import { StageReactions } from './StageReactions.js';
 import { StakesBanner } from './StakesBanner.js';
 import { useCommentBubbles } from './useCommentBubbles.js';
@@ -125,6 +125,7 @@ function CinemaStage({ wc, match }: { wc: WorldCupState; match: WcMatch }) {
   const result = match.result;
   const isLive = !result && !!live && isInPlay(live.status);
   const finished = !result && live?.status === 'FINISHED';
+  const preMatch = !result && !isLive && !finished;
   const accent = live?.homeColor ? legibleScoreColor(live.homeColor) : null;
 
   const mePredictor = meId ? (wc.predictors.find((p) => p.id === meId) ?? null) : null;
@@ -191,9 +192,6 @@ function CinemaStage({ wc, match }: { wc: WorldCupState; match: WcMatch }) {
                     : isLive
                       ? (live!.clock ?? `${live!.minute ?? 0}'`)
                       : null}
-                  {!result && !finished && !isLive && (
-                    <Countdown kickoff={match.kickoff} now={now} />
-                  )}
                 </span>
               </span>
               <span className="wc-screen-side wc-screen-side-right">
@@ -207,6 +205,12 @@ function CinemaStage({ wc, match }: { wc: WorldCupState; match: WcMatch }) {
             {!result && meId && (
               <div className="wc-screen-stakes">
                 <StakesBanner wc={wc} meId={meId} match={match} compact />
+              </div>
+            )}
+
+            {preMatch && (
+              <div className="wc-screen-hype">
+                <PreMatchHype wc={wc} match={match} now={now} />
               </div>
             )}
 

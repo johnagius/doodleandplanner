@@ -103,6 +103,28 @@ describe('CinemaView', () => {
     expect(document.body.querySelector('.wc-screen-chan')).toBeNull();
   });
 
+  it('shows the pre-match build-up before kickoff, not while live', async () => {
+    const wc = await seedBoard();
+    // No live entry → the seeded fixture is upcoming (kicks off in 10 days).
+    act(() => {
+      renderCinema(wc);
+    });
+    act(() => {
+      useMatchRoom.getState().open('g-A-1');
+    });
+    // The cinematic countdown + picks-locking ritual are on the screen.
+    expect(document.body.querySelector('.wc-hype')).not.toBeNull();
+    expect(document.body.textContent).toContain('Kicks off in');
+    expect(document.body.textContent).toContain('Picks locking in');
+
+    // Once the match is live, the build-up gives way to the broadcast.
+    const live: WcLiveInfo = { status: 'IN_PLAY', minute: 5, home: 0, away: 0 };
+    act(() => {
+      useWorldCupStore.setState({ live: { 'g-A-1': live } });
+    });
+    expect(document.body.querySelector('.wc-hype')).toBeNull();
+  });
+
   it('stays closed until a match is opened', async () => {
     const wc = await seedBoard();
     act(() => {

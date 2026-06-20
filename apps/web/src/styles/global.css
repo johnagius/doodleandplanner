@@ -6878,6 +6878,12 @@ label.field {
   background: color-mix(in srgb, var(--neon) 32%, transparent);
   color: #fff;
 }
+.wc-screen-hype {
+  flex: none;
+  display: flex;
+  justify-content: center;
+  padding: 0.3rem 0 0.1rem;
+}
 .wc-screen-body {
   height: clamp(17rem, 44vh, 28rem);
   overflow: hidden;

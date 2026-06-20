@@ -1,10 +1,10 @@
 /**
- * The amphitheatre — a 2.5D dusk bowl: a sunset sky behind a dominant screen,
- * then concentric seating decks fanning toward the viewer, packed with a
- * silhouette crowd and edged with magenta step-lights, with the people actually
- * on the site seated (bright, named) in the front rows. The screen content is
- * passed as children. Pure presentation; geometry lives in a 1000×600 viewBox
- * stretched 1:1 onto a 5:3 box so HTML avatars line up exactly on the SVG seats.
+ * The amphitheatre — a 2.5D dusk bowl with a dominant screen and an intimate set
+ * of ~10 big seats facing it (a private-screening feel, not a stadium). The
+ * people actually on the site fill the seats centre-first; empty chairs invite
+ * the rest. The screen content is passed as children. Pure presentation;
+ * geometry lives in a 1000×600 viewBox stretched 1:1 onto the box so HTML avatars
+ * line up exactly on the SVG seats.
  */
 import { findPredictor, type WorldCupState } from '@dap/shared';
 import type { ReactNode } from 'react';
@@ -15,48 +15,27 @@ import type { Watcher } from './useWatchers.js';
 const VW = 1000;
 const VH = 600;
 const CX = 500;
-const CY = 312; // the stage line (screen base) the decks fan out from
-// Seating decks from back (nearest the screen) to front (nearest the viewer).
-const TIERS: { rx: number; ry: number; seats: number }[] = [
-  { rx: 250, ry: 48, seats: 22 },
-  { rx: 332, ry: 94, seats: 30 },
-  { rx: 414, ry: 140, seats: 38 },
-  { rx: 498, ry: 184, seats: 46 },
-  { rx: 582, ry: 220, seats: 54 },
+const CY = 300; // the stage line (screen base) the seats fan out from
+// Two gentle seating arcs facing the screen: a bigger front row, a smaller back.
+const ROWS: { rx: number; ry: number; n: number; w: number; spread: number; size: number }[] = [
+  { rx: 470, ry: 210, n: 6, w: 56, spread: 1.32, size: 46 }, // front (nearest, biggest)
+  { rx: 372, ry: 120, n: 4, w: 44, spread: 0.92, size: 38 }, // back
 ];
-const FRONT = TIERS.length - 1; // people sit on the front-most deck(s)
+const CAP = ROWS.reduce((s, r) => s + r.n, 0); // 10 seats
 
-// Deterministic 0..1 hash so the crowd is stable across renders (no flicker).
-function frac(n: number): number {
-  const x = Math.sin(n * 127.1 + 311.7) * 43758.5453;
-  return x - Math.floor(x);
-}
-
-function bottomArc(rx: number, ry: number): string {
-  return `M ${CX - rx},${CY} A ${rx},${ry} 0 0 0 ${CX + rx},${CY}`;
-}
 function seatPt(rx: number, ry: number, u: number): { x: number; y: number } {
   return { x: CX + u * rx, y: CY + ry * Math.sqrt(Math.max(0, 1 - u * u)) };
 }
-// The filled seating deck between this tier's arc and the one behind it.
-function deckPath(o: { rx: number; ry: number }, inner: { rx: number; ry: number } | null): string {
-  const outer = `M ${CX - o.rx},${CY} A ${o.rx},${o.ry} 0 0 0 ${CX + o.rx},${CY}`;
-  if (!inner) return `${outer} L ${CX},${CY} Z`;
-  return `${outer} L ${CX + inner.rx},${CY} A ${inner.rx},${inner.ry} 0 0 1 ${CX - inner.rx},${CY} Z`;
+function bottomArc(rx: number, ry: number): string {
+  return `M ${CX - rx},${CY} A ${rx},${ry} 0 0 0 ${CX + rx},${CY}`;
 }
 
-interface Reserve {
-  tier: number;
-  uMin: number;
-  uMax: number;
-}
-interface Spec {
+interface Slot {
   x: number;
   y: number;
-  s: number;
-  arms: boolean;
-  fill: string;
-  key: string;
+  w: number;
+  size: number;
+  order: number; // fill order: front row first, centre-out
 }
 interface SeatPerson {
   key: string;
@@ -65,83 +44,43 @@ interface SeatPerson {
   isMe?: boolean;
 }
 
-// One ambient spectator: head + torso, base anchored at (0,0) so it "sits" on
-// the deck. Drawn dark; the screen-light wash rims them from above. `fill`
-// picks one of a few tints so the crowd isn't a flat monotone mass.
-function Spectator({
-  x,
-  y,
-  s,
-  arms,
-  fill,
-}: {
-  x: number;
-  y: number;
-  s: number;
-  arms: boolean;
-  fill: string;
-}) {
-  const bw = 3.3 * s;
-  const bh = 6.2 * s;
-  const hr = 2.4 * s;
+// The ~10 seat positions, ordered front-centre first so a lone watcher sits
+// dead-centre up front rather than marooned on an edge.
+function buildSlots(): Slot[] {
+  const slots: Slot[] = [];
+  ROWS.forEach((row, ri) => {
+    for (let k = 0; k < row.n; k++) {
+      const u = row.n <= 1 ? 0 : -row.spread / 2 + (k / (row.n - 1)) * row.spread;
+      const pt = seatPt(row.rx, row.ry, u);
+      slots.push({ x: pt.x, y: pt.y, w: row.w, size: row.size, order: ri * 10 + Math.abs(u) });
+    }
+  });
+  return slots.sort((a, b) => a.order - b.order);
+}
+
+// A single empty chair (seen from behind): a magenta-rimmed seat-back on the deck.
+function Chair({ x, y, w }: { x: number; y: number; w: number }) {
+  const h = w * 0.74;
   return (
-    <g transform={`translate(${x} ${y})`}>
-      {arms && (
-        <>
-          <line
-            x1={-bw * 0.65}
-            y1={-bh * 0.55}
-            x2={-bw * 1.1}
-            y2={-bh * 1.4}
-            className="wc-amph-arm"
-            strokeWidth={1.2 * s}
-          />
-          <line
-            x1={bw * 0.65}
-            y1={-bh * 0.55}
-            x2={bw * 1.1}
-            y2={-bh * 1.4}
-            className="wc-amph-arm"
-            strokeWidth={1.2 * s}
-          />
-        </>
-      )}
-      <path
-        d={`M ${-bw},0 C ${-bw},${-bh * 0.5} ${-bw * 0.58},${-bh} 0,${-bh} C ${bw * 0.58},${-bh} ${bw},${-bh * 0.5} ${bw},0 Z`}
-        fill={fill}
+    <g className="wc-amph-chair">
+      <rect
+        x={x - w / 2}
+        y={y - h}
+        width={w}
+        height={h}
+        rx={w * 0.22}
+        className="wc-amph-chair-back"
       />
-      <circle cx={0} cy={-bh - hr * 0.45} r={hr} fill={fill} />
+      <rect
+        x={x - w / 2}
+        y={y - h * 0.34}
+        width={w}
+        height={h * 0.34}
+        rx={w * 0.16}
+        className="wc-amph-chair-seat"
+      />
     </g>
   );
-}
-const SIL_FILLS = ['url(#wc-sil)', 'url(#wc-sil2)', 'url(#wc-sil3)'];
-
-// Ambient spectators per deck, minus the slots reserved for the real (named)
-// audience up front. Generated once per render — cheap and pure.
-function buildCrowd(reserve: Reserve[]): Spec[][] {
-  return TIERS.map((t, tier) => {
-    const res = reserve.filter((r) => r.tier === tier);
-    const row: Spec[] = [];
-    for (let k = 0; k < t.seats; k++) {
-      const u = t.seats <= 1 ? 0 : -0.97 + (k / (t.seats - 1)) * 1.94;
-      if (res.some((r) => u >= r.uMin && u <= r.uMax)) continue;
-      const h = frac(tier * 131.7 + k * 7.13);
-      const uu = u + (frac(tier * 9.1 + k) - 0.5) * 0.012;
-      const pt = seatPt(t.rx, t.ry, uu);
-      const s = (1.35 + tier * 0.4) * (0.88 + h * 0.24);
-      row.push({
-        x: pt.x,
-        y: pt.y - frac(k * 3.3) * 1.5,
-        s,
-        arms: h > 0.85,
-        fill: SIL_FILLS[
-          Math.floor(frac(tier * 5.7 + k * 2.1) * SIL_FILLS.length) % SIL_FILLS.length
-        ]!,
-        key: `c${tier}-${k}`,
-      });
-    }
-    return row;
-  });
 }
 
 export function Amphitheatre({
@@ -149,12 +88,14 @@ export function Amphitheatre({
   me,
   watchers,
   bubbles,
+  cheering = false,
   children,
 }: {
   wc: WorldCupState;
   me: { id: string; name: string | null } | null;
   watchers: Watcher[];
   bubbles: Bubble[];
+  cheering?: boolean;
   children: ReactNode;
 }) {
   const bubbleBy = new Map(bubbles.map((b) => [b.authorId, b.text]));
@@ -170,66 +111,30 @@ export function Amphitheatre({
   if (me) add({ key: me.id, predictorId: me.id, name: me.name, isMe: true });
   for (const w of watchers) add({ key: w.memberId, predictorId: w.memberId, name: w.name });
   for (const b of bubbles) add({ key: b.authorId, predictorId: b.authorId, name: b.name });
-  const people = audience.slice(0, 16);
+  const people = audience.slice(0, CAP);
 
-  // Seat the real audience along the front row(s), centred, spilling into the
-  // row behind once the front fills. Reserve those slots from the ambient crowd.
-  const n = people.length;
-  const twoRows = n > 9;
-  const row0n = twoRows ? Math.ceil(n / 2) : n;
-  const rowUs = (cnt: number): number[] => {
-    const sp = Math.min(1.5, Math.max(0.42, cnt * 0.2));
-    return Array.from({ length: cnt }, (_, i) => (cnt <= 1 ? 0 : -sp / 2 + (i / (cnt - 1)) * sp));
-  };
-  const us0 = rowUs(row0n);
-  const us1 = rowUs(n - row0n);
-  const reserve: Reserve[] = [];
-  if (us0.length)
-    reserve.push({ tier: FRONT, uMin: us0[0]! - 0.08, uMax: us0[us0.length - 1]! + 0.08 });
-  if (us1.length)
-    reserve.push({ tier: FRONT - 1, uMin: us1[0]! - 0.08, uMax: us1[us1.length - 1]! + 0.08 });
-
-  const placeRow = (ids: SeatPerson[], us: number[], tier: number) =>
-    ids.map((p, i) => {
-      const pt = seatPt(TIERS[tier]!.rx, TIERS[tier]!.ry, us[i] ?? 0);
-      return {
-        ...p,
-        x: pt.x,
-        y: pt.y,
-        bubble: p.predictorId ? bubbleBy.get(p.predictorId) : undefined,
-      };
-    });
-  // Back row first so the front row paints over it where they overlap.
-  const placed = [
-    ...placeRow(people.slice(row0n), us1, FRONT - 1),
-    ...placeRow(people.slice(0, row0n), us0, FRONT),
-  ];
-
-  const crowd = buildCrowd(reserve);
+  const slots = buildSlots();
+  const placed = people.map((p, i) => {
+    const slot = slots[i]!;
+    return {
+      ...p,
+      x: slot.x,
+      y: slot.y,
+      size: slot.size,
+      bubble: p.predictorId ? bubbleBy.get(p.predictorId) : undefined,
+    };
+  });
+  const emptySlots = slots.slice(people.length);
 
   // A scattering of deterministic stars in the dusk sky.
-  const stars = Array.from({ length: 54 }, (_, i) => ({
+  const stars = Array.from({ length: 50 }, (_, i) => ({
     x: (i * 137.5) % VW,
-    y: (i * 53) % (CY - 64),
+    y: (i * 53) % (CY - 60),
     r: i % 5 === 0 ? 1.5 : 0.8,
   }));
 
-  // A few phone/camera lights twinkling in the stands — the concert-crowd touch.
-  const lights = Array.from({ length: 16 }, (_, i) => {
-    const tier = 1 + (i % 3);
-    const t = TIERS[tier]!;
-    const u = -0.86 + frac(i * 17.3 + 4.1) * 1.72;
-    const pt = seatPt(t.rx, t.ry, u);
-    return {
-      x: pt.x,
-      y: pt.y - (5 + tier) * 1.25,
-      warm: frac(i * 3.1) > 0.5,
-      key: `l${i}`,
-    };
-  });
-
   return (
-    <div className="wc-amph">
+    <div className={`wc-amph ${cheering ? 'is-cheering' : ''}`}>
       <svg
         className="wc-amph-bowl"
         viewBox={`0 0 ${VW} ${VH}`}
@@ -243,8 +148,8 @@ export function Amphitheatre({
             <stop offset="0.78" stopColor="#7b3a60" />
             <stop offset="1" stopColor="#d27249" />
           </linearGradient>
-          <radialGradient id="wc-bloom" cx="0.5" cy="0.36" r="0.5">
-            <stop offset="0" stopColor="#ff4d9e" stopOpacity="0.42" />
+          <radialGradient id="wc-bloom" cx="0.5" cy="0.32" r="0.5">
+            <stop offset="0" stopColor="#ff4d9e" stopOpacity="0.4" />
             <stop offset="1" stopColor="#ff4d9e" stopOpacity="0" />
           </radialGradient>
           <radialGradient id="wc-horizon" cx="0.5" cy="1" r="0.85">
@@ -254,47 +159,17 @@ export function Amphitheatre({
           </radialGradient>
           <radialGradient id="wc-vig" cx="0.5" cy="0.46" r="0.78">
             <stop offset="0.5" stopColor="#000" stopOpacity="0" />
-            <stop offset="1" stopColor="#000" stopOpacity="0.62" />
+            <stop offset="1" stopColor="#000" stopOpacity="0.6" />
           </radialGradient>
-          <radialGradient id="wc-spot" cx="0.5" cy="0.12" r="0.72">
-            <stop offset="0" stopColor="#ffdcee" stopOpacity="0.58" />
-            <stop offset="0.55" stopColor="#ff9ccb" stopOpacity="0.16" />
+          <radialGradient id="wc-spot" cx="0.5" cy="0.1" r="0.7">
+            <stop offset="0" stopColor="#ffdcee" stopOpacity="0.5" />
+            <stop offset="0.6" stopColor="#ff9ccb" stopOpacity="0.13" />
             <stop offset="1" stopColor="#ff9ccb" stopOpacity="0" />
           </radialGradient>
           <linearGradient id="wc-deck" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0" stopColor="#241a40" />
             <stop offset="1" stopColor="#0c0820" />
           </linearGradient>
-          <linearGradient id="wc-apron" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor="#3a2350" stopOpacity="0.9" />
-            <stop offset="1" stopColor="#0a0716" stopOpacity="0" />
-          </linearGradient>
-          <linearGradient id="wc-sil" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor="#6a5e96" />
-            <stop offset="0.5" stopColor="#2c2450" />
-            <stop offset="1" stopColor="#0c0a20" />
-          </linearGradient>
-          <linearGradient id="wc-sil2" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor="#5a6aa0" />
-            <stop offset="0.5" stopColor="#252a52" />
-            <stop offset="1" stopColor="#0a0c1e" />
-          </linearGradient>
-          <linearGradient id="wc-sil3" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor="#8a5a8e" />
-            <stop offset="0.5" stopColor="#3a2248" />
-            <stop offset="1" stopColor="#10081c" />
-          </linearGradient>
-          <linearGradient id="wc-haze" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor="#3a2c5c" stopOpacity="0.55" />
-            <stop offset="1" stopColor="#3a2c5c" stopOpacity="0" />
-          </linearGradient>
-          <filter id="wc-neon" x="-20%" y="-20%" width="140%" height="140%">
-            <feGaussianBlur stdDeviation="1.8" result="b" />
-            <feMerge>
-              <feMergeNode in="b" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
         </defs>
 
         {/* Sky, the screen's bloom into it, and the sunset horizon. */}
@@ -305,62 +180,33 @@ export function Amphitheatre({
           <circle key={`star${i}`} cx={s.x} cy={s.y} r={s.r} className="wc-amph-star" />
         ))}
 
-        {/* The dark bowl floor + the lit apron where stage meets the seats. */}
-        <path d={`M0,${CY} H${VW} V${VH} H0 Z`} fill="#06040d" />
-        <rect x="0" y={CY} width={VW} height="64" fill="url(#wc-apron)" />
-        {/* Atmospheric haze over the back decks for depth. */}
-        <rect x="0" y={CY} width={VW} height="120" fill="url(#wc-haze)" />
+        {/* Dark bowl floor. */}
+        <path d={`M0,${CY} H${VW} V${VH} H0 Z`} fill="url(#wc-deck)" />
 
-        {/* Per deck (back→front): filled seating deck, glowing front edge, then
-            that deck's crowd — so nearer decks correctly overlap those behind. */}
-        {TIERS.map((t, tier) => (
-          <g key={`tier${tier}`}>
-            <path
-              d={deckPath(t, tier === 0 ? null : TIERS[tier - 1]!)}
-              fill="url(#wc-deck)"
-              opacity={0.72 + (tier % 2 === 0 ? 0.1 : 0)}
-            />
-            <path
-              d={bottomArc(t.rx, t.ry)}
-              className="wc-amph-arc"
-              filter="url(#wc-neon)"
-              style={{ opacity: 0.32 + tier * 0.07 }}
-            />
-            {crowd[tier]!.map((c) => (
-              <Spectator key={c.key} x={c.x} y={c.y} s={c.s} arms={c.arms} fill={c.fill} />
-            ))}
-          </g>
+        {/* Two seating decks (glowing front edges) with the chairs upon them. */}
+        {ROWS.map((row, ri) => (
+          <path
+            key={`deck${ri}`}
+            d={bottomArc(row.rx, row.ry)}
+            className="wc-amph-arc"
+            style={{ opacity: 0.4 + ri * 0.12 }}
+          />
+        ))}
+        {emptySlots.map((s, i) => (
+          <Chair key={`chair${i}`} x={s.x} y={s.y} w={s.w} />
         ))}
 
-        {/* Phone/camera lights twinkling in the stands. */}
-        {lights.map((l) => (
-          <g key={l.key}>
-            <circle
-              className="wc-amph-light-halo"
-              cx={l.x}
-              cy={l.y}
-              r={3.4}
-              fill={l.warm ? '#ffe7a8' : '#bfe0ff'}
-            />
-            <circle
-              className="wc-amph-light"
-              cx={l.x}
-              cy={l.y}
-              r={1.2}
-              fill={l.warm ? '#fff6da' : '#e6f3ff'}
-            />
-          </g>
-        ))}
-
-        {/* Light spilling from the screen, washing over the crowd. */}
+        {/* Light spilling from the screen onto the seats. */}
         <ellipse
           className="wc-amph-spot"
           cx={CX}
-          cy={CY + 6}
-          rx={470}
-          ry={310}
+          cy={CY + 4}
+          rx={460}
+          ry={300}
           fill="url(#wc-spot)"
         />
+        {/* A one-shot roar wash when the crowd erupts. */}
+        {cheering && <rect className="wc-amph-roar" x="0" y="0" width={VW} height={VH} />}
         {/* Edge vignette for depth. */}
         <rect x="0" y="0" width={VW} height={VH} fill="url(#wc-vig)" />
       </svg>
@@ -377,7 +223,7 @@ export function Amphitheatre({
           >
             {s.bubble && <span className="wc-amph-bubble">{s.bubble}</span>}
             {s.predictorId ? (
-              <Avatar predictor={findPredictor(wc, s.predictorId) ?? null} size={30} />
+              <Avatar predictor={findPredictor(wc, s.predictorId) ?? null} size={s.size} />
             ) : (
               <span className="wc-amph-anon">
                 {s.name ? s.name.slice(0, 1).toUpperCase() : '•'}

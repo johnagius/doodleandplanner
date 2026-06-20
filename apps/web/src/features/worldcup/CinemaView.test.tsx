@@ -75,50 +75,39 @@ beforeEach(() => {
 afterEach(() => useMatchRoom.setState({ openId: null }));
 
 describe('CinemaView', () => {
-  it('shows the screen, the live feed, channels and the audience for a live match', async () => {
+  it('opens a full-screen modal with the broadcast, the seats and the room chat', async () => {
     const wc = await seedBoard();
     const live: WcLiveInfo = { status: 'IN_PLAY', minute: 30, home: 1, away: 0 };
     const goal: WcMatchEvent = { minute: "23'", kind: 'goal', teamTla: 'AAA', player: 'Striker' };
     useWorldCupStore.setState({ live: { 'g-A-1': live }, matchEvents: { 'g-A-1': [goal] } });
 
-    let container!: HTMLElement;
     act(() => {
-      container = renderCinema(wc).container;
+      renderCinema(wc);
+    });
+    act(() => {
+      useMatchRoom.getState().open('g-A-1');
     });
 
-    // Screen names both teams.
-    expect(container.textContent).toContain('Aland');
-    expect(container.textContent).toContain('Bland');
-    // Channels (Feed / Stats / Group / Table) on the screen.
-    expect(container.querySelectorAll('.wc-screen-chan').length).toBeGreaterThan(1);
-    // The big-screen feed carries the commentary for the goal.
-    expect(container.querySelector('.wc-feed')?.textContent).toContain('Striker');
-    // The audience (me included) is seated in the amphitheatre facing the screen.
-    expect(container.querySelector('.wc-amph')).not.toBeNull();
-    expect(container.querySelector('.wc-amph-person.is-me')).not.toBeNull();
-    // You can talk to the room.
+    // The modal is portaled to <body>.
+    expect(document.body.querySelector('.wc-cinema-modal')).not.toBeNull();
+    // It names both teams.
+    expect(document.body.textContent).toContain('Aland');
+    expect(document.body.textContent).toContain('Bland');
+    // The broadcast feed carries the commentary for the goal.
+    expect(document.body.querySelector('.wc-feed')?.textContent).toContain('Striker');
+    // The amphitheatre seats me.
+    expect(document.body.querySelector('.wc-amph')).not.toBeNull();
+    expect(document.body.querySelector('.wc-amph-person.is-me')).not.toBeNull();
+    // Prominent room chat, and no leftover channel tabs.
     expect(screen.getByLabelText('Message the room')).toBeInTheDocument();
+    expect(document.body.querySelector('.wc-screen-chan')).toBeNull();
   });
 
-  it('offers an empty state when there is nothing to watch', async () => {
-    // A board whose only match is finished and not in play.
+  it('stays closed until a match is opened', async () => {
     const wc = await seedBoard();
-    useWorldCupStore.setState({
-      state: {
-        ...useWorldCupStore.getState().state!,
-        worldCup: {
-          ...wc,
-          matches: [{ ...wc.matches[0]!, result: { home: 1, away: 0 } }],
-        },
-      },
-    });
-    // No live match, kickoff far future via the seed → default day has the
-    // (now resolved) match; CinemaView still picks it, so assert the screen
-    // renders rather than the empty state here.
-    let container!: HTMLElement;
     act(() => {
-      container = renderCinema(useWorldCupStore.getState().state!.worldCup!).container;
+      renderCinema(wc);
     });
-    expect(container.querySelector('.wc-screen')).not.toBeNull();
+    expect(document.body.querySelector('.wc-cinema-modal')).toBeNull();
   });
 });

@@ -19,6 +19,10 @@ const match = {
 } as WcMatch;
 
 const wc = {
+  teams: [
+    { id: 'AAA', name: 'Aland', flag: '🅰️', group: 'A' },
+    { id: 'BBB', name: 'Bland', flag: '🅱️', group: 'A' },
+  ],
   predictors: [{ id: 'p1', name: 'John' }],
   predictions: [{ matchId: 'm1', predictorId: 'p1', home: 1, away: 0 }],
 } as unknown as WorldCupState;

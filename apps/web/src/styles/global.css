@@ -1742,6 +1742,12 @@ label.field {
   font-weight: 900;
   letter-spacing: 0.04em;
 }
+.wc-goal-scorer {
+  font-size: 1rem;
+  font-weight: 800;
+  text-align: center;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.7);
+}
 .wc-goal-score {
   font-size: 1.2rem;
   font-weight: 800;
@@ -6288,12 +6294,136 @@ label.field {
   }
 }
 
-/* === Cinema tab — watch-together amphitheatre ============================= */
-.wc-cinema {
-  --neon: var(--c, #e0469a);
+/* === Cinema — full-screen watch-together modal =========================== */
+.wc-cinema-modal {
+  --neon: #ff3d9a;
+  width: 99vw;
+  max-width: 99vw;
+  height: 99dvh;
+  max-height: 99dvh;
+  padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  overflow: hidden;
+  background: #05030c;
+  border: 1px solid color-mix(in srgb, var(--neon) 40%, #1a1730);
+}
+.wc-cinema-modal .modal-head {
+  flex: 0 0 auto;
+  padding: 0.25rem 0.4rem 0.25rem 0.8rem;
+  background: rgba(0, 0, 0, 0.4);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.wc-cinema-modal .modal-title {
+  font-size: 0.9rem;
+  color: #eaf0ff;
+}
+.wc-cinema-title-vs {
+  opacity: 0.7;
+  font-weight: 700;
+}
+.wc-cinema {
+  --neon: var(--c, #ff3d9a);
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: #05030c;
+}
+.wc-cinema-stage {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+}
+.wc-cinema-stage .wc-amph {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  max-height: none;
+  aspect-ratio: auto;
+  border-radius: 0;
+  box-shadow: none;
+}
+/* The prominent room chat — a mobile companion while the match is on the telly. */
+.wc-chat {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.45rem 0.7rem 0.6rem;
+  background: linear-gradient(180deg, #0b0816, #05030c);
+  border-top: 1px solid color-mix(in srgb, var(--neon) 30%, #1a1730);
+}
+.wc-chat-head {
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: #eaf0ff;
+}
+.wc-chat-sub {
+  font-weight: 500;
+  color: #8b93b5;
+}
+.wc-chat-log {
+  display: flex;
+  flex-direction: column;
+  gap: 0.22rem;
+  max-height: 20vh;
+  min-height: 2.1rem;
+  overflow-y: auto;
+}
+.wc-chat-empty {
+  margin: 0;
+  color: #8b93b5;
+  font-size: 0.85rem;
+}
+.wc-chat-msg {
+  font-size: 0.92rem;
+  line-height: 1.35;
+  color: #e7ecff;
+}
+.wc-chat-who {
+  margin-right: 0.35rem;
+  font-weight: 800;
+  color: color-mix(in srgb, var(--neon) 60%, #fff);
+}
+.wc-chat-msg.is-mine .wc-chat-who {
+  color: #7fd1a6;
+}
+.wc-chat-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.wc-chat-emoji {
+  display: flex;
+  gap: 0.3rem;
+}
+.wc-chat-emoji-btn {
+  flex: 1;
+  padding: 0.32rem 0;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 0.5rem;
+  background: rgba(255, 255, 255, 0.05);
+  font-size: 1.15rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.wc-chat-emoji-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.wc-chat-row {
+  display: flex;
+  gap: 0.4rem;
+}
+.wc-chat-input {
+  flex: 1;
+  min-width: 0;
+  font-size: 1rem;
+  padding: 0.62rem 0.7rem;
+}
+.wc-chat-send {
+  flex: 0 0 auto;
 }
 .wc-cinema-picker {
   display: flex;
@@ -6448,6 +6578,26 @@ label.field {
 .wc-feed-status {
   font-weight: 700;
 }
+.wc-feed-info {
+  background: color-mix(in srgb, #5b8cff 14%, rgba(255, 255, 255, 0.05));
+}
+.wc-feed-stat {
+  background: color-mix(in srgb, #34d399 15%, rgba(255, 255, 255, 0.05));
+}
+.wc-feed-board {
+  background: color-mix(in srgb, #f5b301 16%, rgba(255, 255, 255, 0.05));
+}
+.wc-feed-group {
+  background: color-mix(in srgb, #a78bfa 16%, rgba(255, 255, 255, 0.05));
+}
+.wc-feed-flavour {
+  background: rgba(255, 255, 255, 0.04);
+  font-style: italic;
+  color: #c8d0ee;
+}
+.wc-feed-chat {
+  background: color-mix(in srgb, var(--neon) 12%, rgba(255, 255, 255, 0.05));
+}
 .wc-feed-who {
   color: color-mix(in srgb, var(--neon) 60%, #fff);
 }
@@ -6540,32 +6690,59 @@ label.field {
   stroke-width: 2.4;
   stroke-linecap: round;
 }
-.wc-amph-aisle {
-  stroke: rgba(255, 255, 255, 0.05);
-  stroke-width: 5;
+.wc-amph-chair-back {
+  fill: color-mix(in srgb, var(--neon) 20%, #221634);
+  stroke: color-mix(in srgb, var(--neon) 75%, transparent);
+  stroke-width: 1.6;
 }
-.wc-amph-arm {
-  stroke: #2a2346;
-  stroke-linecap: round;
+.wc-amph-chair-seat {
+  fill: color-mix(in srgb, var(--neon) 12%, #150e22);
 }
 .wc-amph-spot {
   mix-blend-mode: screen;
 }
-.wc-amph-light {
+.wc-amph-roar {
+  fill: var(--neon);
+  opacity: 0;
   mix-blend-mode: screen;
+  pointer-events: none;
 }
-.wc-amph-light-halo {
-  mix-blend-mode: screen;
-  opacity: 0.5;
+@media (prefers-reduced-motion: no-preference) {
+  .wc-amph-roar {
+    animation: wc-amph-roar 2.4s ease-out forwards;
+  }
+  .wc-amph.is-cheering .wc-amph-person {
+    animation: wc-amph-cheer 0.55s ease-in-out 3;
+  }
+}
+@keyframes wc-amph-roar {
+  0% {
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.55;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes wc-amph-cheer {
+  0%,
+  100% {
+    transform: translate(-50%, -82%);
+  }
+  35% {
+    transform: translate(-50%, -100%);
+  }
 }
 .wc-amph-screen {
   position: absolute;
-  top: 4%;
+  top: 3.5%;
   left: 50%;
   z-index: 2;
   display: flex;
-  width: 64%;
-  height: 50%;
+  width: 82%;
+  height: 64%;
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--neon) 60%, #2a2f4a);
   border-radius: 14px;
@@ -6628,15 +6805,16 @@ label.field {
   pointer-events: none;
 }
 .wc-amph-name {
-  max-width: 4.5rem;
+  max-width: 6rem;
   overflow: hidden;
-  font-size: 0.58rem;
+  font-size: 0.74rem;
+  font-weight: 700;
   line-height: 1;
   white-space: nowrap;
   text-overflow: ellipsis;
   color: #fff;
-  opacity: 0.9;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
+  opacity: 0.92;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
 }
 .wc-amph-person.is-me :where(.wc-avatar, .wc-amph-anon) {
   outline: 2px solid #fff;
@@ -6646,12 +6824,12 @@ label.field {
 .wc-amph-anon {
   display: inline-grid;
   place-items: center;
-  width: 22px;
-  height: 22px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
   background: color-mix(in srgb, var(--neon) 30%, #fff);
   color: #2a0f22;
-  font-size: 0.7rem;
+  font-size: 1.05rem;
   font-weight: 800;
 }
 .wc-amph-bubble {

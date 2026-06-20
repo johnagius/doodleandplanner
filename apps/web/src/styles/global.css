@@ -1818,6 +1818,30 @@ label.field {
     transform: translateY(0);
   }
 }
+/* Kick-off flash — the opening bookend to the HT/FT whistles. */
+.wc-kickoff {
+  position: absolute;
+  top: 14%;
+  left: 50%;
+  z-index: 6;
+  padding: 0.5rem 1.1rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, #34d399 88%, black 12%);
+  color: #04210f;
+  font-weight: 900;
+  box-shadow: var(--shadow-lg);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .wc-kickoff {
+    animation: wc-goal-pop 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+}
+.wc-kickoff-word {
+  font-size: clamp(1.1rem, 4.5vw, 1.5rem);
+  letter-spacing: 0.02em;
+}
 /* Half-Time / Full-Time interval report — takes over the screen at the break. */
 .wc-interval {
   position: absolute;

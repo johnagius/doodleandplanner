@@ -19,6 +19,7 @@ import { Countdown } from './Countdown.js';
 import { GoalOverlay } from './GoalOverlay.js';
 import { HighlightOverlay } from './HighlightOverlay.js';
 import { IntervalReport } from './IntervalReport.js';
+import { KickoffCue } from './KickoffCue.js';
 import { useGoalEvents } from './liveGoals.js';
 import { StageReactions } from './StageReactions.js';
 import { StakesBanner } from './StakesBanner.js';
@@ -141,6 +142,7 @@ function CinemaStage({ wc, match }: { wc: WorldCupState; match: WcMatch }) {
             {isLive && <GoalOverlay wc={wc} match={match} meId={meId} />}
             {isLive && <HighlightOverlay wc={wc} match={match} />}
             {isLive && <StageReactions matchId={match.id} />}
+            <KickoffCue matchId={match.id} />
             <IntervalReport wc={wc} match={match} />
 
             <div className="wc-screen-head">

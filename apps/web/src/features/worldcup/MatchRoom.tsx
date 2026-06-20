@@ -22,6 +22,7 @@ import { GoalOverlay } from './GoalOverlay.js';
 import { LiveBoard } from './LiveBoard.js';
 import { CrownRace, LiveReactions, SweatMeter, WinProbBar } from './MatchCard.js';
 import { MatchComments } from './MatchComments.js';
+import { StakesBanner } from './StakesBanner.js';
 import { useMatchRoom } from './useMatchRoom.js';
 import { useNow } from './useNow.js';
 import { useWatchers } from './useWatchers.js';
@@ -143,6 +144,8 @@ function RoomInner({
             </span>
           ))}
         </p>
+
+        {!result && <StakesBanner wc={wc} meId={meId} match={match} />}
 
         {!result && !isLive && ready && (
           <p className="wc-room-lockin">

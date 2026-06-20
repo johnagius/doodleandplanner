@@ -54,6 +54,7 @@ import { statBarPercents, useMatchSummary } from './matchSummary.js';
 import { PlayerProfileModal } from './PlayerProfileModal.js';
 import { ScenariosView } from './ScenariosView.js';
 import { ScoreStepper } from './ScoreStepper.js';
+import { StakesBanner } from './StakesBanner.js';
 import { TeamProfileModal } from './TeamProfileModal.js';
 import { useGoalEvents } from './liveGoals.js';
 import { useMatchRoom } from './useMatchRoom.js';
@@ -507,6 +508,7 @@ export function MatchCard({ matchId }: { matchId: string }) {
               ⤢ Enter the Match Room
             </button>
           )}
+          {isLive && meId && <StakesBanner wc={wc} meId={meId} match={match} compact />}
           {!result && myPick && (
             <div className="wc-clear-row">
               <span className="wc-saved">✓ Saved</span>

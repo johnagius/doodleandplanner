@@ -6,6 +6,7 @@ import {
   fifaRankOf,
   findMatch,
   findTeam,
+  leaderboardWithMovement,
   lockingSoon,
   matchDateKey,
   matchOfTheDay,
@@ -169,6 +170,9 @@ export function WorldCupPage() {
 
   // Ping me when a mate @mentions me in any match thread.
   useMentionPing(state?.messages, wc?.predictors ?? [], meId, toast.show);
+
+  // A short "story beat" when a match I'm in resolves and shifts my standing.
+  useStoryBeat(wc, meId, toast.show);
 
   if (loading && !wc) {
     return (
@@ -454,6 +458,49 @@ function useExactCelebration(
       onCelebrate(`🎯 ${fresh.length} exact scores! +${fresh.length * 5}`);
     }
   }, [wc, meId, onCelebrate]);
+}
+
+/**
+ * Toast a short "story beat" when a match I predicted resolves and it actually
+ * shifts my standing — "📖 You climbed to #2 of 8". Baselines on first look and
+ * on identity change, so a reload never replays the whole season.
+ */
+function useStoryBeat(
+  wc: WorldCupState | null,
+  meId: string | null,
+  onBeat: (message: string) => void,
+) {
+  const seen = useRef<Set<string> | null>(null);
+  const lastMe = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!wc || !meId) {
+      seen.current = null;
+      lastMe.current = meId;
+      return;
+    }
+    if (lastMe.current !== meId) {
+      seen.current = null;
+      lastMe.current = meId;
+    }
+    const mine = wc.matches
+      .filter(
+        (m) => m.result && wc.predictions.some((p) => p.matchId === m.id && p.predictorId === meId),
+      )
+      .map((m) => m.id);
+    if (seen.current === null) {
+      seen.current = new Set(mine);
+      return;
+    }
+    const fresh = mine.filter((id) => !seen.current!.has(id));
+    for (const id of fresh) seen.current.add(id);
+    if (fresh.length === 0) return;
+    const rows = leaderboardWithMovement(wc);
+    const me = rows.find((r) => r.predictorId === meId);
+    if (!me || me.movement === 0) return;
+    const verb = me.movement > 0 ? 'climbed to' : 'slipped to';
+    onBeat(`📖 You ${verb} #${me.rank} of ${rows.length}`);
+  }, [wc, meId, onBeat]);
 }
 
 /**

@@ -1502,6 +1502,17 @@ label.field {
     transform: scale(1);
   }
 }
+.wc-stakes {
+  margin: 0;
+  font-weight: 600;
+}
+.wc-stakes-line {
+  padding: 0.4rem 0.6rem;
+  font-size: 0.85rem;
+}
+.wc-stakes-if strong {
+  color: var(--primary);
+}
 @media (max-width: 600px) {
   .wc-room-panel {
     position: fixed;

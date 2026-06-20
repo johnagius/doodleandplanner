@@ -106,6 +106,8 @@ describe('MatchRoom', () => {
     expect(board).not.toBeNull();
     expect(board?.textContent).toContain('John');
     expect(board?.textContent).toContain('Daniel');
+    // Personal stakes banner is present.
+    expect(dialog.querySelector('.wc-stakes')?.textContent).toMatch(/You're/);
   });
 
   it('closes on the close button', async () => {

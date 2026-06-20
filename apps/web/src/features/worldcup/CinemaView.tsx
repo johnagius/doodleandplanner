@@ -180,13 +180,15 @@ function CinemaStage({ wc, match }: { wc: WorldCupState; match: WcMatch }) {
           <div className="wc-screen">
             {tvOn ? (
               <div className="wc-screen-tv">
-                <iframe
-                  className="wc-tv-frame"
-                  src={LIVE_TV_URL}
-                  title="Live TV — TVMi"
-                  allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
-                  allowFullScreen
-                />
+                <div className="wc-tv-stage">
+                  <iframe
+                    className="wc-tv-frame"
+                    src={LIVE_TV_URL}
+                    title="Live TV — TVMi"
+                    allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+                    allowFullScreen
+                  />
+                </div>
                 <div className="wc-tv-bar">
                   <span className="wc-tv-live">🔴 Live TV · TVMi</span>
                   <a className="wc-tv-link" href={LIVE_TV_URL} target="_blank" rel="noreferrer">

@@ -39,8 +39,8 @@ import { CardsView } from './CardsView.js';
 import { GroupTables } from './GroupTables.js';
 import { IdentityModal } from './IdentityModal.js';
 import { Leaderboard } from './Leaderboard.js';
+import { CinemaView } from './CinemaView.js';
 import { MatchCard } from './MatchCard.js';
-import { MatchRoom } from './MatchRoom.js';
 import { PerformanceView } from './PerformanceView.js';
 import { PredictorBar } from './PredictorBar.js';
 import { ScoringLegend } from './ScoringLegend.js';
@@ -53,6 +53,7 @@ import { playSound, useSoundSetting, vibrate } from './wcSound.js';
 
 type Tab =
   | 'fixtures'
+  | 'cinema'
   | 'groups'
   | 'bracket'
   | 'scorers'
@@ -64,6 +65,7 @@ type Tab =
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'fixtures', label: 'Fixtures', icon: '📅' },
+  { id: 'cinema', label: 'Cinema', icon: '🎬' },
   { id: 'groups', label: 'Groups', icon: '🔢' },
   { id: 'bracket', label: 'Bracket', icon: '🏟️' },
   { id: 'scorers', label: 'Scorers', icon: '🥇' },
@@ -85,6 +87,15 @@ export function WorldCupPage() {
   const live = useWorldCupStore((s) => s.live);
   const sound = useSoundSetting();
   const [tab, setTab] = useState<Tab>('fixtures');
+  // Jump to the Cinema tab whenever a "Watch together" button points it at a match.
+  const cinemaSeq = useMatchRoom((s) => s.seq);
+  const lastCinemaSeq = useRef(cinemaSeq);
+  useEffect(() => {
+    if (cinemaSeq !== lastCinemaSeq.current) {
+      lastCinemaSeq.current = cinemaSeq;
+      setTab('cinema');
+    }
+  }, [cinemaSeq]);
   const [identityAsked, setIdentityAsked] = useState(false);
   const [identityOpen, setIdentityOpen] = useState(false);
   const [verifyId, setVerifyId] = useState<string | null>(null);
@@ -231,7 +242,6 @@ export function WorldCupPage() {
   return (
     <div className="container">
       <Confetti fireKey={confettiKey} />
-      <MatchRoom />
       <CardRevealModal cards={revealCards} wc={wc} onClose={() => setRevealCards([])} />
       <IdentityModal
         open={(!meId && !identityAsked) || identityOpen}
@@ -395,6 +405,7 @@ export function WorldCupPage() {
 
       <div role="tabpanel">
         {tab === 'fixtures' && <FixturesView />}
+        {tab === 'cinema' && <CinemaView wc={wc} />}
         {tab === 'groups' && <GroupTables wc={wc} />}
         {tab === 'bracket' && <BracketView wc={wc} />}
         {tab === 'scorers' && <ScorersView wc={wc} />}

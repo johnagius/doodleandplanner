@@ -18,12 +18,14 @@ import { CinemaFeed } from './CinemaFeed.js';
 import { Countdown } from './Countdown.js';
 import { GoalOverlay } from './GoalOverlay.js';
 import { HighlightOverlay } from './HighlightOverlay.js';
+import { IntervalReport } from './IntervalReport.js';
 import { useGoalEvents } from './liveGoals.js';
 import { StageReactions } from './StageReactions.js';
 import { StakesBanner } from './StakesBanner.js';
 import { useCommentBubbles } from './useCommentBubbles.js';
 import { useMatchRoom } from './useMatchRoom.js';
 import { useNow } from './useNow.js';
+import { useRecentlyFinished } from './useRecentlyFinished.js';
 import { useWatchers } from './useWatchers.js';
 import { legibleScoreColor } from './wcFormat.js';
 
@@ -33,13 +35,21 @@ function isInPlay(s: string | undefined): boolean {
 
 const REACTIONS = ['🔥', '⚽', '😱', '👏', '🙌'];
 
-/** The one match the Cinema concerns: the current in-play game, else the next up. */
+/**
+ * The one match the Cinema concerns: the current in-play game, else a match that
+ * *just* finished (so Full Time gets its moment), else the next up.
+ */
 export function pickCinemaMatch(
   wc: WorldCupState,
   liveMap: Record<string, { status?: string }>,
+  lingerFinishedId?: string | null,
 ): WcMatch | null {
   const inPlay = wc.matches.find((m) => !m.result && isInPlay(liveMap[m.id]?.status));
   if (inPlay) return inPlay;
+  if (lingerFinishedId) {
+    const lingering = wc.matches.find((m) => m.id === lingerFinishedId);
+    if (lingering) return lingering;
+  }
   const now = Date.now();
   const unplayed = wc.matches.filter((m) => !m.result && !Number.isNaN(Date.parse(m.kickoff)));
   const future = unplayed
@@ -55,7 +65,8 @@ export function CinemaView({ wc }: { wc: WorldCupState }) {
   const close = useMatchRoom((s) => s.close);
   const liveMap = useWorldCupStore((s) => s.live);
   const open = openId != null;
-  const match = useMemo(() => pickCinemaMatch(wc, liveMap), [wc, liveMap]);
+  const lingerId = useRecentlyFinished(liveMap);
+  const match = useMemo(() => pickCinemaMatch(wc, liveMap, lingerId), [wc, liveMap, lingerId]);
 
   const home = match ? findTeam(wc, match.homeId) : null;
   const away = match ? findTeam(wc, match.awayId) : null;
@@ -95,6 +106,7 @@ function CinemaStage({ wc, match }: { wc: WorldCupState; match: WcMatch }) {
   const away = findTeam(wc, match.awayId);
   const result = match.result;
   const isLive = !result && !!live && isInPlay(live.status);
+  const finished = !result && live?.status === 'FINISHED';
   const accent = live?.homeColor ? legibleScoreColor(live.homeColor) : null;
 
   const mePredictor = meId ? (wc.predictors.find((p) => p.id === meId) ?? null) : null;
@@ -129,6 +141,7 @@ function CinemaStage({ wc, match }: { wc: WorldCupState; match: WcMatch }) {
             {isLive && <GoalOverlay wc={wc} match={match} meId={meId} />}
             {isLive && <HighlightOverlay wc={wc} match={match} />}
             {isLive && <StageReactions matchId={match.id} />}
+            <IntervalReport wc={wc} match={match} />
 
             <div className="wc-screen-head">
               <span className="wc-screen-side">
@@ -144,7 +157,7 @@ function CinemaStage({ wc, match }: { wc: WorldCupState; match: WcMatch }) {
                     <i>–</i>
                     {result.away}
                   </>
-                ) : isLive && live!.home != null ? (
+                ) : (isLive || finished) && live!.home != null ? (
                   <>
                     <span style={{ color: legibleScoreColor(live!.homeColor) }}>{live!.home}</span>
                     <i>–</i>
@@ -154,8 +167,14 @@ function CinemaStage({ wc, match }: { wc: WorldCupState; match: WcMatch }) {
                   <span className="wc-screen-vs">v</span>
                 )}
                 <span className="wc-screen-clock">
-                  {result ? 'FT' : isLive ? (live!.clock ?? `${live!.minute ?? 0}'`) : null}
-                  {!result && !isLive && <Countdown kickoff={match.kickoff} now={now} />}
+                  {result || finished
+                    ? 'FT'
+                    : isLive
+                      ? (live!.clock ?? `${live!.minute ?? 0}'`)
+                      : null}
+                  {!result && !finished && !isLive && (
+                    <Countdown kickoff={match.kickoff} now={now} />
+                  )}
                 </span>
               </span>
               <span className="wc-screen-side wc-screen-side-right">

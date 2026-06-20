@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { ToastProvider } from '../../components/Toast.js';
 import { LocalStorageRepository, setRepository } from '../../lib/storage/index.js';
 import { useWorldCupStore, type WcLiveInfo } from '../../state/worldCupStore.js';
-import { CinemaView } from './CinemaView.js';
+import { CinemaView, pickCinemaMatch } from './CinemaView.js';
 import { useMatchRoom } from './useMatchRoom.js';
 import { WORLD_CUP_SLUG } from './worldCupRoom.js';
 
@@ -109,5 +109,50 @@ describe('CinemaView', () => {
       renderCinema(wc);
     });
     expect(document.body.querySelector('.wc-cinema-modal')).toBeNull();
+  });
+});
+
+describe('pickCinemaMatch', () => {
+  const base = {
+    season: '2026',
+    title: 'T',
+    version: 1,
+    teams: [],
+    predictors: [],
+    predictions: [],
+    createdAt: new Date().toISOString(),
+  };
+  const mk = (id: string, kickoff: string) => ({
+    id,
+    stage: 'group' as const,
+    group: 'A',
+    matchday: 1,
+    order: 0,
+    kickoff,
+    homeId: 'AAA',
+    awayId: 'BBB',
+  });
+  const future = new Date(Date.now() + 86_400_000).toISOString();
+  const past = new Date(Date.now() - 86_400_000).toISOString();
+
+  it('prefers an in-play match over everything', () => {
+    const wc = { ...base, matches: [mk('soon', future), mk('now', past)] } as never;
+    const live = { now: { status: 'IN_PLAY' } };
+    expect(pickCinemaMatch(wc, live)?.id).toBe('now');
+  });
+
+  it('lingers on a just-finished match instead of jumping to the next fixture', () => {
+    const wc = { ...base, matches: [mk('done', past), mk('next', future)] } as never;
+    const live = { done: { status: 'FINISHED' } };
+    // Without a linger id it would advance to the upcoming match…
+    expect(pickCinemaMatch(wc, live)?.id).toBe('next');
+    // …but while the finish is fresh it holds on the finished one.
+    expect(pickCinemaMatch(wc, live, 'done')?.id).toBe('done');
+  });
+
+  it('still yields to a live match even when a finish is lingering', () => {
+    const wc = { ...base, matches: [mk('done', past), mk('live', past)] } as never;
+    const live = { done: { status: 'FINISHED' }, live: { status: 'IN_PLAY' } };
+    expect(pickCinemaMatch(wc, live, 'done')?.id).toBe('live');
   });
 });

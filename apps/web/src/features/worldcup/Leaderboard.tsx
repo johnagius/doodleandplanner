@@ -24,6 +24,7 @@ import { useToast } from '../../components/Toast.js';
 import { useWorldCupStore } from '../../state/worldCupStore.js';
 import { Avatar } from './Avatar.js';
 import { CardBadge } from './CardsView.js';
+import { liveScoresFromLive } from './liveStandings.js';
 import { renderWcShareCard, shareWcCard } from './shareCard.js';
 import { formatDayLong } from './wcFormat.js';
 
@@ -83,15 +84,9 @@ export function Leaderboard({ wc }: { wc: WorldCupState }) {
   const { show } = useToast();
 
   // Fold in-play games into the table "as it stands" (final results take over
-  // once they land). Scores can lag on the free feed — we flag that.
-  const liveScores: Record<string, { home: number; away: number }> = {};
-  for (const [mid, info] of Object.entries(live)) {
-    const inPlay = info.status === 'IN_PLAY' || info.status === 'PAUSED';
-    const m = findMatch(wc, mid);
-    if (inPlay && info.home != null && info.away != null && m && !m.result) {
-      liveScores[mid] = { home: info.home, away: info.away };
-    }
-  }
+  // once they land). Scores can lag on the free feed — we flag that. Shared with
+  // the Match Room's live board so the two never drift.
+  const liveScores = liveScoresFromLive(wc, live);
   const liveCount = Object.keys(liveScores).length;
   const rows = leaderboardWithMovement(wc, liveCount ? liveScores : undefined);
   const played = playedCount(wc);

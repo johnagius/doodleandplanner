@@ -115,4 +115,34 @@ describe('buildCommentary', () => {
     );
     expect(done.find((l) => l.id === 'closing')).toBeUndefined();
   });
+
+  it('treats a second yellow as a sending-off', () => {
+    const events: WcMatchEvent[] = [
+      { minute: "30'", kind: 'yellow', teamTla: 'AAA', player: 'Hardman' },
+      { minute: "60'", kind: 'yellow', teamTla: 'AAA', player: 'Hardman' },
+    ];
+    const live: WcLiveInfo = { status: 'IN_PLAY', minute: 62, home: 0, away: 0 };
+    const lines = buildCommentary(wc, match, live, events);
+    const off = lines.find((l) => l.text.includes('sent off'));
+    expect(off?.icon).toBe('🟥');
+    expect(off?.text).toContain('Second yellow!');
+    expect(off?.text).toContain('Aland down to ten');
+    // The first yellow is still a plain booking.
+    expect(lines.filter((l) => l.text.includes('goes into the book'))).toHaveLength(1);
+  });
+
+  it('counts a team down to ten then nine, not double-counting a 2nd-yellow red', () => {
+    const events: WcMatchEvent[] = [
+      { minute: "20'", kind: 'red', teamTla: 'BBB', player: 'Bruiser' },
+      { minute: "55'", kind: 'yellow', teamTla: 'BBB', player: 'Clogger' },
+      { minute: "70'", kind: 'yellow', teamTla: 'BBB', player: 'Clogger' },
+      { minute: "70'", kind: 'red', teamTla: 'BBB', player: 'Clogger' },
+    ];
+    const live: WcLiveInfo = { status: 'IN_PLAY', minute: 72, home: 0, away: 0 };
+    const lines = buildCommentary(wc, match, live, events);
+    expect(lines.find((l) => l.text.includes('Bruiser'))?.text).toContain('Bland down to ten');
+    expect(lines.find((l) => l.text.includes('sent off'))?.text).toContain('Bland down to nine');
+    // The accompanying red for Clogger is deduped — only Bruiser's straight red remains.
+    expect(lines.filter((l) => l.text.includes('Red card!'))).toHaveLength(1);
+  });
 });

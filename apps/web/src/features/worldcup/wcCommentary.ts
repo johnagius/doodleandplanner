@@ -89,6 +89,11 @@ function sideOf(match: WcMatch, tla: string): 'home' | 'away' | null {
   return null;
 }
 
+/** How many a team's down to, in words (ten / nine …), for the sent-off line. */
+function downToWord(n: number): string {
+  return ({ 7: 'seven', 8: 'eight', 9: 'nine', 10: 'ten' } as Record<number, string>)[n] ?? `${n}`;
+}
+
 export function buildCommentary(
   wc: WorldCupState,
   match: WcMatch,
@@ -125,6 +130,18 @@ export function buildCommentary(
   let h = 0;
   let a = 0;
   const playerGoals = new Map<string, number>();
+  // Sending-off tracking: a player's yellows, who's already been dismissed (so a
+  // second-yellow + straight-red double report can't double count), and each
+  // team's tally so the line can say "down to ten", then "nine".
+  const yellows = new Map<string, number>();
+  const dismissed = new Set<string>();
+  const tenMen: { home: number; away: number } = { home: 0, away: 0 };
+  const sendOff = (player: string, s: 'home' | 'away' | null): number | null => {
+    if (dismissed.has(player)) return null;
+    dismissed.add(player);
+    if (s === 'home' || s === 'away') return 11 - (tenMen[s] += 1);
+    return null;
+  };
   const sorted = [...(events ?? [])].sort((x, y) => minuteValue(x.minute) - minuteValue(y.minute));
   sorted.forEach((e, i) => {
     const m = minuteValue(e.minute);
@@ -154,23 +171,43 @@ export function buildCommentary(
         text: `Own goal! ${e.player} turns it into his own net — ${h}–${a}.`,
       });
     } else if (e.kind === 'yellow') {
-      lines.push({
-        id: `c${i}`,
-        minute: e.minute,
-        sort: m + 0.1,
-        icon: '🟨',
-        tone: 'card',
-        text: `Booking — ${e.player} (${nameOf(e.teamTla)}) goes into the book.`,
-      });
+      const yc = (yellows.get(e.player) ?? 0) + 1;
+      yellows.set(e.player, yc);
+      if (yc >= 2) {
+        const left = sendOff(e.player, side);
+        const down = left != null ? ` — ${nameOf(e.teamTla)} down to ${downToWord(left)}` : '';
+        lines.push({
+          id: `c${i}`,
+          minute: e.minute,
+          sort: m + 0.1,
+          icon: '🟥',
+          tone: 'card',
+          text: `Second yellow! ${e.player} (${nameOf(e.teamTla)}) is sent off${down}!`,
+        });
+      } else {
+        lines.push({
+          id: `c${i}`,
+          minute: e.minute,
+          sort: m + 0.1,
+          icon: '🟨',
+          tone: 'card',
+          text: `Booking — ${e.player} (${nameOf(e.teamTla)}) goes into the book.`,
+        });
+      }
     } else if (e.kind === 'red') {
-      lines.push({
-        id: `c${i}`,
-        minute: e.minute,
-        sort: m + 0.1,
-        icon: '🟥',
-        tone: 'card',
-        text: `Red card! ${e.player} (${nameOf(e.teamTla)}) is off — down to ten!`,
-      });
+      // Skip when this is the red that accompanies a second yellow we've narrated.
+      if (!dismissed.has(e.player)) {
+        const left = sendOff(e.player, side);
+        const down = left != null ? ` — ${nameOf(e.teamTla)} down to ${downToWord(left)}` : '';
+        lines.push({
+          id: `c${i}`,
+          minute: e.minute,
+          sort: m + 0.1,
+          icon: '🟥',
+          tone: 'card',
+          text: `Red card! ${e.player} (${nameOf(e.teamTla)}) is off${down}!`,
+        });
+      }
     }
   });
 

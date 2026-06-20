@@ -6,7 +6,11 @@
  *   - navigations  -> network-first, fall back to the cached shell (offline)
  *   - same-origin GET assets -> cache-first, then network (hashed = immutable)
  */
-const CACHE = 'dap-cache-v3';
+// Stamped per build by the `dap-stamp-sw` Vite plugin, so every deploy ships a
+// byte-changed worker — the browser then detects the update, the new cache is
+// adopted, old caches are purged on activate, and main.tsx reloads once.
+const BUILD = '__DAP_BUILD__';
+const CACHE = `dap-cache-${BUILD}`;
 const SHELL = new URL('./', self.registration.scope).pathname;
 
 self.addEventListener('install', (event) => {

@@ -18,7 +18,7 @@ import { EmptyState } from '../../components/EmptyState.js';
 import { useToast } from '../../components/Toast.js';
 import { useWorldCupStore } from '../../state/worldCupStore.js';
 import { CinemaFeed } from './CinemaFeed.js';
-import { CinemaSeats } from './CinemaSeats.js';
+import { Amphitheatre } from './Amphitheatre.js';
 import { Countdown } from './Countdown.js';
 import { GoalOverlay } from './GoalOverlay.js';
 import { LiveBoard } from './LiveBoard.js';
@@ -151,7 +151,12 @@ function CinemaStage({ wc, match }: { wc: WorldCupState; match: WcMatch }) {
 
   return (
     <div className="wc-cinema" style={accent ? ({ ['--c']: accent } as CSSProperties) : undefined}>
-      <div className="wc-screen-wrap">
+      <Amphitheatre
+        wc={wc}
+        me={mePredictor ? { id: mePredictor.id, name: mePredictor.name } : null}
+        watchers={watchers}
+        bubbles={bubbles}
+      >
         <div className="wc-screen">
           {isLive && <GoalOverlay wc={wc} match={match} meId={meId} />}
           {isLive && <StageReactions matchId={match.id} />}
@@ -228,17 +233,10 @@ function CinemaStage({ wc, match }: { wc: WorldCupState; match: WcMatch }) {
             )}
           </div>
         </div>
-      </div>
+      </Amphitheatre>
 
       {!result && <StakesBanner wc={wc} meId={meId} match={match} />}
       {!result && !isLive && ready && <PreMatchHype wc={wc} match={match} now={now} />}
-
-      <CinemaSeats
-        wc={wc}
-        me={mePredictor ? { id: mePredictor.id, name: mePredictor.name } : null}
-        watchers={watchers}
-        bubbles={bubbles}
-      />
 
       <form className="wc-cinema-composer" onSubmit={sendComment}>
         <input

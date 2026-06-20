@@ -93,9 +93,9 @@ describe('CinemaView', () => {
     expect(container.querySelectorAll('.wc-screen-chan').length).toBeGreaterThan(1);
     // The big-screen feed carries the commentary for the goal.
     expect(container.querySelector('.wc-feed')?.textContent).toContain('Striker');
-    // The audience seats (me included) face the screen.
-    expect(container.querySelector('.wc-amphi')).not.toBeNull();
-    expect(container.querySelector('.wc-seat.is-me')).not.toBeNull();
+    // The audience (me included) is seated in the amphitheatre facing the screen.
+    expect(container.querySelector('.wc-amph')).not.toBeNull();
+    expect(container.querySelector('.wc-amph-person.is-me')).not.toBeNull();
     // You can talk to the room.
     expect(screen.getByLabelText('Message the room')).toBeInTheDocument();
   });

@@ -6473,3 +6473,208 @@ label.field {
   flex: 1;
   min-width: 0;
 }
+
+/* === Amphitheatre — 2.5D dusk bowl ======================================== */
+.wc-amph {
+  --neon: #ff3d9a;
+  position: relative;
+  width: min(64rem, 100%);
+  margin-inline: auto;
+  aspect-ratio: 1000 / 600;
+  max-height: 82vh;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  box-shadow: 0 26px 64px -30px rgba(0, 0, 0, 0.75);
+}
+.wc-amph-bowl {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.wc-amph-arc {
+  fill: none;
+  stroke: var(--neon);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+}
+.wc-amph-aisle {
+  stroke: rgba(255, 255, 255, 0.05);
+  stroke-width: 5;
+}
+.wc-amph-arm {
+  stroke: #2a2346;
+  stroke-linecap: round;
+}
+.wc-amph-spot {
+  mix-blend-mode: screen;
+}
+.wc-amph-screen {
+  position: absolute;
+  top: 4%;
+  left: 50%;
+  z-index: 2;
+  display: flex;
+  width: 64%;
+  height: 50%;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--neon) 60%, #2a2f4a);
+  border-radius: 14px;
+  background: linear-gradient(180deg, #0b1330, #0a1024);
+  box-shadow:
+    0 0 50px -6px color-mix(in srgb, var(--neon) 75%, transparent),
+    inset 0 0 60px -22px color-mix(in srgb, var(--neon) 70%, transparent);
+  transform: translateX(-50%);
+}
+.wc-amph-screen .wc-screen {
+  width: 100%;
+  height: 100%;
+  gap: 0.4rem;
+  padding: 0.5rem 0.6rem;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  color: #eaf0ff;
+}
+.wc-amph-screen .wc-screen-body {
+  flex: 1;
+  min-height: 0;
+  height: auto;
+}
+.wc-amph-people {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+.wc-amph-star {
+  fill: #fff;
+  opacity: 0.5;
+}
+.wc-amph-person {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  transform: translate(-50%, -82%);
+  filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.55));
+}
+/* A soft pool of light under each real watcher, lifting them off the crowd. */
+.wc-amph-person::before {
+  content: '';
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  width: 200%;
+  height: 26px;
+  background: radial-gradient(
+    ellipse at center,
+    color-mix(in srgb, var(--neon) 45%, #fff) 0%,
+    transparent 70%
+  );
+  opacity: 0.4;
+  transform: translateX(-50%);
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
+.wc-amph-name {
+  max-width: 4.5rem;
+  overflow: hidden;
+  font-size: 0.58rem;
+  line-height: 1;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: #fff;
+  opacity: 0.9;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
+}
+.wc-amph-person.is-me :where(.wc-avatar, .wc-amph-anon) {
+  outline: 2px solid #fff;
+  outline-offset: 1px;
+  border-radius: 50%;
+}
+.wc-amph-anon {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--neon) 30%, #fff);
+  color: #2a0f22;
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+.wc-amph-bubble {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 50%;
+  width: max-content;
+  max-width: 9rem;
+  padding: 0.25rem 0.45rem;
+  border-radius: 0.5rem;
+  background: #fff;
+  color: #12131c;
+  font-size: 0.66rem;
+  line-height: 1.2;
+  box-shadow: 0 6px 14px -6px rgba(0, 0, 0, 0.6);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+.wc-amph-watching {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.6rem;
+  z-index: 4;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  backdrop-filter: blur(3px);
+}
+.wc-amph-watching-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #ff4d6a;
+  box-shadow: 0 0 6px #ff4d6a;
+  animation: wc-amph-pulse 1.8s ease-in-out infinite;
+}
+@keyframes wc-amph-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wc-amph-watching-dot {
+    animation: none;
+  }
+}
+@media (max-width: 640px) {
+  .wc-amph {
+    aspect-ratio: 1 / 1;
+    max-height: 78vh;
+  }
+  .wc-amph-screen {
+    width: 94%;
+    height: 48%;
+    top: 2.5%;
+  }
+  .wc-amph-name {
+    max-width: 3rem;
+    font-size: 0.5rem;
+  }
+  .wc-amph-person :where(.wc-avatar, .wc-amph-anon) {
+    transform: scale(0.82);
+  }
+}

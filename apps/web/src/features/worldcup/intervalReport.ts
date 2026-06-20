@@ -49,6 +49,14 @@ export interface IntervalVerdict {
   text: string;
 }
 
+export interface IntervalStar {
+  name: string;
+  /** Canonical team code the star belongs to (for colour/orientation). */
+  teamTla: string;
+  /** Why they stand out, e.g. "Rating 8.4" or "2 goals". */
+  note: string;
+}
+
 export interface IntervalReportData {
   phase: IntervalPhase;
   /** "Half Time" | "Full Time". */
@@ -59,6 +67,8 @@ export interface IntervalReportData {
   stats: IntervalStat[];
   /** The result in words — only at Full Time, null at the half. */
   verdict: IntervalVerdict | null;
+  /** The standout performer — top match rating, else the leading scorer; null if neither. */
+  star: IntervalStar | null;
 }
 
 interface LiveLike {
@@ -88,6 +98,53 @@ function sideOf(match: WcMatch, tla: string): 'home' | 'away' | null {
 
 function opposite(s: 'home' | 'away' | null): 'home' | 'away' | null {
   return s === 'home' ? 'away' : s === 'away' ? 'home' : null;
+}
+
+/**
+ * The match's standout performer: ESPN's highest rated player across both sides
+ * when ratings are given, otherwise the leading goalscorer (penalties count, own
+ * goals don't). Null when there's nothing to celebrate yet.
+ */
+function pickStar(
+  summary: WcMatchSummary | null,
+  events: WcMatchEvent[] | undefined,
+): IntervalStar | null {
+  let bestRating: { name: string; teamTla: string; rating: number } | null = null;
+  for (const l of summary?.leaders ?? []) {
+    if (!/rating/i.test(l.category)) continue;
+    const rating = Number.parseFloat(l.value);
+    if (Number.isNaN(rating)) continue;
+    if (!bestRating || rating > bestRating.rating) {
+      bestRating = { name: l.name, teamTla: l.teamTla, rating };
+    }
+  }
+  if (bestRating) {
+    return {
+      name: bestRating.name,
+      teamTla: bestRating.teamTla,
+      note: `Rating ${bestRating.rating.toFixed(1)}`,
+    };
+  }
+
+  const tally = new Map<string, { teamTla: string; goals: number }>();
+  for (const e of events ?? []) {
+    if (e.kind !== 'goal' && e.kind !== 'pen-goal') continue;
+    const cur = tally.get(e.player) ?? { teamTla: e.teamTla, goals: 0 };
+    cur.goals += 1;
+    tally.set(e.player, cur);
+  }
+  let top: { name: string; teamTla: string; goals: number } | null = null;
+  for (const [name, t] of tally) {
+    if (!top || t.goals > top.goals) top = { name, teamTla: t.teamTla, goals: t.goals };
+  }
+  if (top) {
+    return {
+      name: top.name,
+      teamTla: top.teamTla,
+      note: `${top.goals} goal${top.goals > 1 ? 's' : ''}`,
+    };
+  }
+  return null;
 }
 
 function barPercents(home: number, away: number, pct: boolean): { home: number; away: number } {
@@ -179,6 +236,7 @@ export function buildIntervalReport(
     },
     stats,
     verdict,
+    star: pickStar(summary, events),
   };
 }
 

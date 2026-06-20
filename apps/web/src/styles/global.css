@@ -2016,6 +2016,31 @@ label.field {
   margin-left: auto;
   background: #5b8cff;
 }
+.wc-interval-star {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  width: 100%;
+  padding: 0.45rem 0.6rem;
+  border-radius: 0.6rem;
+  background: color-mix(in srgb, #f5b301 14%, rgba(255, 255, 255, 0.04));
+  font-size: 0.85rem;
+}
+.wc-interval-star-label {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  font-size: 0.68rem;
+  color: #c8a23a;
+}
+.wc-interval-star-name {
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+.wc-interval-star-note {
+  color: #aab4d4;
+}
 .wc-interval-foot {
   font-size: 0.72rem;
   color: #8c97bd;

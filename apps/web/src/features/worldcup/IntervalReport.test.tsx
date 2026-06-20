@@ -72,9 +72,15 @@ describe('IntervalReport', () => {
     expect(container.querySelector('.wc-interval')).toBeNull();
   });
 
-  it('reads Full Time from a finished match', async () => {
+  it('reads Full Time from a finished match, with verdict and star', async () => {
     useWorldCupStore.setState({
       live: { m1: { status: 'FINISHED', minute: null, home: 2, away: 1 } },
+      matchEvents: {
+        m1: [
+          { minute: "12'", kind: 'goal', teamTla: 'ENG', player: 'Kane' },
+          { minute: "40'", kind: 'goal', teamTla: 'ENG', player: 'Kane' },
+        ],
+      },
     });
     const { container } = await renderReport();
     expect(screen.getByText(/Full Time/)).toBeInTheDocument();
@@ -83,5 +89,10 @@ describe('IntervalReport', () => {
     expect(container.textContent).toContain('England win');
     expect(container.querySelector('.wc-interval-team.is-win')?.textContent).toContain('England');
     expect(container.querySelector('.wc-interval-team.is-lose')?.textContent).toContain('Spain');
+    // The standout performer is celebrated (leading scorer, no ratings here).
+    expect(container.querySelector('.wc-interval-star')?.textContent).toContain(
+      'Star of the match',
+    );
+    expect(container.querySelector('.wc-interval-star')?.textContent).toContain('Kane');
   });
 });

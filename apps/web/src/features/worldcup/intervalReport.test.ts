@@ -107,6 +107,51 @@ describe('buildIntervalReport', () => {
     expect(awayWin!.verdict).toEqual({ winner: 'away', text: 'Spain win' });
   });
 
+  it('names the highest-rated player across both sides as the star', () => {
+    const summary = {
+      homeTla: 'ENG',
+      awayTla: 'ESP',
+      stats: [],
+      leaders: [
+        { teamTla: 'ENG', category: 'Rating', name: 'Bellingham', value: '8.4' },
+        { teamTla: 'ESP', category: 'Rating', name: 'Pedri', value: '7.9' },
+        { teamTla: 'ENG', category: 'Goals', name: 'Kane', value: '1' },
+      ],
+      recent: { home: [], away: [] },
+      referee: null,
+      venue: null,
+      venueCity: null,
+    } as WcMatchSummary;
+    const data = buildIntervalReport(
+      wc,
+      match,
+      { status: 'FINISHED', home: 1, away: 0 },
+      [],
+      summary,
+    );
+    expect(data!.star).toEqual({ name: 'Bellingham', teamTla: 'ENG', note: 'Rating 8.4' });
+  });
+
+  it('falls back to the leading scorer (pens count) when there are no ratings', () => {
+    const data = buildIntervalReport(
+      wc,
+      match,
+      { status: 'FINISHED', home: 2, away: 1 },
+      [
+        ev({ minute: "12'", player: 'Kane', teamTla: 'ENG' }),
+        ev({ minute: "40'", player: 'Kane', teamTla: 'ENG' }),
+        ev({ minute: "70'", kind: 'pen-goal', player: 'Morata', teamTla: 'ESP' }),
+      ],
+      null,
+    );
+    expect(data!.star).toEqual({ name: 'Kane', teamTla: 'ENG', note: '2 goals' });
+  });
+
+  it('has no star with neither ratings nor goals', () => {
+    const data = buildIntervalReport(wc, match, { status: 'PAUSED', home: 0, away: 0 }, [], null);
+    expect(data!.star).toBeNull();
+  });
+
   it('surfaces the headline stats, dropping unknown or empty rows', () => {
     const summary = {
       homeTla: 'ENG',

@@ -114,6 +114,26 @@ export function IntervalReport({ wc, match }: { wc: WorldCupState; match: WcMatc
           </div>
         )}
 
+        {data.star && (
+          <div className="wc-interval-star">
+            <span aria-hidden>⭐</span>
+            <span className="wc-interval-star-label">
+              {data.phase === 'ft' ? 'Star of the match' : 'Standing out'}
+            </span>
+            <strong
+              className="wc-interval-star-name"
+              style={
+                (data.star.teamTla === match.homeId ? homeAccent : awayAccent)
+                  ? { color: data.star.teamTla === match.homeId ? homeAccent : awayAccent }
+                  : undefined
+              }
+            >
+              {data.star.name}
+            </strong>
+            <span className="wc-interval-star-note">{data.star.note}</span>
+          </div>
+        )}
+
         <div className="wc-interval-foot">
           {data.phase === 'ft' ? 'That’s full time' : 'Back underway shortly'} · tap ✕ to watch the
           room

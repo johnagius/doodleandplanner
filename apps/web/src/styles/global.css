@@ -6890,6 +6890,74 @@ label.field {
   border-radius: 10px;
   background: rgba(0, 0, 0, 0.25);
 }
+/* Optional live-TV broadcast layer — covers the screen when switched on. */
+.wc-screen-tv {
+  position: absolute;
+  inset: 0;
+  z-index: 12;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 12px;
+  background: #000;
+}
+.wc-tv-frame {
+  flex: 1;
+  width: 100%;
+  border: 0;
+  background: #000;
+}
+.wc-tv-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.35rem 0.6rem;
+  background: rgba(0, 0, 0, 0.72);
+  color: #eaf0ff;
+  font-size: 0.8rem;
+}
+.wc-tv-live {
+  margin-right: auto;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.wc-tv-link {
+  color: #9ec1ff;
+  text-decoration: underline;
+}
+.wc-tv-close {
+  display: grid;
+  place-items: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+.wc-tv-close:hover {
+  background: rgba(255, 255, 255, 0.26);
+}
+.wc-screen-tv-toggle {
+  position: absolute;
+  right: 0.55rem;
+  bottom: 0.55rem;
+  z-index: 9;
+  padding: 0.25rem 0.6rem;
+  border: 1px solid color-mix(in srgb, var(--neon) 55%, transparent);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #eaf0ff;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+}
+.wc-screen-tv-toggle:hover {
+  background: rgba(0, 0, 0, 0.78);
+}
 /* The live feed — newest at the bottom, auto-scrolled. */
 .wc-feed {
   display: flex;

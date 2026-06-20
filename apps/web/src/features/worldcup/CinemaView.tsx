@@ -37,6 +37,10 @@ function isInPlay(s: string | undefined): boolean {
 /** Grace after kickoff to keep a match selected while the feed catches up to in-play. */
 const KICKOFF_GRACE_MS = 20 * 60_000;
 
+/** Optional live-TV broadcast embedded on the big screen (opt-in, per-viewer). */
+const LIVE_TV_URL = 'https://tvmi.mt/live/3';
+const TV_KEY = 'wc-cinema-tv';
+
 const REACTIONS = ['🔥', '⚽', '😱', '👏', '🙌'];
 
 /**
@@ -128,6 +132,23 @@ function CinemaStage({ wc, match }: { wc: WorldCupState; match: WcMatch }) {
   const preMatch = !result && !isLive && !finished;
   const accent = live?.homeColor ? legibleScoreColor(live.homeColor) : null;
 
+  // Opt-in live-TV embed on the big screen, remembered per viewer.
+  const [tvOn, setTvOn] = useState(() => {
+    try {
+      return localStorage.getItem(TV_KEY) === '1';
+    } catch {
+      return false;
+    }
+  });
+  const toggleTv = useCallback((on: boolean) => {
+    setTvOn(on);
+    try {
+      localStorage.setItem(TV_KEY, on ? '1' : '0');
+    } catch {
+      /* private mode — fall back to in-memory only */
+    }
+  }, []);
+
   const mePredictor = meId ? (wc.predictors.find((p) => p.id === meId) ?? null) : null;
   const watchers = useWatchers(
     match.id,
@@ -157,6 +178,40 @@ function CinemaStage({ wc, match }: { wc: WorldCupState; match: WcMatch }) {
           cheering={cheering}
         >
           <div className="wc-screen">
+            {tvOn ? (
+              <div className="wc-screen-tv">
+                <iframe
+                  className="wc-tv-frame"
+                  src={LIVE_TV_URL}
+                  title="Live TV — TVMi"
+                  allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+                  allowFullScreen
+                />
+                <div className="wc-tv-bar">
+                  <span className="wc-tv-live">🔴 Live TV · TVMi</span>
+                  <a className="wc-tv-link" href={LIVE_TV_URL} target="_blank" rel="noreferrer">
+                    Not playing? Open ↗
+                  </a>
+                  <button
+                    type="button"
+                    className="wc-tv-close"
+                    onClick={() => toggleTv(false)}
+                    aria-label="Close live TV"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                className="wc-screen-tv-toggle"
+                onClick={() => toggleTv(true)}
+                title="Watch the live TV broadcast on the big screen"
+              >
+                📺 Live TV
+              </button>
+            )}
             {isLive && <GoalOverlay wc={wc} match={match} meId={meId} />}
             {isLive && <HighlightOverlay wc={wc} match={match} />}
             {isLive && <StageReactions matchId={match.id} />}

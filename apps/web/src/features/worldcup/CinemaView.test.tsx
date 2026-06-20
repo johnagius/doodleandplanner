@@ -125,6 +125,32 @@ describe('CinemaView', () => {
     expect(document.body.querySelector('.wc-hype')).toBeNull();
   });
 
+  it('offers an opt-in Live TV embed on the big screen, off by default', async () => {
+    const wc = await seedBoard();
+    const live: WcLiveInfo = { status: 'IN_PLAY', minute: 5, home: 0, away: 0 };
+    useWorldCupStore.setState({ live: { 'g-A-1': live } });
+    act(() => {
+      renderCinema(wc);
+    });
+    act(() => {
+      useMatchRoom.getState().open('g-A-1');
+    });
+
+    // Off by default — no iframe, just the toggle.
+    expect(document.body.querySelector('.wc-screen-tv')).toBeNull();
+    const toggle = document.body.querySelector('.wc-screen-tv-toggle') as HTMLButtonElement | null;
+    expect(toggle).not.toBeNull();
+
+    act(() => toggle!.click());
+
+    const frame = document.body.querySelector('.wc-tv-frame');
+    expect(frame?.getAttribute('src')).toContain('tvmi.mt');
+    // A new-tab fallback is offered in case the embed won't play.
+    const link = document.body.querySelector('.wc-tv-link');
+    expect(link?.getAttribute('href')).toContain('tvmi.mt');
+    expect(link?.getAttribute('target')).toBe('_blank');
+  });
+
   it('stays closed until a match is opened', async () => {
     const wc = await seedBoard();
     act(() => {

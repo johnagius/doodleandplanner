@@ -2091,6 +2091,9 @@ label.field {
   font-size: clamp(1.4rem, 4vw, 2.1rem);
   margin: 0;
 }
+.wc-sound-toggle {
+  white-space: nowrap;
+}
 
 /* First-run identity prompt */
 .wc-identity-grid {

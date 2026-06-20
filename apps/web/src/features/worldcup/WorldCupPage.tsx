@@ -46,6 +46,7 @@ import { TimelineView } from './TimelineView.js';
 import { hasSession, installWcSaveAuth } from './wcAuthClient.js';
 import { mentions } from './wcBanter.js';
 import { formatDayLong, formatKickoff } from './wcFormat.js';
+import { useSoundSetting } from './wcSound.js';
 
 type Tab =
   | 'fixtures'
@@ -79,6 +80,7 @@ export function WorldCupPage() {
   const admin = useWorldCupStore((s) => s.admin);
   const meId = useWorldCupStore((s) => s.meId);
   const live = useWorldCupStore((s) => s.live);
+  const sound = useSoundSetting();
   const [tab, setTab] = useState<Tab>('fixtures');
   const [identityAsked, setIdentityAsked] = useState(false);
   const [identityOpen, setIdentityOpen] = useState(false);
@@ -249,6 +251,19 @@ export function WorldCupPage() {
               >
                 {isRealtimeBackend() && !offline ? '🟢 Live sync' : '🔵 This device'}
               </span>
+              <button
+                className={`btn btn-sm wc-sound-toggle ${sound.enabled ? 'btn-primary' : ''}`}
+                onClick={sound.toggle}
+                aria-pressed={sound.enabled}
+                aria-label={sound.enabled ? 'Mute sound and haptics' : 'Enable sound and haptics'}
+                title={
+                  sound.enabled
+                    ? 'Sound & haptics on — tap to mute'
+                    : 'Sound & haptics off — tap to enable the immersive cues'
+                }
+              >
+                <span aria-hidden>{sound.enabled ? '🔊' : '🔇'}</span> Sound
+              </button>
               <button
                 className={`btn btn-sm ${admin ? 'btn-primary' : ''}`}
                 onClick={() => {

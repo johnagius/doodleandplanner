@@ -28,6 +28,7 @@ import { isRealtimeBackend } from '../../lib/storage/index.js';
 import { useTitleAlert } from '../../lib/useTitleAlert.js';
 import { useWorldCupStore } from '../../state/worldCupStore.js';
 import { Countdown } from './Countdown.js';
+import { useMatchRoom } from './useMatchRoom.js';
 import { useNow } from './useNow.js';
 import { BettingView } from './BettingView.js';
 import { BracketView } from './BracketView.js';
@@ -38,6 +39,7 @@ import { GroupTables } from './GroupTables.js';
 import { IdentityModal } from './IdentityModal.js';
 import { Leaderboard } from './Leaderboard.js';
 import { MatchCard } from './MatchCard.js';
+import { MatchRoom } from './MatchRoom.js';
 import { PerformanceView } from './PerformanceView.js';
 import { PredictorBar } from './PredictorBar.js';
 import { ScoringLegend } from './ScoringLegend.js';
@@ -85,6 +87,8 @@ export function WorldCupPage() {
   const [identityAsked, setIdentityAsked] = useState(false);
   const [identityOpen, setIdentityOpen] = useState(false);
   const [verifyId, setVerifyId] = useState<string | null>(null);
+  // Which live match the "enter the Match Room" banner has been dismissed for.
+  const [liveBannerHidden, setLiveBannerHidden] = useState<string | null>(null);
   // Stick the section tabs just under the (sticky) global topbar.
   const [topbarH, setTopbarH] = useState(0);
   useEffect(() => {
@@ -192,6 +196,12 @@ export function WorldCupPage() {
 
   const played = playedCount(wc);
   const total = wc.matches.length;
+  const liveMatch = wc.matches.find(
+    (m) =>
+      !m.result &&
+      live[m.id] &&
+      (live[m.id]!.status === 'IN_PLAY' || live[m.id]!.status === 'PAUSED'),
+  );
   const liveCount = wc.matches.filter(
     (m) =>
       !m.result &&
@@ -214,6 +224,7 @@ export function WorldCupPage() {
   return (
     <div className="container">
       <Confetti fireKey={confettiKey} />
+      <MatchRoom />
       <CardRevealModal cards={revealCards} wc={wc} onClose={() => setRevealCards([])} />
       <IdentityModal
         open={(!meId && !identityAsked) || identityOpen}
@@ -323,6 +334,25 @@ export function WorldCupPage() {
             {myPredictor!.claimed
               ? `🔒 Log in as ${myPredictor!.name} to edit your picks`
               : `🔒 Lock “${myPredictor!.name}” with your email so only you can edit`}
+          </button>
+        </div>
+      )}
+
+      {liveMatch && liveBannerHidden !== liveMatch.id && (
+        <div className="row wc-live-cta" style={{ marginTop: '0.75rem', gap: '0.4rem' }}>
+          <button
+            className="nudge-chip nudge-urgent"
+            onClick={() => useMatchRoom.getState().open(liveMatch.id)}
+          >
+            🔴 {findTeam(wc, liveMatch.homeId)?.name ?? '?'} v{' '}
+            {findTeam(wc, liveMatch.awayId)?.name ?? '?'} is live — enter the Match Room ⤢
+          </button>
+          <button
+            className="btn btn-sm btn-ghost"
+            aria-label="Dismiss the live Match Room prompt"
+            onClick={() => setLiveBannerHidden(liveMatch.id)}
+          >
+            ✕
           </button>
         </div>
       )}
@@ -630,12 +660,20 @@ function FixturesView() {
 
       <div className="row row-wrap" style={{ gap: '0.4rem', justifyContent: 'center' }}>
         {liveMatch && (
-          <button
-            className="btn btn-sm wc-live-jump"
-            onClick={() => jumpToDay(matchDateKey(liveMatch))}
-          >
-            🔴 Jump to live
-          </button>
+          <>
+            <button
+              className="btn btn-sm wc-live-jump"
+              onClick={() => jumpToDay(matchDateKey(liveMatch))}
+            >
+              🔴 Jump to live
+            </button>
+            <button
+              className="btn btn-sm btn-primary wc-room-open"
+              onClick={() => useMatchRoom.getState().open(liveMatch.id)}
+            >
+              ⤢ Match Room
+            </button>
+          </>
         )}
         <button className="btn btn-sm btn-ghost" onClick={() => setDay(defaultDay(wc, new Date()))}>
           Jump to next matches

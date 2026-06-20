@@ -12,12 +12,15 @@ export function Modal({
   title,
   children,
   labelledBy = 'modal-title',
+  className,
 }: {
   open: boolean;
   onClose: () => void;
   title?: ReactNode;
   children: ReactNode;
   labelledBy?: string;
+  /** Extra class on the panel — e.g. a full-bleed variant for the Match Room. */
+  className?: string;
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
   const restoreRef = useRef<HTMLElement | null>(null);
@@ -72,7 +75,7 @@ export function Modal({
     <div className="modal-backdrop" onClick={onClose}>
       <div
         ref={panelRef}
-        className="modal-panel"
+        className={className ? `modal-panel ${className}` : 'modal-panel'}
         role="dialog"
         aria-modal="true"
         aria-labelledby={title ? labelledBy : undefined}

@@ -45,7 +45,7 @@ function matchLabel(wc: WorldCupState, matchId: string): string {
   return `${findTeam(wc, m.homeId)?.id ?? '?'} v ${findTeam(wc, m.awayId)?.id ?? '?'}`;
 }
 
-function Movement({ n }: { n: number }) {
+export function Movement({ n }: { n: number }) {
   if (n > 0)
     return (
       <span className="wc-move up" title={`Up ${n}`}>

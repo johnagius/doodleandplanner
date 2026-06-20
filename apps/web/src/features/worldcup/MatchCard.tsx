@@ -55,6 +55,7 @@ import { PlayerProfileModal } from './PlayerProfileModal.js';
 import { ScenariosView } from './ScenariosView.js';
 import { ScoreStepper } from './ScoreStepper.js';
 import { TeamProfileModal } from './TeamProfileModal.js';
+import { useMatchRoom } from './useMatchRoom.js';
 import { useNow } from './useNow.js';
 import { useVenueForecast } from './weather.js';
 import { formatKickoff, legibleScoreColor } from './wcFormat.js';
@@ -196,7 +197,15 @@ function MatchEvents({
 /** Live "how much can this still shake the table" gauge — Monte-Carlo over the
  *  match's remaining goals (scaled by time left), measuring how far the overall
  *  standings could still move from where they sit right now. */
-function SweatMeter({ wc, match, live }: { wc: WorldCupState; match: WcMatch; live: WcLiveInfo }) {
+export function SweatMeter({
+  wc,
+  match,
+  live,
+}: {
+  wc: WorldCupState;
+  match: WcMatch;
+  live: WcLiveInfo;
+}) {
   const odds = live.odds ?? wc.odds?.[match.id] ?? null;
   const sweat = useMemo(
     () =>
@@ -244,7 +253,7 @@ function SweatMeter({ wc, match, live }: { wc: WorldCupState; match: WcMatch; li
 /** Live race for this match's 🎯 crown (closest pick), via the same odds-driven
  *  simulation as the sweat-o-meter. Shows the top few — and always keeps you on
  *  it, even when you're outside the leaders, so you can see your own chance. */
-function CrownRace({
+export function CrownRace({
   wc,
   match,
   live,
@@ -331,6 +340,7 @@ export function MatchCard({ matchId }: { matchId: string }) {
   const { predict, unpredict } = useWorldCupStore();
   const { show } = useToast();
   const now = useNow();
+  const openRoom = useMatchRoom((s) => s.open);
   const [view, setView] = useState<CardView>('match');
   const [profileTeam, setProfileTeam] = useState<WcTeam | null>(null);
 
@@ -475,6 +485,15 @@ export function MatchCard({ matchId }: { matchId: string }) {
 
       {view === 'match' && (
         <>
+          {isLive && (
+            <button
+              type="button"
+              className="btn btn-sm btn-primary wc-room-open"
+              onClick={() => openRoom(match.id)}
+            >
+              ⤢ Enter the Match Room
+            </button>
+          )}
           {!result && myPick && (
             <div className="wc-clear-row">
               <span className="wc-saved">✓ Saved</span>
@@ -565,7 +584,7 @@ const SEND_THROTTLE_MS = 200; // swallow frantic double-taps
  * channel, never persisted (no history/leaderboard/scoring impact). The Worker
  * relays each frame to *other* sockets, so we add our own tap optimistically.
  */
-function LiveReactions({ matchId }: { matchId: string }) {
+export function LiveReactions({ matchId }: { matchId: string }) {
   const [floats, setFloats] = useState<LiveFloat[]>([]);
   const lastSent = useRef(0);
 
@@ -858,7 +877,7 @@ function StatsView({ wc, match, live }: { wc: WorldCupState; match: WcMatch; liv
 /** Implied win / draw / win probabilities from the betting line (bookmaker's
  * margin removed), so even a not-yet-kicked-off match has a read. Null when the
  * feed carries no three-way odds. */
-function WinProbBar({
+export function WinProbBar({
   odds,
   home,
   away,

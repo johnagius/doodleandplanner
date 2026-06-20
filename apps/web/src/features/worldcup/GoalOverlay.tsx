@@ -52,14 +52,20 @@ export function GoalOverlay({
           pts = scorePrediction(pick, g.total).points - scorePrediction(pick, g.prevTotal).points;
         }
       }
-      // Name the scorer from the latest goal event for the team that just scored.
+      // Name the scorer from the latest event that put a goal on this side's tally
+      // — a strike by them, or an own goal by the opponent. (Don't credit this team's
+      // previous scorer when the net was turned for us.)
       const teamTla = g.side === 'home' ? match.homeId : match.awayId;
-      const goals = (eventsRef.current ?? []).filter(
-        (e) => (e.kind === 'goal' || e.kind === 'pen-goal') && e.teamTla === teamTla,
+      const oppTla = g.side === 'home' ? match.awayId : match.homeId;
+      const scoringEvents = (eventsRef.current ?? []).filter(
+        (e) =>
+          ((e.kind === 'goal' || e.kind === 'pen-goal') && e.teamTla === teamTla) ||
+          (e.kind === 'own-goal' && e.teamTla === oppTla),
       );
-      const lastGoal = goals[goals.length - 1];
-      const scorer = lastGoal?.player ?? null;
-      const assist = lastGoal?.assist ?? null;
+      const lastGoal = scoringEvents[scoringEvents.length - 1];
+      const ownGoal = lastGoal?.kind === 'own-goal';
+      const scorer = ownGoal ? 'Own goal' : (lastGoal?.player ?? null);
+      const assist = ownGoal ? null : (lastGoal?.assist ?? null);
       const team = findTeam(wc, teamTla)?.name ?? null;
       const color = legibleScoreColor(
         g.side === 'home' ? liveRef.current?.homeColor : liveRef.current?.awayColor,

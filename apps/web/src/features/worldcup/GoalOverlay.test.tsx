@@ -57,6 +57,31 @@ describe('GoalOverlay', () => {
     expect(vibrate).toHaveBeenCalled();
   });
 
+  it('labels an own goal instead of crediting a stale scorer', () => {
+    useWorldCupStore.setState({
+      matchEvents: { m1: [{ minute: "20'", kind: 'goal', teamTla: 'AAA', player: 'Striker' }] },
+    });
+    const { container } = render(<GoalOverlay wc={wc} match={match} meId="p1" />);
+    act(() => setLive({ status: 'IN_PLAY', minute: 20, home: 1, away: 0 }));
+    expect(container.querySelector('.wc-goal-scorer')?.textContent).toContain('Striker');
+
+    // A Bland player turns it into his own net — 2–0 to Aland, but Striker didn't score it.
+    act(() => {
+      useWorldCupStore.setState({
+        matchEvents: {
+          m1: [
+            { minute: "20'", kind: 'goal', teamTla: 'AAA', player: 'Striker' },
+            { minute: "35'", kind: 'own-goal', teamTla: 'BBB', player: 'Defender' },
+          ],
+        },
+      });
+      setLive({ status: 'IN_PLAY', minute: 35, home: 2, away: 0 });
+    });
+    const scorer = container.querySelector('.wc-goal-scorer')?.textContent ?? '';
+    expect(scorer).toContain('Own goal');
+    expect(scorer).not.toContain('Striker');
+  });
+
   it('shows my provisional points swing — a 1-0 pick going exact', () => {
     const { container } = render(<GoalOverlay wc={wc} match={match} meId="p1" />);
     act(() => setLive({ status: 'IN_PLAY', minute: 20, home: 1, away: 0 }));

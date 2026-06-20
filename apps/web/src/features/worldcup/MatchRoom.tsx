@@ -18,6 +18,7 @@ import {
 import { Modal } from '../../components/Modal.js';
 import { useWorldCupStore, type WcLiveInfo } from '../../state/worldCupStore.js';
 import { Countdown } from './Countdown.js';
+import { GoalOverlay } from './GoalOverlay.js';
 import { LiveBoard } from './LiveBoard.js';
 import { CrownRace, LiveReactions, SweatMeter, WinProbBar } from './MatchCard.js';
 import { MatchComments } from './MatchComments.js';
@@ -99,6 +100,7 @@ function RoomInner({
       labelledBy="wc-room-title"
     >
       <div className="wc-room">
+        {isLive && <GoalOverlay wc={wc} match={match} meId={meId} />}
         <div className="wc-room-scoreboard">
           <Side team={home} align="left" />
           <div className="wc-room-centre">

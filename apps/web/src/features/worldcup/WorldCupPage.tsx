@@ -48,7 +48,7 @@ import { TimelineView } from './TimelineView.js';
 import { hasSession, installWcSaveAuth } from './wcAuthClient.js';
 import { mentions } from './wcBanter.js';
 import { formatDayLong, formatKickoff } from './wcFormat.js';
-import { useSoundSetting } from './wcSound.js';
+import { playSound, useSoundSetting, vibrate } from './wcSound.js';
 
 type Tab =
   | 'fixtures'
@@ -150,6 +150,9 @@ export function WorldCupPage() {
     (message: string) => {
       setConfettiKey((k) => k + 1);
       toast.show(message);
+      // Opt-in audio/haptic to match the confetti (no-ops unless sound is on).
+      playSound('exact');
+      vibrate([20, 40, 20]);
     },
     [toast],
   );

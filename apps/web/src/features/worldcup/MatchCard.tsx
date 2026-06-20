@@ -55,6 +55,7 @@ import { PlayerProfileModal } from './PlayerProfileModal.js';
 import { ScenariosView } from './ScenariosView.js';
 import { ScoreStepper } from './ScoreStepper.js';
 import { TeamProfileModal } from './TeamProfileModal.js';
+import { useGoalEvents } from './liveGoals.js';
 import { useMatchRoom } from './useMatchRoom.js';
 import { useNow } from './useNow.js';
 import { useVenueForecast } from './weather.js';
@@ -343,6 +344,15 @@ export function MatchCard({ matchId }: { matchId: string }) {
   const openRoom = useMatchRoom((s) => s.open);
   const [view, setView] = useState<CardView>('match');
   const [profileTeam, setProfileTeam] = useState<WcTeam | null>(null);
+  // Briefly pulse the live scoreline when this match's score ticks up.
+  const [goalPulse, setGoalPulse] = useState(false);
+  useGoalEvents(
+    matchId,
+    useCallback(() => {
+      setGoalPulse(true);
+      window.setTimeout(() => setGoalPulse(false), 900);
+    }, []),
+  );
 
   if (!wc) return null;
   const match = wc.matches.find((m) => m.id === matchId);
@@ -435,7 +445,10 @@ export function MatchCard({ matchId }: { matchId: string }) {
               <span>{result.away}</span>
             </div>
           ) : isLive && live!.home != null ? (
-            <div className="wc-scoreline wc-live-score" aria-label="Live score">
+            <div
+              className={`wc-scoreline wc-live-score ${goalPulse ? 'is-goal' : ''}`}
+              aria-label="Live score"
+            >
               <span style={{ color: legibleScoreColor(live!.homeColor) }}>{live!.home}</span>
               <span className="wc-dash">–</span>
               <span style={{ color: legibleScoreColor(live!.awayColor) }}>{live!.away}</span>

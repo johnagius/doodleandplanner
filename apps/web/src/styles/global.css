@@ -1425,6 +1425,108 @@ label.field {
 .wc-comm-status {
   font-weight: 700;
 }
+/* Crowd reactions flying across the big screen */
+.wc-stage-react-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  pointer-events: none;
+}
+.wc-stage-fly {
+  position: absolute;
+  font-size: 1.7rem;
+  will-change: left, opacity, transform;
+}
+.wc-stage-fly.to-right {
+  animation: wc-fly-r 3.6s linear forwards;
+}
+.wc-stage-fly.to-left {
+  animation: wc-fly-l 3.6s linear forwards;
+}
+@keyframes wc-fly-r {
+  0% {
+    left: -8%;
+    opacity: 0;
+    transform: translateY(0) rotate(-8deg);
+  }
+  10% {
+    opacity: 1;
+  }
+  50% {
+    transform: translateY(-10px) rotate(8deg);
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    left: 108%;
+    opacity: 0;
+    transform: translateY(0) rotate(-8deg);
+  }
+}
+@keyframes wc-fly-l {
+  0% {
+    left: 108%;
+    opacity: 0;
+    transform: translateY(0) rotate(8deg);
+  }
+  10% {
+    opacity: 1;
+  }
+  50% {
+    transform: translateY(-10px) rotate(-8deg);
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    left: -8%;
+    opacity: 0;
+    transform: translateY(0) rotate(8deg);
+  }
+}
+.wc-stage-react-bar {
+  position: relative;
+  z-index: 5;
+  display: flex;
+  justify-content: center;
+  gap: 0.3rem;
+  margin-top: 0.4rem;
+}
+.wc-stage-react-btn {
+  padding: 0.15rem 0.45rem;
+  border: none;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.06);
+  font-size: 1.1rem;
+  line-height: 1.2;
+  cursor: pointer;
+  transition:
+    transform 0.12s ease,
+    background 0.12s ease;
+}
+.wc-stage-react-btn:hover {
+  background: rgba(0, 0, 0, 0.12);
+  transform: translateY(-1px) scale(1.08);
+}
+/* Theatre lighting — soft glow spilling from the screen onto the seats. */
+.wc-amphi {
+  border-radius: var(--radius-lg);
+  background: radial-gradient(
+    90% 60% at 50% -10%,
+    color-mix(in srgb, var(--c, var(--primary)) 16%, transparent),
+    transparent 65%
+  );
+}
+@media (prefers-reduced-motion: reduce) {
+  .wc-stage-fly {
+    animation: none;
+    left: 50%;
+    opacity: 1;
+  }
+}
 
 /* The amphitheatre — red theatre seats facing the screen. */
 .wc-amphi {

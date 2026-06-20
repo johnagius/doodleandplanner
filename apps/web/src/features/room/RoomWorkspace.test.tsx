@@ -108,6 +108,8 @@ describe('RoomWorkspace', () => {
     // The tally is rendered by <CountUp>, which animates "👍 " and the number in
     // separate nodes; assert on the card's combined text once it settles.
     const card = screen.getByText('Which evening?').closest('.card')!;
-    await waitFor(() => expect(card).toHaveTextContent(/👍\s*1/));
+    // The tally counts up via an animation; allow headroom so a loaded full-suite
+    // run doesn't time out before it settles (the default waitFor is only 1s).
+    await waitFor(() => expect(card).toHaveTextContent(/👍\s*1/), { timeout: 3000 });
   });
 });

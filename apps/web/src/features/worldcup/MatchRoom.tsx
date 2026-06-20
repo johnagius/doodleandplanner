@@ -16,9 +16,10 @@ import { CommentaryFeed } from './CommentaryFeed.js';
 import { GoalOverlay } from './GoalOverlay.js';
 import { LiveBoard } from './LiveBoard.js';
 import { useLiveLeaderboard } from './liveStandings.js';
-import { CrownRace, GroupView, LiveReactions, StatsView, SweatMeter } from './MatchCard.js';
+import { CrownRace, GroupView, StatsView, SweatMeter } from './MatchCard.js';
 import { MatchComments } from './MatchComments.js';
 import { PreMatchHype } from './PreMatchHype.js';
+import { StageReactions } from './StageReactions.js';
 import { StakesBanner } from './StakesBanner.js';
 import { useCommentBubbles } from './useCommentBubbles.js';
 import { useMatchRoom } from './useMatchRoom.js';
@@ -136,6 +137,7 @@ function RoomInner({
             </div>
             <Side team={away} align="right" />
           </div>
+          {isLive && <StageReactions matchId={match.id} />}
         </div>
 
         <CinemaSeats
@@ -153,7 +155,6 @@ function RoomInner({
           <div className="wc-room-live">
             <SweatMeter wc={wc} match={match} live={live!} />
             <CrownRace wc={wc} match={match} live={live!} meId={meId} />
-            <LiveReactions matchId={match.id} />
           </div>
         )}
 

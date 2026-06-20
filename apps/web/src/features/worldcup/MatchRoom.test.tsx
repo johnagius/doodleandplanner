@@ -119,8 +119,8 @@ describe('MatchRoom', () => {
     act(() => useMatchRoom.getState().open('g-A-1'));
 
     const dialog = await screen.findByRole('dialog');
-    // Commentary feed renders the goal; the screen frames the scoreboard.
-    expect(dialog.querySelector('.wc-events')?.textContent).toContain('Striker');
+    // Living commentary narrates the goal; the screen frames the scoreboard.
+    expect(dialog.querySelector('.wc-commentary')?.textContent).toContain('Striker');
     expect(dialog.querySelector('.wc-stage')).not.toBeNull();
     // Group implications panel (this is a group-stage match).
     expect(dialog.querySelector('.wc-groupview')).not.toBeNull();

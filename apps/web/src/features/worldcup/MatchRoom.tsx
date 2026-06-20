@@ -12,16 +12,11 @@ import type { CSSProperties } from 'react';
 import { Modal } from '../../components/Modal.js';
 import { useWorldCupStore, type WcLiveInfo } from '../../state/worldCupStore.js';
 import { CinemaSeats } from './CinemaSeats.js';
+import { CommentaryFeed } from './CommentaryFeed.js';
 import { GoalOverlay } from './GoalOverlay.js';
 import { LiveBoard } from './LiveBoard.js';
-import {
-  CrownRace,
-  GroupView,
-  LiveReactions,
-  MatchEvents,
-  StatsView,
-  SweatMeter,
-} from './MatchCard.js';
+import { useLiveLeaderboard } from './liveStandings.js';
+import { CrownRace, GroupView, LiveReactions, StatsView, SweatMeter } from './MatchCard.js';
 import { MatchComments } from './MatchComments.js';
 import { PreMatchHype } from './PreMatchHype.js';
 import { StakesBanner } from './StakesBanner.js';
@@ -71,7 +66,6 @@ function RoomInner({
 }) {
   const meId = useWorldCupStore((s) => s.meId);
   const live = useWorldCupStore((s) => s.live[match.id]);
-  const events = useWorldCupStore((s) => s.matchEvents[match.id]);
   const now = useNow();
 
   const home = findTeam(wc, match.homeId);
@@ -81,6 +75,9 @@ function RoomInner({
   const ready = isMatchReady(match);
   // Tint the room with the home team's brand colour when the feed carries it.
   const accent = live?.homeColor ? legibleScoreColor(live.homeColor) : null;
+  // Who currently leads our sweepstake — spotlit on the screen, swinging live.
+  const standings = useLiveLeaderboard(wc);
+  const leader = standings[0] && standings[0].points > 0 ? standings[0] : null;
 
   const mePredictor = meId ? (wc.predictors.find((p) => p.id === meId) ?? null) : null;
   const watchers = useWatchers(
@@ -108,6 +105,11 @@ function RoomInner({
       <div className="wc-room" style={accent ? ({ ['--c']: accent } as CSSProperties) : undefined}>
         {isLive && <GoalOverlay wc={wc} match={match} meId={meId} />}
         <div className="wc-stage">
+          {leader && (
+            <div className="wc-stage-leader" aria-live="polite">
+              👑 {leader.name} leads
+            </div>
+          )}
           <div className="wc-room-scoreboard">
             <Side team={home} align="left" />
             <div className="wc-room-centre">
@@ -128,7 +130,7 @@ function RoomInner({
                   <span className="wc-room-vs">v</span>
                 )}
               </div>
-              <div className="wc-room-status">
+              <div className={`wc-room-status ${isLive ? 'is-live' : ''}`}>
                 {result ? 'Full time' : isLive ? liveStatus(live!) : '⏳ Build-up'}
               </div>
             </div>
@@ -155,10 +157,10 @@ function RoomInner({
           </div>
         )}
 
-        {events && events.length > 0 && (
+        {(isLive || result) && (
           <section className="wc-room-section" aria-label="Live commentary">
             <h3 className="wc-room-h">📣 Commentary</h3>
-            <MatchEvents events={events} wc={wc} match={match} />
+            <CommentaryFeed wc={wc} match={match} />
           </section>
         )}
 

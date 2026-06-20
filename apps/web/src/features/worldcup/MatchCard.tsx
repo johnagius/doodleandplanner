@@ -499,13 +499,17 @@ export function MatchCard({ matchId }: { matchId: string }) {
 
       {view === 'match' && (
         <>
-          {isLive && (
+          {ready && (
             <button
               type="button"
               className="btn btn-sm btn-primary wc-room-open"
               onClick={() => openRoom(match.id)}
             >
-              ⤢ Enter the Match Room
+              {isLive
+                ? '🎬 Enter the Match Room — live'
+                : result
+                  ? '🎬 Match Room'
+                  : '🎬 Watch together'}
             </button>
           )}
           {isLive && meId && <StakesBanner wc={wc} meId={meId} match={match} compact />}

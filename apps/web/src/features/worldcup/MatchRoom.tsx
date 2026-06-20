@@ -161,6 +161,10 @@ function RoomInner({
         {(isLive || result) && (
           <section className="wc-room-section" aria-label="Live commentary">
             <h3 className="wc-room-h">📣 Commentary</h3>
+            <p className="muted small" style={{ margin: 0 }}>
+              Auto-generated from the live score feed — scorer &amp; score come from the feed (it
+              can lag the broadcast by a few seconds); the colour is added flavour.
+            </p>
             <CommentaryFeed wc={wc} match={match} />
           </section>
         )}

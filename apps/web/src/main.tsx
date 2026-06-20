@@ -20,6 +20,17 @@ createRoot(document.getElementById('root')!).render(
   </StrictMode>,
 );
 
+// Dev-only: expose the World Cup stores on window so screenshots / debugging can
+// stage live state. Tree-shaken out of production builds (import.meta.env.DEV).
+if (import.meta.env.DEV) {
+  void Promise.all([
+    import('./state/worldCupStore.js'),
+    import('./features/worldcup/useMatchRoom.js'),
+  ]).then(([s, r]) => {
+    Object.assign(window, { __wc: s.useWorldCupStore, __room: r.useMatchRoom });
+  });
+}
+
 // Register the service worker in production for offline support + installability.
 // Kept out of dev so it never interferes with HMR or Playwright runs.
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {

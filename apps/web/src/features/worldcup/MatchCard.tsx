@@ -18,6 +18,7 @@ import {
   venueClimate,
   groupOutlook,
   groupStandings,
+  teamsOutOfContention,
   impliedOutcome,
   isMatchLocked,
   isMatchReady,
@@ -1262,10 +1263,23 @@ function CmpRow({
 
 const POS_LABEL = (n: number): string => ORDINALS[n] ?? `${n}th`;
 
-/** What each team's remaining games could still produce. */
-function outlookLabel(o: WcGroupOutlookRow): { icon: string; text: string; cls: string } {
+/** What each team's remaining games could still produce. `eliminated` folds in the
+ * cross-group third-place race (can't make the top two, and can't be a top-8 third). */
+function outlookLabel(
+  o: WcGroupOutlookRow,
+  eliminated: boolean,
+): { icon: string; text: string; cls: string; hint?: string } {
   if (o.guaranteedTop2) return { icon: '✅', text: 'Through', cls: 'wc-ol-through' };
-  if (o.bestPosition >= 4) return { icon: '❌', text: 'Eliminated', cls: 'wc-ol-out' };
+  if (eliminated)
+    return {
+      icon: '❌',
+      text: 'Eliminated',
+      cls: 'wc-ol-out',
+      hint:
+        o.bestPosition >= 4
+          ? 'Can no longer finish in the top three.'
+          : 'Best case is third, but that can’t reach the eight best third-placed teams.',
+    };
   if (!o.canFinishTop2) return { icon: '🟡', text: '3rd-place hopeful', cls: 'wc-ol-maybe' };
   return { icon: '🎯', text: 'In the hunt', cls: 'wc-ol-live' };
 }
@@ -1285,6 +1299,7 @@ export function GroupView({
   const rows = groupStandings(wc, group);
   const here = new Set([match.homeId, match.awayId].filter(Boolean));
   const outlook = groupOutlook(wc, group);
+  const outOfContention = teamsOutOfContention(wc);
   const started = rows.some((r) => r.played > 0);
   const decided = outlook.length > 0 && outlook.every((o) => o.decided);
   return (
@@ -1338,7 +1353,7 @@ export function GroupView({
             const o = outlook.find((x) => x.teamId === r.teamId);
             if (!o) return null;
             const t = findTeam(wc, r.teamId);
-            const lab = outlookLabel(o);
+            const lab = outlookLabel(o, outOfContention.has(r.teamId));
             const range =
               o.bestPosition === o.worstPosition
                 ? POS_LABEL(o.bestPosition)
@@ -1348,7 +1363,7 @@ export function GroupView({
                 <span className="wc-outlook-team">
                   <span aria-hidden>{t?.flag}</span> {t?.name ?? r.teamId}
                 </span>
-                <span className={`wc-outlook-tag ${lab.cls}`}>
+                <span className={`wc-outlook-tag ${lab.cls}`} title={lab.hint}>
                   {lab.icon} {lab.text}
                 </span>
                 <span className="muted small wc-outlook-range">can finish {range}</span>

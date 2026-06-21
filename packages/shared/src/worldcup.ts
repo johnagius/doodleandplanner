@@ -2653,6 +2653,86 @@ export function groupOutlook(state: WorldCupState, group: string): WcGroupOutloo
   }));
 }
 
+/** How many third-placed teams advance to the Round of 32 (2026 format: 12 groups → 8 best thirds). */
+const BEST_THIRDS_ADVANCING = 8;
+
+/** Strict "a finishes above b" by the third-place tie-break: points, then goal difference, then goals for. */
+function thirdRanksAbove(
+  a: { points: number; goalDiff: number; goalsFor: number },
+  b: { points: number; goalDiff: number; goalsFor: number },
+): boolean {
+  if (a.points !== b.points) return a.points > b.points;
+  if (a.goalDiff !== b.goalDiff) return a.goalDiff > b.goalDiff;
+  return a.goalsFor > b.goalsFor;
+}
+
+/** Remaining (unplayed) group games each team in a group still has to play. */
+function remainingGroupGamesByTeam(state: WorldCupState, group: string): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const t of state.teams) if (t.group === group) counts.set(t.id, 0);
+  for (const m of state.matches) {
+    if (m.stage !== 'group' || m.group !== group || m.result || !m.homeId || !m.awayId) continue;
+    counts.set(m.homeId, (counts.get(m.homeId) ?? 0) + 1);
+    counts.set(m.awayId, (counts.get(m.awayId) ?? 0) + 1);
+  }
+  return counts;
+}
+
+/**
+ * Teams that can no longer reach the Round of 32.
+ *
+ * A team is out when it can't finish in the top two of its group AND — even if
+ * it wins all of its remaining games — it can't be one of the eight best
+ * third-placed teams, judged against the live third-place table (points, then
+ * goal difference, then goals for) as it stands.
+ *
+ * This is the piece `groupOutlook` can't see: after two rounds every group's
+ * third-placed team is on at most three points, so a side that lost twice can
+ * still *reach* three points yet remain mathematically behind eight better
+ * thirds on goal difference — exactly how the real tournament eliminates teams
+ * before their last group game. Best-casing the hopeful (win out, with modest
+ * 1–0 wins for goal difference) keeps us from writing off anyone who could still
+ * climb in on points; goal difference is what separates the surviving thirds.
+ */
+export function teamsOutOfContention(state: WorldCupState): Set<string> {
+  const groups = [...new Set(state.teams.map((t) => t.group))].sort();
+  const out = new Set<string>();
+
+  // The third-placed team of every group as things stand.
+  const currentThird = new Map<string, WcStandingRow>();
+  for (const g of groups) {
+    const third = groupStandings(state, g)[2];
+    if (third) currentThird.set(g, third);
+  }
+
+  for (const g of groups) {
+    const byId = new Map(groupStandings(state, g).map((r) => [r.teamId, r]));
+    const remaining = remainingGroupGamesByTeam(state, g);
+    for (const o of groupOutlook(state, g)) {
+      if (o.canFinishTop2) continue; // an automatic top-two spot is still on
+      if (o.bestPosition >= 4) {
+        out.add(o.teamId); // can't even finish third
+        continue;
+      }
+      const row = byId.get(o.teamId);
+      if (!row) continue;
+      const rem = remaining.get(o.teamId) ?? 0;
+      const best = {
+        points: row.points + 3 * rem,
+        goalDiff: row.goalDiff + rem,
+        goalsFor: row.goalsFor + rem,
+      };
+      let betterThirds = 0;
+      for (const [og, third] of currentThird) {
+        if (og === g) continue;
+        if (thirdRanksAbove(third, best)) betterThirds++;
+      }
+      if (betterThirds >= BEST_THIRDS_ADVANCING) out.add(o.teamId);
+    }
+  }
+  return out;
+}
+
 // --- Seeding ---------------------------------------------------------------
 
 const GROUP_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];

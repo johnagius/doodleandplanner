@@ -47,6 +47,7 @@ import {
   groupComplete,
   groupOutlook,
   groupStandings,
+  teamsOutOfContention,
   isMatchLocked,
   isMatchReady,
   leaderboard,
@@ -1393,6 +1394,83 @@ describe('group outlook (permutations)', () => {
       guaranteedTop2: true,
       decided: true,
     });
+  });
+});
+
+describe('third-place contention (teamsOutOfContention)', () => {
+  const ISO = '2026-06-01T00:00:00Z';
+
+  /** numStrong groups whose third-placed team sits on 3 pts / 0 GD, plus one
+   * target group where two leaders win twice and two trailers lose twice (GD −4)
+   * with a game left — so a trailer's best case is 3 pts with a poor GD. */
+  function mkContention(numStrong: number): WorldCupState {
+    const teams: WorldCupState['teams'] = [];
+    const matches: WorldCupState['matches'] = [];
+    let mid = 0;
+    const add = (group: string, home: string, away: string, hg?: number, ag?: number) => {
+      matches.push({
+        id: `m${mid++}`,
+        stage: 'group',
+        group,
+        matchday: 1,
+        order: mid,
+        kickoff: ISO,
+        homeId: home,
+        awayId: away,
+        ...(hg === undefined ? {} : { result: { home: hg, away: ag! } }),
+      });
+    };
+    // Strong groups: three teams in a 1–0 cycle → each finishes on 3 pts, GD 0.
+    for (let i = 0; i < numStrong; i++) {
+      const g = `S${i}`;
+      const [p, q, r] = [`${g}p`, `${g}q`, `${g}r`];
+      teams.push({ id: p, name: p, flag: '', group: g });
+      teams.push({ id: q, name: q, flag: '', group: g });
+      teams.push({ id: r, name: r, flag: '', group: g });
+      add(g, p, q, 1, 0);
+      add(g, q, r, 1, 0);
+      add(g, r, p, 1, 0);
+    }
+    // Target group A.
+    for (const id of ['A1', 'A2', 'A3', 'TT']) teams.push({ id, name: id, flag: '', group: 'A' });
+    add('A', 'A1', 'A3', 2, 0);
+    add('A', 'A2', 'TT', 2, 0);
+    add('A', 'A1', 'TT', 2, 0);
+    add('A', 'A2', 'A3', 2, 0);
+    add('A', 'A1', 'A2'); // unplayed
+    add('A', 'A3', 'TT'); // unplayed
+    return {
+      season: '2026',
+      title: 't',
+      teams,
+      matches,
+      predictors: [],
+      predictions: [],
+      createdAt: ISO,
+    };
+  }
+
+  it('writes off a side that can still reach 3 points but trails 8 better thirds on GD', () => {
+    const out = teamsOutOfContention(mkContention(8));
+    // Both trailers can mathematically reach 3 pts (win their last game) yet are
+    // a worse third than the eight strong groups → eliminated, not "hopeful".
+    expect(out.has('TT')).toBe(true);
+    expect(out.has('A3')).toBe(true);
+    // Group leaders can still finish top two — never out.
+    expect(out.has('A1')).toBe(false);
+    expect(out.has('A2')).toBe(false);
+    // The qualifying thirds themselves survive.
+    expect(out.has('S0r')).toBe(false);
+  });
+
+  it('keeps them alive when only 7 better thirds exist (8 thirds still advance)', () => {
+    const out = teamsOutOfContention(mkContention(7));
+    expect(out.has('TT')).toBe(false);
+    expect(out.has('A3')).toBe(false);
+  });
+
+  it('writes off nobody before any game is played', () => {
+    expect(teamsOutOfContention(seed()).size).toBe(0);
   });
 });
 

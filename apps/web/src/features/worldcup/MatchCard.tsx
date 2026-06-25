@@ -302,33 +302,23 @@ export function CrownRace({
   );
 }
 
-/** A "watch highlights" link for a finished match.
- *
- * Deliberately a YouTube *search* for the fixture, not a single curated clip:
- * the official FIFA World Cup uploads are geo-blocked in Malta (broadcast rights
- * sit with TVM), so a direct clip reads "unavailable in your country". A search
- * page isn't region-locked and always surfaces a reel that plays here, so
- * highlights are never locked out for our (Malta-based) crowd. */
-export function HighlightLink({
-  home,
-  away,
-  match,
-}: {
-  home?: WcTeam;
-  away?: WcTeam;
-  match: WcMatch;
-}) {
-  if (!home || !away) return null;
-  const year = new Date(match.kickoff).getUTCFullYear();
-  const query = encodeURIComponent(
-    `${home.name} vs ${away.name} highlights FIFA World Cup ${year}`,
-  );
+/** The official FIFA World Cup highlights hub — free and global, unlike the
+ * FIFA/YouTube clips (rights-blocked in Malta, where TVM holds the rights) or
+ * Tubi/Fox (US-only). */
+const FIFA_HIGHLIGHTS_URL =
+  'https://www.fifa.com/en/tournaments/mens/worldcup/canadamexicousa2026/highlights';
+
+/** "Watch highlights" for a finished match → FIFA's official highlights hub. The
+ * hub isn't per-match, so the tooltip names the fixture to help you spot it. */
+export function HighlightLink({ home, away }: { home?: WcTeam; away?: WcTeam }) {
+  const fixture = home && away ? `${home.name} v ${away.name}` : null;
   return (
     <a
       className="wc-watch-highlights"
-      href={`https://www.youtube.com/results?search_query=${query}`}
+      href={FIFA_HIGHLIGHTS_URL}
       target="_blank"
       rel="noopener noreferrer"
+      title={fixture ? `Official FIFA highlights — find ${fixture}` : 'Official FIFA highlights'}
     >
       ▶️ Watch highlights
     </a>
@@ -566,7 +556,7 @@ export function MatchCard({ matchId, anchorId }: { matchId: string; anchorId?: s
           <CrowdPulse wc={wc} match={match} />
           <MatchEvents events={events} wc={wc} match={match} />
           <MatchFacts live={live} hasResult={!!result} />
-          {result && <HighlightLink home={home} away={away} match={match} />}
+          {result && <HighlightLink home={home} away={away} />}
           {isLive && live!.home != null && live!.away != null && (
             <p className="muted small wc-live-caption">
               {live!.clock || live!.minute != null

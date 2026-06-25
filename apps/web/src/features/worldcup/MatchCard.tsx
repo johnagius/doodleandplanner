@@ -48,7 +48,6 @@ import { Avatar } from './Avatar.js';
 import { Countdown } from './Countdown.js';
 import { GifPicker } from './GifPicker.js';
 import { useHeadToHead, type H2HState } from './h2h.js';
-import { useMatchHighlight } from './highlights.js';
 import { LineupView } from './LineupView.js';
 import { MatchComments } from './MatchComments.js';
 import { statBarPercents, useMatchSummary } from './matchSummary.js';
@@ -303,8 +302,13 @@ export function CrownRace({
   );
 }
 
-/** A "watch highlights" link for a finished match, when TheSportsDB has a clip
- * up. Renders nothing until (and unless) one exists. */
+/** A "watch highlights" link for a finished match.
+ *
+ * Deliberately a YouTube *search* for the fixture, not a single curated clip:
+ * the official FIFA World Cup uploads are geo-blocked in Malta (broadcast rights
+ * sit with TVM), so a direct clip reads "unavailable in your country". A search
+ * page isn't region-locked and always surfaces a reel that plays here, so
+ * highlights are never locked out for our (Malta-based) crowd. */
 export function HighlightLink({
   home,
   away,
@@ -314,10 +318,18 @@ export function HighlightLink({
   away?: WcTeam;
   match: WcMatch;
 }) {
-  const { url } = useMatchHighlight(home?.name, away?.name, match.kickoff, !!match.result);
-  if (!url) return null;
+  if (!home || !away) return null;
+  const year = new Date(match.kickoff).getUTCFullYear();
+  const query = encodeURIComponent(
+    `${home.name} vs ${away.name} highlights FIFA World Cup ${year}`,
+  );
   return (
-    <a className="wc-watch-highlights" href={url} target="_blank" rel="noopener noreferrer">
+    <a
+      className="wc-watch-highlights"
+      href={`https://www.youtube.com/results?search_query=${query}`}
+      target="_blank"
+      rel="noopener noreferrer"
+    >
       ▶️ Watch highlights
     </a>
   );

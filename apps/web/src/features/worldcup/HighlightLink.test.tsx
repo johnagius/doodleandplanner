@@ -1,17 +1,11 @@
 import type { WcMatch, WcTeam } from '@dap/shared';
 import { render } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
-
-// Controllable stub for the network-backed highlight lookup.
-let mockUrl: string | null = 'https://youtu.be/abc';
-vi.mock('./highlights.js', () => ({
-  useMatchHighlight: () => ({ url: mockUrl, loading: false }),
-}));
+import { describe, expect, it } from 'vitest';
 
 import { HighlightLink } from './MatchCard.js';
 
-const home: WcTeam = { id: 'h', name: 'Home', flag: '', group: 'A' };
-const away: WcTeam = { id: 'a', name: 'Away', flag: '', group: 'A' };
+const home: WcTeam = { id: 'h', name: 'Brazil', flag: '', group: 'A' };
+const away: WcTeam = { id: 'a', name: 'Croatia', flag: '', group: 'A' };
 const match = {
   id: 'm',
   stage: 'group',
@@ -24,27 +18,25 @@ const match = {
   result: { home: 1, away: 0 },
 } as WcMatch;
 
-afterEach(() => {
-  mockUrl = 'https://youtu.be/abc';
-});
-
 describe('HighlightLink', () => {
-  it('renders a real, clickable anchor under its own class', () => {
+  it('links to a region-agnostic YouTube search (never geo-blocked in Malta)', () => {
     const { container } = render(<HighlightLink home={home} away={away} match={match} />);
     const a = container.querySelector('a');
     expect(a).not.toBeNull();
-    expect(a?.getAttribute('href')).toBe('https://youtu.be/abc');
-    // Must use its own class — never the bare `.wc-highlight`, which belongs to
-    // the absolutely-positioned, pointer-events:none moment-card overlay. Sharing
-    // it dragged this link onto the teams and swallowed its clicks (taps fell
-    // through to the team-name button, opening team info instead).
+    const href = a?.getAttribute('href') ?? '';
+    // A search page, not a single curated clip — the official World Cup uploads
+    // are rights-blocked in Malta, a search always resolves to a playable reel.
+    expect(href.startsWith('https://www.youtube.com/results?search_query=')).toBe(true);
+    const decoded = decodeURIComponent(href);
+    expect(decoded).toContain('Brazil vs Croatia');
+    expect(decoded).toContain('2026');
+    // Own class — never the absolutely-positioned `.wc-highlight` overlay class.
     expect(a?.classList.contains('wc-watch-highlights')).toBe(true);
     expect(a?.classList.contains('wc-highlight')).toBe(false);
   });
 
-  it('renders nothing when there is no clip', () => {
-    mockUrl = null;
-    const { container } = render(<HighlightLink home={home} away={away} match={match} />);
+  it('renders nothing until both teams are known', () => {
+    const { container } = render(<HighlightLink home={undefined} away={away} match={match} />);
     expect(container.querySelector('a')).toBeNull();
   });
 });

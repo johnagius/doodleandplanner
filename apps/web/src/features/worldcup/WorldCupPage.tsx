@@ -87,6 +87,12 @@ export function WorldCupPage() {
   const live = useWorldCupStore((s) => s.live);
   const sound = useSoundSetting();
   const [tab, setTab] = useState<Tab>('fixtures');
+  // When a nudge fires, jump the Fixtures view to (and flash) this exact match.
+  const [focusMatchId, setFocusMatchId] = useState<string | null>(null);
+  const jumpToMatch = (id: string | undefined) => {
+    if (id) setFocusMatchId(id);
+    setTab('fixtures');
+  };
   const [identityAsked, setIdentityAsked] = useState(false);
   const [identityOpen, setIdentityOpen] = useState(false);
   const [verifyId, setVerifyId] = useState<string | null>(null);
@@ -143,7 +149,8 @@ export function WorldCupPage() {
   const wc = state?.worldCup ?? null;
 
   // Tab-title reminder for matches I haven't picked that kick off soon.
-  const lockingCount = wc && meId ? lockingSoon(wc, meId, new Date()).length : 0;
+  const lockingList = wc && meId ? lockingSoon(wc, meId, new Date()) : [];
+  const lockingCount = lockingList.length;
   useTitleAlert(lockingCount, 'World Cup 2026 Predictions');
 
   // Celebrate the moment a match I called exactly lands — confetti + a toast.
@@ -218,8 +225,9 @@ export function WorldCupPage() {
       (live[m.id]!.status === 'IN_PLAY' || live[m.id]!.status === 'PAUSED'),
   ).length;
 
-  // How many matches I still need to pick (nudge chip).
-  const pendingCount = meId ? pendingForMe(wc, meId, new Date()).length : 0;
+  // Matches I still need to pick (nudge chip jumps to the first of these).
+  const pendingList = meId ? pendingForMe(wc, meId, new Date()) : [];
+  const pendingCount = pendingList.length;
 
   // Nudge to lock your name: realtime backend, you've picked a name, but this
   // browser isn't verified for it yet (so anyone could still edit your picks).
@@ -322,7 +330,10 @@ export function WorldCupPage() {
 
       {lockingCount > 0 ? (
         <div className="row" style={{ marginTop: '0.75rem' }}>
-          <button className="nudge-chip nudge-urgent" onClick={() => setTab('fixtures')}>
+          <button
+            className="nudge-chip nudge-urgent"
+            onClick={() => jumpToMatch(lockingList[0]?.id)}
+          >
             ⏰ {lockingCount} game{lockingCount === 1 ? '' : 's'} kicking off soon you haven’t
             picked — predict before lock-in
           </button>
@@ -330,7 +341,7 @@ export function WorldCupPage() {
       ) : (
         pendingCount > 0 && (
           <div className="row" style={{ marginTop: '0.75rem' }}>
-            <button className="nudge-chip" onClick={() => setTab('fixtures')}>
+            <button className="nudge-chip" onClick={() => jumpToMatch(pendingList[0]?.id)}>
               ⏳ You have {pendingCount} match{pendingCount === 1 ? '' : 'es'} to predict
             </button>
           </div>
@@ -401,7 +412,9 @@ export function WorldCupPage() {
       </nav>
 
       <div role="tabpanel">
-        {tab === 'fixtures' && <FixturesView />}
+        {tab === 'fixtures' && (
+          <FixturesView focusMatchId={focusMatchId} onFocused={() => setFocusMatchId(null)} />
+        )}
         {tab === 'groups' && <GroupTables wc={wc} />}
         {tab === 'bracket' && <BracketView wc={wc} />}
         {tab === 'scorers' && <ScorersView wc={wc} />}
@@ -667,7 +680,13 @@ function BuildStamp() {
   );
 }
 
-function FixturesView() {
+function FixturesView({
+  focusMatchId,
+  onFocused,
+}: {
+  focusMatchId: string | null;
+  onFocused: () => void;
+}) {
   const wc = useWorldCupStore((s) => s.state?.worldCup)!;
   const live = useWorldCupStore((s) => s.live);
   const days = useMemo(() => tournamentDays(wc), [wc]);
@@ -699,6 +718,33 @@ function FixturesView() {
     if (days.includes(d)) setDay(d);
     topRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
   };
+
+  // A nudge asked us to surface one exact match: switch to its day, then scroll
+  // it into view and flash it. Runs again after `day` updates so the card exists.
+  useEffect(() => {
+    if (!focusMatchId) return;
+    const target = findMatch(wc, focusMatchId);
+    if (!target) {
+      onFocused();
+      return;
+    }
+    const targetDay = matchDateKey(target);
+    if (day !== targetDay) {
+      if (days.includes(targetDay)) setDay(targetDay);
+      else onFocused(); // not in the calendar — nothing to jump to
+      return;
+    }
+    const raf = requestAnimationFrame(() => {
+      const el = document.getElementById(`wc-fx-${focusMatchId}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.classList.add('wc-focus-flash');
+        window.setTimeout(() => el.classList.remove('wc-focus-flash'), 2200);
+      }
+      onFocused();
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [focusMatchId, day]); // eslint-disable-line -- wc/days are stable here
 
   return (
     <div className="stack">
@@ -739,7 +785,7 @@ function FixturesView() {
 
       <div className="wc-fixtures">
         {matches.map((m) => (
-          <MatchCard key={m.id} matchId={m.id} />
+          <MatchCard key={m.id} matchId={m.id} anchorId={`wc-fx-${m.id}`} />
         ))}
       </div>
 

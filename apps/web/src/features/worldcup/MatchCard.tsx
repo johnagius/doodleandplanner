@@ -341,7 +341,7 @@ function MatchFacts({ live, hasResult }: { live?: WcLiveInfo; hasResult: boolean
   );
 }
 
-export function MatchCard({ matchId }: { matchId: string }) {
+export function MatchCard({ matchId, anchorId }: { matchId: string; anchorId?: string }) {
   const wc = useWorldCupStore((s) => s.state?.worldCup) ?? null;
   const meId = useWorldCupStore((s) => s.meId);
   const admin = useWorldCupStore((s) => s.admin);
@@ -414,7 +414,7 @@ export function MatchCard({ matchId }: { matchId: string }) {
   const showScenarios = ready && !result;
 
   return (
-    <div className={`card wc-match ${result ? 'is-final' : ''}`}>
+    <div id={anchorId} className={`card wc-match ${result ? 'is-final' : ''}`}>
       <div className="wc-match-top">
         <span className="wc-stage-tag">{stageTag}</span>
         <span className="wc-meta">

@@ -1147,6 +1147,35 @@ describe('nudges', () => {
     const after = new Date('2026-06-12T00:00:00Z');
     expect(pendingPredictors(s, 'g-A-1', after)).toHaveLength(0);
   });
+
+  it('orders pending matches soonest-first, so a nudge can jump to [0]', () => {
+    const s = seed();
+    const p = s.predictors[0]!;
+    const list = pendingForMe(s, p.id, new Date('2026-06-01T00:00:00Z'));
+    const kicks = list.map((m) => Date.parse(m.kickoff));
+    expect(kicks).toEqual([...kicks].sort((a, b) => a - b)); // already sorted ascending
+    expect(list[0]!.id).toBe('g-A-1'); // the tournament opener is the first to jump to
+  });
+
+  it('surfaces a knockout tie as pending the moment both its groups finish', () => {
+    // r32-14 is Runner-up B vs Runner-up C — predictable once B and C are done,
+    // even while the rest of the bracket still has placeholder slots. This is the
+    // "1 to predict but the bracket looks empty" case the jump-to-match nudge solves.
+    let s = seed();
+    const before = pendingForMe(s, s.predictors[0]!.id, new Date('2026-06-01T00:00:00Z'));
+    expect(before.some((m) => m.id === 'r32-14')).toBe(false); // teams unknown yet
+
+    for (const g of ['B', 'C']) {
+      for (const m of s.matches.filter((x) => x.stage === 'group' && x.group === g)) {
+        s = setResult(s, { matchId: m.id, home: 1, away: 0 });
+      }
+    }
+    s = populateBracket(s);
+    const r32_14 = findMatch(s, 'r32-14')!;
+    expect(isMatchReady(r32_14)).toBe(true); // both runners-up resolved
+    const after = pendingForMe(s, s.predictors[0]!.id, new Date('2026-06-01T00:00:00Z'));
+    expect(after.some((m) => m.id === 'r32-14')).toBe(true);
+  });
 });
 
 describe('live results', () => {

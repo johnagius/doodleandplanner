@@ -3388,6 +3388,28 @@ label.field {
   gap: 1rem;
 }
 
+/* Brief pulse when a nudge ("you have N to predict") jumps you to one fixture. */
+.wc-focus-flash {
+  animation: wc-focus-flash 2.2s ease-out;
+}
+@keyframes wc-focus-flash {
+  0%,
+  20% {
+    box-shadow:
+      0 0 0 3px var(--primary),
+      0 0 24px -2px var(--primary);
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wc-focus-flash {
+    animation: none;
+    box-shadow: 0 0 0 3px var(--primary);
+  }
+}
+
 /* Match card */
 .wc-match {
   position: relative;

@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Doodle &amp; Planner — redirecting…</title>
+    <meta name="robots" content="noindex" />
+    <!--
+      Home-page twin of 404.html. When the repo's Pages "Source" is "Deploy from
+      a branch", Jekyll renders the README at the root URL — so visitors see docs
+      instead of the app. A static index.html takes precedence over README.md as
+      the directory index, so this file bounces the home page to the live
+      Cloudflare app (404.html already covers every other path). Harmless under
+      the "GitHub Actions" source: the built app's own index.html is served and
+      this one is never shipped. (Proper fix: Settings → Pages → Source → "GitHub
+      Actions"; then this file is unused.)
+    -->
+    <script>
+      (function () {
+        var APP = 'https://doodleandplanner.pages.dev';
+        // Drop the GitHub project-page prefix (/doodleandplanner) if present.
+        var path = window.location.pathname.replace(/^\/doodleandplanner/, '');
+        if (path === '' || path === '/') path = '/';
+        window.location.replace(APP + path + window.location.search + window.location.hash);
+      })();
+    </script>
+  </head>
+  <body>
+    <p>
+      Redirecting to <a href="https://doodleandplanner.pages.dev">doodleandplanner.pages.dev</a>…
+    </p>
+  </body>
+</html>

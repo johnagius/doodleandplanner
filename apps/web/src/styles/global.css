@@ -5273,6 +5273,21 @@ label.field {
   margin: 0.4rem 0 0;
 }
 
+/* Best third-placed teams — the live 8-of-12 qualification race. */
+.wc-thirds {
+  padding: 1rem 1.1rem;
+}
+.wc-thirds-table .wc-third-in td {
+  background: color-mix(in srgb, var(--success) 9%, transparent);
+}
+.wc-thirds-table .wc-third-out td {
+  color: var(--muted);
+}
+/* The qualification cut: a dashed line above the first team that misses out. */
+.wc-thirds-table .wc-third-cut td {
+  border-top: 2px dashed var(--danger);
+}
+
 /* Leaderboard */
 .wc-leaderboard {
   list-style: none;

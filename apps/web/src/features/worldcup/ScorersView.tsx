@@ -42,7 +42,6 @@ function ScorerRow({
         <span className="muted small"> · {team?.id ?? scorer.teamTla}</span>
       </td>
       <td className="wc-gb-goals">{scorer.goals}</td>
-      <td className="wc-gb-assists muted">{scorer.assists || ''}</td>
     </tr>
   );
 }
@@ -78,7 +77,6 @@ export function ScorersView({ wc }: { wc: WorldCupState }) {
             <th aria-label="Rank">#</th>
             <th className="wc-gb-name">Player</th>
             <th title="Goals">⚽</th>
-            <th title="Assists">🅰️</th>
           </tr>
         </thead>
         <tbody>
@@ -94,8 +92,7 @@ export function ScorersView({ wc }: { wc: WorldCupState }) {
         </tbody>
       </table>
       <p className="muted small" style={{ textAlign: 'center', margin: 0 }}>
-        Goals &amp; assists from the live feed · penalties count, own goals don't · tap a name for
-        their profile.
+        Goals from the live feed · penalties count, own goals don't · tap a name for their profile.
       </p>
       {profilePlayer && (
         <PlayerProfileModal player={profilePlayer} wc={wc} onClose={() => setProfilePlayer(null)} />

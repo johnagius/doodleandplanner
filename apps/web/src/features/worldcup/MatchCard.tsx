@@ -305,11 +305,19 @@ export function CrownRace({
 
 /** A "watch highlights" link for a finished match, when TheSportsDB has a clip
  * up. Renders nothing until (and unless) one exists. */
-function HighlightLink({ home, away, match }: { home?: WcTeam; away?: WcTeam; match: WcMatch }) {
+export function HighlightLink({
+  home,
+  away,
+  match,
+}: {
+  home?: WcTeam;
+  away?: WcTeam;
+  match: WcMatch;
+}) {
   const { url } = useMatchHighlight(home?.name, away?.name, match.kickoff, !!match.result);
   if (!url) return null;
   return (
-    <a className="wc-highlight" href={url} target="_blank" rel="noopener noreferrer">
+    <a className="wc-watch-highlights" href={url} target="_blank" rel="noopener noreferrer">
       ▶️ Watch highlights
     </a>
   );

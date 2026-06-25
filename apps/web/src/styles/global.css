@@ -3671,12 +3671,15 @@ label.field {
   overflow: hidden;
 }
 
-/* Watch-highlights link on finished matches */
-.wc-highlight {
+/* Watch-highlights link on finished matches (own class — must NOT collide with
+ * the absolutely-positioned `.wc-highlight` moment card, which would drag this
+ * link onto the teams and set pointer-events:none, swallowing its clicks). */
+.wc-watch-highlights {
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
   align-self: flex-start;
+  margin-top: 0.1rem;
   padding: 0.28rem 0.6rem;
   border-radius: 999px;
   font-size: 0.8rem;
@@ -3685,7 +3688,7 @@ label.field {
   color: var(--danger);
   background: var(--danger-soft);
 }
-.wc-highlight:hover {
+.wc-watch-highlights:hover {
   filter: brightness(0.97);
 }
 

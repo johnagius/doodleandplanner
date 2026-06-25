@@ -48,6 +48,7 @@ import { Avatar } from './Avatar.js';
 import { Countdown } from './Countdown.js';
 import { GifPicker } from './GifPicker.js';
 import { useHeadToHead, type H2HState } from './h2h.js';
+import { fifaHighlightsUrl } from './fifaHighlights.js';
 import { LineupView } from './LineupView.js';
 import { MatchComments } from './MatchComments.js';
 import { statBarPercents, useMatchSummary } from './matchSummary.js';
@@ -302,23 +303,28 @@ export function CrownRace({
   );
 }
 
-/** The official FIFA World Cup highlights hub — free and global, unlike the
- * FIFA/YouTube clips (rights-blocked in Malta, where TVM holds the rights) or
- * Tubi/Fox (US-only). */
-const FIFA_HIGHLIGHTS_URL =
-  'https://www.fifa.com/en/tournaments/mens/worldcup/canadamexicousa2026/highlights';
-
-/** "Watch highlights" for a finished match → FIFA's official highlights hub. The
- * hub isn't per-match, so the tooltip names the fixture to help you spot it. */
-export function HighlightLink({ home, away }: { home?: WcTeam; away?: WcTeam }) {
+/** "Watch highlights" for a finished match → FIFA's official report+highlights
+ * page for that exact game (group stage), else the highlights hub. Free and
+ * global, so never geo-blocked in Malta. The tooltip names the fixture — handy
+ * when the link falls back to the hub. */
+export function HighlightLink({
+  home,
+  away,
+  match,
+}: {
+  home?: WcTeam;
+  away?: WcTeam;
+  match: WcMatch;
+}) {
   const fixture = home && away ? `${home.name} v ${away.name}` : null;
+  const url = fifaHighlightsUrl(home?.name, away?.name, match.stage === 'group');
   return (
     <a
       className="wc-watch-highlights"
-      href={FIFA_HIGHLIGHTS_URL}
+      href={url}
       target="_blank"
       rel="noopener noreferrer"
-      title={fixture ? `Official FIFA highlights — find ${fixture}` : 'Official FIFA highlights'}
+      title={fixture ? `Official FIFA highlights — ${fixture}` : 'Official FIFA highlights'}
     >
       ▶️ Watch highlights
     </a>
@@ -556,7 +562,7 @@ export function MatchCard({ matchId, anchorId }: { matchId: string; anchorId?: s
           <CrowdPulse wc={wc} match={match} />
           <MatchEvents events={events} wc={wc} match={match} />
           <MatchFacts live={live} hasResult={!!result} />
-          {result && <HighlightLink home={home} away={away} />}
+          {result && <HighlightLink home={home} away={away} match={match} />}
           {isLive && live!.home != null && live!.away != null && (
             <p className="muted small wc-live-caption">
               {live!.clock || live!.minute != null

@@ -1,25 +1,62 @@
 import {
+  findMatch,
   findTeam,
   groupComplete,
   groupStandings,
   teamsOutOfContention,
   thirdPlacedRanking,
+  withProvisionalResults,
   type WorldCupState,
 } from '@dap/shared';
+import { useMemo } from 'react';
+import { useWorldCupStore } from '../../state/worldCupStore.js';
 
 /** How many third-placed teams reach the Round of 32 (2026 format). */
 const BEST_THIRDS = 8;
 
-/** Live standings for all twelve groups; top two (and the third place) flagged,
- * plus the cross-group race for the eight best third-placed teams. */
+/** Live standings for all twelve groups + the cross-group best-thirds race. While
+ * matches are on, in-play scores are folded in as provisional results so the
+ * tables (and the qualification cut) update live. */
 export function GroupTables({ wc }: { wc: WorldCupState }) {
-  const groups = [...new Set(wc.teams.map((t) => t.group))].sort();
+  const live = useWorldCupStore((s) => s.live);
+  const groups = useMemo(() => [...new Set(wc.teams.map((t) => t.group))].sort(), [wc]);
+
+  // In-play scores → provisional results. Recomputes as the feed ticks.
+  const liveScores = useMemo(() => {
+    const out: Record<string, { home: number; away: number }> = {};
+    for (const [id, info] of Object.entries(live)) {
+      if (
+        (info.status === 'IN_PLAY' || info.status === 'PAUSED') &&
+        info.home != null &&
+        info.away != null
+      ) {
+        out[id] = { home: info.home, away: info.away };
+      }
+    }
+    return out;
+  }, [live]);
+  const liveWc = useMemo(() => withProvisionalResults(wc, liveScores), [wc, liveScores]);
+  const liveGroups = useMemo(() => {
+    const s = new Set<string>();
+    for (const id of Object.keys(liveScores)) {
+      const g = findMatch(wc, id)?.group;
+      if (g) s.add(g);
+    }
+    return s;
+  }, [wc, liveScores]);
+
   return (
     <div className="stack">
-      <ThirdPlaceRace wc={wc} />
+      <ThirdPlaceRace wc={wc} liveWc={liveWc} liveGroups={liveGroups} />
       <div className="wc-groups-grid">
         {groups.map((g) => (
-          <GroupTable key={g} wc={wc} group={g} />
+          <GroupTable
+            key={g}
+            wc={liveWc}
+            group={g}
+            complete={groupComplete(wc, g)}
+            live={liveGroups.has(g)}
+          />
         ))}
       </div>
     </div>
@@ -27,18 +64,31 @@ export function GroupTables({ wc }: { wc: WorldCupState }) {
 }
 
 /** The live "best third-placed teams" table: 8 of 12 qualify, ranked exactly as
- * qualification is decided (points → goal difference → goals for). Provisional —
- * recomputes from the current standings, so it tracks the cut as games play out. */
-function ThirdPlaceRace({ wc }: { wc: WorldCupState }) {
-  const thirds = thirdPlacedRanking(wc);
+ * qualification is decided (points → goal difference → goals for). Ranking folds
+ * in live scores; the ❌ "eliminated" flag stays on confirmed results only. */
+function ThirdPlaceRace({
+  wc,
+  liveWc,
+  liveGroups,
+}: {
+  wc: WorldCupState;
+  liveWc: WorldCupState;
+  liveGroups: Set<string>;
+}) {
+  const thirds = thirdPlacedRanking(liveWc);
   const out = teamsOutOfContention(wc);
-  const anyPlayed = wc.matches.some((m) => m.stage === 'group' && m.result);
+  const anyPlayed = liveWc.matches.some((m) => m.stage === 'group' && m.result);
   if (thirds.length === 0) return null;
+  const liveActive = liveGroups.size > 0;
   return (
     <div className="card wc-thirds">
       <div className="wc-group-head">
         <h3 className="card-title">🥉 Best third-placed teams</h3>
-        <span className="badge badge-success">8 of 12 advance</span>
+        {liveActive ? (
+          <span className="badge wc-live-badge">🔴 LIVE</span>
+        ) : (
+          <span className="badge badge-success">8 of 12 advance</span>
+        )}
       </div>
       {!anyPlayed ? (
         <p className="muted small wc-group-empty">Fills in once the group games kick off.</p>
@@ -60,9 +110,10 @@ function ThirdPlaceRace({ wc }: { wc: WorldCupState }) {
             </thead>
             <tbody>
               {thirds.map((r, i) => {
-                const team = findTeam(wc, r.teamId);
+                const team = findTeam(liveWc, r.teamId);
                 const qualifying = i < BEST_THIRDS;
                 const eliminated = out.has(r.teamId);
+                const isLive = team ? liveGroups.has(team.group) : false;
                 const cls = `${qualifying ? 'wc-third-in' : 'wc-third-out'}${
                   i === BEST_THIRDS ? ' wc-third-cut' : ''
                 }`;
@@ -70,6 +121,11 @@ function ThirdPlaceRace({ wc }: { wc: WorldCupState }) {
                   <tr key={r.teamId} className={cls}>
                     <td className="wc-td-pos">{i + 1}</td>
                     <td className="wc-td-team">
+                      {isLive && (
+                        <span className="wc-live-dot" title="Live now" aria-hidden>
+                          🔴
+                        </span>
+                      )}
                       <span aria-hidden>{team?.flag}</span> <span>{team?.name}</span>
                     </td>
                     <td>{team?.group}</td>
@@ -94,7 +150,8 @@ function ThirdPlaceRace({ wc }: { wc: WorldCupState }) {
           </table>
           <p className="muted small wc-group-empty">
             Ranked by points, then goal difference, then goals scored. The dashed line is the cut —
-            top 8 reach the Round of 32. Provisional until every group is complete.
+            top 8 reach the Round of 32.{' '}
+            {liveActive ? 'Includes in-play scores.' : 'Provisional until every group is complete.'}
           </p>
         </>
       )}
@@ -102,16 +159,29 @@ function ThirdPlaceRace({ wc }: { wc: WorldCupState }) {
   );
 }
 
-function GroupTable({ wc, group }: { wc: WorldCupState; group: string }) {
+function GroupTable({
+  wc,
+  group,
+  complete,
+  live,
+}: {
+  wc: WorldCupState;
+  group: string;
+  complete: boolean;
+  live: boolean;
+}) {
   const rows = groupStandings(wc, group);
-  const complete = groupComplete(wc, group);
   const anyPlayed = rows.some((r) => r.played > 0);
 
   return (
     <div className="card wc-group">
       <div className="wc-group-head">
         <h3 className="card-title">Group {group}</h3>
-        {complete && <span className="badge badge-success">final</span>}
+        {live ? (
+          <span className="badge wc-live-badge">🔴 LIVE</span>
+        ) : complete ? (
+          <span className="badge badge-success">final</span>
+        ) : null}
       </div>
       <table className="wc-table">
         <thead>

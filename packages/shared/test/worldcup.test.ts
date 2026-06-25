@@ -70,6 +70,7 @@ import {
   slotLabel,
   sourceLabel,
   thirdPlacedRanking,
+  withProvisionalResults,
   tournamentDays,
   tournamentScorers,
   trophyCount,
@@ -1500,6 +1501,28 @@ describe('third-place contention (teamsOutOfContention)', () => {
 
   it('writes off nobody before any game is played', () => {
     expect(teamsOutOfContention(seed()).size).toBe(0);
+  });
+});
+
+describe('withProvisionalResults', () => {
+  it('applies in-play scores as provisional results, without mutating the original', () => {
+    const s = seed();
+    const opener = s.matches.find((m) => m.stage === 'group')!;
+    const live = withProvisionalResults(s, { [opener.id]: { home: 2, away: 1 } });
+    expect(findMatch(live, opener.id)!.result).toEqual({ home: 2, away: 1 });
+    expect(findMatch(s, opener.id)!.result).toBeUndefined(); // pure
+    // The provisional score feeds straight into the standings.
+    const grp = opener.group!;
+    expect(groupStandings(live, grp).find((r) => r.teamId === opener.homeId)!.points).toBe(3);
+  });
+
+  it('never overwrites a final result and returns the same ref when nothing changes', () => {
+    let s = seed();
+    const opener = s.matches.find((m) => m.stage === 'group')!;
+    s = setResult(s, { matchId: opener.id, home: 3, away: 0 });
+    const live = withProvisionalResults(s, { [opener.id]: { home: 1, away: 1 } });
+    expect(findMatch(live, opener.id)!.result).toEqual({ home: 3, away: 0 });
+    expect(withProvisionalResults(s, {})).toBe(s); // no change → same reference
   });
 });
 

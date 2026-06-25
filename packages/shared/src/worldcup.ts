@@ -948,6 +948,27 @@ export function thirdPlacedRanking(state: WorldCupState): WcStandingRow[] {
   return thirds.sort(compareStanding(state));
 }
 
+/**
+ * A copy of `state` with the given in-progress scores applied as provisional
+ * results, so standings and the third-place race can update live while matches
+ * are being played. Only fills matches that don't already have a final result;
+ * unknown ids are ignored. Pure, and returns the *same* reference when nothing
+ * changes, so memoised consumers don't re-render for no reason.
+ */
+export function withProvisionalResults(
+  state: WorldCupState,
+  scores: Record<string, { home: number; away: number }>,
+): WorldCupState {
+  let changed = false;
+  const matches = state.matches.map((m) => {
+    const s = scores[m.id];
+    if (m.result || !s) return m;
+    changed = true;
+    return { ...m, result: { home: s.home, away: s.away } };
+  });
+  return changed ? { ...state, matches } : state;
+}
+
 /** Resolve a single knockout source to a team id, or undefined if not yet known. */
 function resolveSource(state: WorldCupState, source: WcSource | undefined): string | undefined {
   if (!source) return undefined;

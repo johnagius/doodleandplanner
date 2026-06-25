@@ -1,8 +1,11 @@
 import { seedWorldCup, setResult, type WorldCupState } from '@dap/shared';
 import { render } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
+import { useWorldCupStore } from '../../state/worldCupStore.js';
 import { GroupTables } from './GroupTables.js';
+
+afterEach(() => useWorldCupStore.setState({ live: {} }));
 
 /** Play every group out so each group has a settled third-placed team. Higher
  * seed (earlier in the group) wins 2-0. */
@@ -38,5 +41,18 @@ describe('GroupTables — best third-placed teams race', () => {
     const { container } = render(<GroupTables wc={fresh} />);
     expect(container.querySelector('.wc-thirds-table')).toBeNull();
     expect(container.querySelector('.wc-thirds')?.textContent).toContain('Fills in once');
+  });
+
+  it('folds an in-play score in live and flags the live group', () => {
+    const fresh = seedWorldCup(() => new Date('2026-06-01T00:00:00Z'));
+    const m = fresh.matches.find((x) => x.stage === 'group' && x.group === 'A')!;
+    useWorldCupStore.setState({
+      live: { [m.id]: { status: 'IN_PLAY', minute: 60, home: 2, away: 0 } },
+    });
+    const { container } = render(<GroupTables wc={fresh} />);
+    // The 🔴 LIVE badge shows (thirds header + the live group's card).
+    expect(container.querySelectorAll('.wc-live-badge').length).toBeGreaterThan(0);
+    // The provisional score lights up the table that was empty before.
+    expect(container.querySelector('.wc-thirds-table')).not.toBeNull();
   });
 });

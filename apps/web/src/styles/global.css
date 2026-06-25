@@ -5287,6 +5287,27 @@ label.field {
 .wc-thirds-table .wc-third-cut td {
   border-top: 2px dashed var(--danger);
 }
+/* "🔴 LIVE" badge + per-row dot when a group has an in-play match folded in. */
+.wc-live-badge {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+.wc-live-dot {
+  font-size: 0.55rem;
+  margin-right: 0.2rem;
+  vertical-align: middle;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .wc-live-badge,
+  .wc-live-dot {
+    animation: wc-live-pulse 1.6s ease-in-out infinite;
+  }
+}
+@keyframes wc-live-pulse {
+  50% {
+    opacity: 0.55;
+  }
+}
 
 /* Leaderboard */
 .wc-leaderboard {

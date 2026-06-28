@@ -38,8 +38,19 @@ export interface WcSource {
   kind: 'winner-group' | 'runner-group' | 'best-third' | 'winner-match' | 'loser-match';
   /** Group letter for `winner-group` / `runner-group`. */
   group?: string;
-  /** 1-based rank for `best-third` (1 = best third-placed team overall). */
-  thirdRank?: number;
+  /**
+   * For `best-third`: the index (0-7) of this third-place slot in FIFA's bracket.
+   * Which of the eight qualifying third-placed teams fills it is decided globally
+   * by {@link thirdPlaceAssignment} from the official combination table, so a
+   * third never meets the winner of its own group.
+   */
+  slot?: number;
+  /**
+   * For `best-third`: the official set of candidate group letters whose third can
+   * land in this slot (e.g. ["A","B","C","D","F"]). Purely the eligibility set;
+   * the actual occupant comes from the live assignment.
+   */
+  thirdGroups?: string[];
   /** Referenced match id for `winner-match` / `loser-match`. */
   matchId?: string;
 }
@@ -139,7 +150,7 @@ export interface WorldCupState {
 }
 
 /** Bump when the seeded teams or fixtures change; boards below this re-seed. */
-export const WC_SEED_VERSION = 2;
+export const WC_SEED_VERSION = 3;
 
 // --- Scoring ---------------------------------------------------------------
 
@@ -247,7 +258,7 @@ export function sourceLabel(source: WcSource | undefined): string {
     case 'runner-group':
       return `Runner-up Group ${source.group}`;
     case 'best-third':
-      return `3rd place #${source.thirdRank}`;
+      return source.thirdGroups?.length ? `3rd Group ${source.thirdGroups.join('/')}` : '3rd place';
     case 'winner-match':
       return `Winner of ${matchShortLabel(source.matchId)}`;
     case 'loser-match':
@@ -949,6 +960,74 @@ export function thirdPlacedRanking(state: WorldCupState): WcStandingRow[] {
 }
 
 /**
+ * FIFA's eight "group winner vs best third" Round-of-32 slots, in bracket order
+ * (matching the `slot` index on each `best-third` source). Each entry is the
+ * official set of candidate groups whose third-placed team may fill that slot —
+ * deliberately excluding the slot's own group winner so a third never meets a
+ * side from its own group. Source: FIFA World Cup 2026 Regulations, Annex C
+ * (the 495-combination third-place allocation table).
+ */
+const THIRD_PLACE_SLOTS: ReadonlyArray<readonly string[]> = [
+  ['A', 'B', 'C', 'D', 'F'], // slot 0 — faces winner Group E
+  ['C', 'D', 'F', 'G', 'H'], // slot 1 — faces winner Group I
+  ['B', 'E', 'F', 'I', 'J'], // slot 2 — faces winner Group D
+  ['A', 'E', 'H', 'I', 'J'], // slot 3 — faces winner Group G
+  ['C', 'E', 'F', 'H', 'I'], // slot 4 — faces winner Group A
+  ['E', 'H', 'I', 'J', 'K'], // slot 5 — faces winner Group L
+  ['E', 'F', 'G', 'I', 'J'], // slot 6 — faces winner Group B
+  ['D', 'E', 'I', 'J', 'L'], // slot 7 — faces winner Group K
+];
+
+/**
+ * Assign the eight best third-placed teams to the eight Round-of-32 third-place
+ * slots (slot index → group letter), honouring FIFA's official candidate sets so
+ * no third meets the winner of its own group. Returns an empty map until every
+ * group is complete.
+ *
+ * FIFA pre-computes one assignment for each of the 495 ways the eight qualifying
+ * groups can fall out; rather than embed that table verbatim we find a valid
+ * one-to-one matching that respects the same candidate sets (a deterministic
+ * backtracking search, so the same standings always yield the same bracket). A
+ * defensive rank-order fallback fills the slots should no perfect matching exist.
+ */
+export function thirdPlaceAssignment(state: WorldCupState): Map<number, string> {
+  const result = new Map<number, string>();
+  if (!allGroupsComplete(state)) return result;
+
+  // The eight groups whose third-placed team qualified, best-ranked first.
+  const qualifyingGroups = thirdPlacedRanking(state)
+    .slice(0, BEST_THIRDS_ADVANCING)
+    .map((row) => findTeam(state, row.teamId)?.group)
+    .filter((g): g is string => !!g);
+  if (qualifyingGroups.length < THIRD_PLACE_SLOTS.length) return result;
+
+  const available = new Set(qualifyingGroups);
+  const assignment = new Array<string | null>(THIRD_PLACE_SLOTS.length).fill(null);
+
+  const fill = (slot: number): boolean => {
+    if (slot === THIRD_PLACE_SLOTS.length) return true;
+    for (const group of THIRD_PLACE_SLOTS[slot]!) {
+      if (!available.has(group)) continue;
+      available.delete(group);
+      assignment[slot] = group;
+      if (fill(slot + 1)) return true;
+      available.add(group);
+      assignment[slot] = null;
+    }
+    return false;
+  };
+
+  if (fill(0)) {
+    assignment.forEach((group, slot) => group && result.set(slot, group));
+  } else {
+    // No clean matching (shouldn't happen with the official sets) — still place
+    // every qualifying third so the bracket fully populates.
+    qualifyingGroups.forEach((group, slot) => result.set(slot, group));
+  }
+  return result;
+}
+
+/**
  * A copy of `state` with the given in-progress scores applied as provisional
  * results, so standings and the third-place race can update live while matches
  * are being played. Only fills matches that don't already have a final result;
@@ -981,10 +1060,11 @@ function resolveSource(state: WorldCupState, source: WcSource | undefined): stri
       return source.group && groupComplete(state, source.group)
         ? groupStandings(state, source.group)[1]?.teamId
         : undefined;
-    case 'best-third':
-      return allGroupsComplete(state)
-        ? thirdPlacedRanking(state)[(source.thirdRank ?? 1) - 1]?.teamId
-        : undefined;
+    case 'best-third': {
+      if (source.slot == null || !allGroupsComplete(state)) return undefined;
+      const group = thirdPlaceAssignment(state).get(source.slot);
+      return group ? groupStandings(state, group)[2]?.teamId : undefined;
+    }
     case 'winner-match': {
       const m = source.matchId ? findMatch(state, source.matchId) : undefined;
       return m ? winnerOf(m) : undefined;
@@ -3126,32 +3206,44 @@ const GROUP_FIXTURES: Array<[string, number, string, string, string, string]> = 
   ['L', 3, 'CRO', 'GHA', '2026-06-27T21:00:00Z', 'Philadelphia'],
 ];
 
-// Round-of-32 template: which group winners / runners-up / best thirds meet.
-// 12 winners + 12 runners-up + 8 best third-placed teams = 32 teams, 16 ties.
+// Round-of-32 template — the official FIFA World Cup 2026 bracket, listed in
+// bracket (top-to-bottom tree) order so the plain "consecutive pairs advance"
+// fold below reproduces the real fixtures: matches 1&2 feed R16-1, 3&4 feed
+// R16-2, and so on up to the final, with no crossing lines.
+//
+// 12 group winners + 12 runners-up + 8 best thirds = 32 teams in 16 ties. Tokens:
+// `W:X` winner Group X, `R:X` runner-up Group X, `T:n` best-third slot n (the
+// occupant is resolved from THIRD_PLACE_SLOTS via thirdPlaceAssignment). The
+// trailing comment on each row is FIFA's official match number (73-88).
 const R32_TEMPLATE: Array<[string, string]> = [
-  ['W:A', 'T:1'],
-  ['W:B', 'T:2'],
-  ['W:C', 'T:3'],
-  ['W:D', 'T:4'],
-  ['W:E', 'T:5'],
-  ['W:F', 'T:6'],
-  ['W:G', 'T:7'],
-  ['W:H', 'T:8'],
-  ['W:I', 'R:J'],
-  ['W:J', 'R:I'],
-  ['W:K', 'R:L'],
-  ['W:L', 'R:K'],
-  ['R:A', 'R:D'],
-  ['R:B', 'R:C'],
-  ['R:E', 'R:H'],
-  ['R:F', 'R:G'],
+  ['W:E', 'T:0'], // M74
+  ['W:I', 'T:1'], // M77
+  ['R:A', 'R:B'], // M73
+  ['W:F', 'R:C'], // M75
+  ['R:K', 'R:L'], // M83
+  ['W:H', 'R:J'], // M84
+  ['W:D', 'T:2'], // M81
+  ['W:G', 'T:3'], // M82
+  ['W:C', 'R:F'], // M76
+  ['R:E', 'R:I'], // M78
+  ['W:A', 'T:4'], // M79
+  ['W:L', 'T:5'], // M80
+  ['W:J', 'R:H'], // M86
+  ['R:D', 'R:G'], // M88
+  ['W:B', 'T:6'], // M85
+  ['W:K', 'T:7'], // M87
 ];
 
 function parseSlot(token: string): WcSource {
   const [kind, value] = token.split(':');
   if (kind === 'W') return { kind: 'winner-group', group: value };
   if (kind === 'R') return { kind: 'runner-group', group: value };
-  if (kind === 'T') return { kind: 'best-third', thirdRank: Number(value) };
+  if (kind === 'T') {
+    const slot = Number(value);
+    const thirdGroups = THIRD_PLACE_SLOTS[slot];
+    if (!thirdGroups) throw new Error(`Bad third-place slot: ${token}`);
+    return { kind: 'best-third', slot, thirdGroups: [...thirdGroups] };
+  }
   throw new Error(`Bad slot token: ${token}`);
 }
 

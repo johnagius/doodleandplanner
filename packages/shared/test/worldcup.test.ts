@@ -44,6 +44,7 @@ import {
   cardReactionsFor,
   defaultDay,
   findMatch,
+  findTeam,
   groupComplete,
   groupOutlook,
   groupStandings,
@@ -378,13 +379,21 @@ describe('bracket population', () => {
   it('fills the Round of 32 from final group standings', () => {
     const s = playAllGroups(seed());
     const r32_1 = findMatch(s, 'r32-1')!;
-    // W:A vs T:1 → group A winner vs the best third-placed team.
-    expect(r32_1.homeId).toBe(seedOrder(s, 'A')[0]); // MEX
-    expect(r32_1.awayId).toBe(thirdPlacedRanking(s)[0]!.teamId);
-    // r32-9 is W:I vs R:J → group I winner vs group J runner-up.
+    // r32-1 is W:E vs a best third → group E winner vs one of the eight qualifying
+    // thirds (its group is never E — FIFA's candidate set excludes the own group).
+    expect(r32_1.homeId).toBe(seedOrder(s, 'E')[0]); // GER
+    expect(r32_1.awaySource!.kind).toBe('best-third');
+    const qualifyingThirds = new Set(
+      thirdPlacedRanking(s)
+        .slice(0, 8)
+        .map((r) => r.teamId),
+    );
+    expect(qualifyingThirds.has(r32_1.awayId!)).toBe(true);
+    expect(findTeam(s, r32_1.awayId)!.group).not.toBe('E');
+    // r32-9 is W:C vs R:F → group C winner vs group F runner-up.
     const r32_9 = findMatch(s, 'r32-9')!;
-    expect(r32_9.homeId).toBe(seedOrder(s, 'I')[0]); // FRA
-    expect(r32_9.awayId).toBe(seedOrder(s, 'J')[1]); // ALG
+    expect(r32_9.homeId).toBe(seedOrder(s, 'C')[0]); // BRA
+    expect(r32_9.awayId).toBe(seedOrder(s, 'F')[1]); // JPN
     // Every R32 slot is filled with a distinct team.
     const r32 = s.matches.filter((m) => m.stage === 'r32');
     const ids = r32.flatMap((m) => [m.homeId, m.awayId]);
@@ -399,6 +408,56 @@ describe('bracket population', () => {
     const used = s.matches.filter((m) => m.awaySource?.kind === 'best-third').map((m) => m.awayId);
     expect(used).toHaveLength(8);
     expect(new Set(used)).toEqual(new Set(ranking.slice(0, 8).map((r) => r.teamId)));
+  });
+
+  it('wires the Round of 32 to the official FIFA 2026 bracket', () => {
+    const s = seed();
+    // Each tie's two slots, in bracket (top-to-bottom) order, with FIFA's match
+    // number — so the plain consecutive-pairs fold reproduces the real fixtures.
+    const expected: Array<[string, string]> = [
+      ['1E', '3rd'], // M74
+      ['1I', '3rd'], // M77
+      ['2A', '2B'], // M73
+      ['1F', '2C'], // M75
+      ['2K', '2L'], // M83
+      ['1H', '2J'], // M84
+      ['1D', '3rd'], // M81
+      ['1G', '3rd'], // M82
+      ['1C', '2F'], // M76
+      ['2E', '2I'], // M78
+      ['1A', '3rd'], // M79
+      ['1L', '3rd'], // M80
+      ['1J', '2H'], // M86
+      ['2D', '2G'], // M88
+      ['1B', '3rd'], // M85
+      ['1K', '3rd'], // M87
+    ];
+    const slot = (src: (typeof s.matches)[number]['homeSource']): string => {
+      if (src?.kind === 'winner-group') return `1${src.group}`;
+      if (src?.kind === 'runner-group') return `2${src.group}`;
+      if (src?.kind === 'best-third') return '3rd';
+      return '?';
+    };
+    expected.forEach(([home, away], i) => {
+      const m = findMatch(s, `r32-${i + 1}`)!;
+      expect([slot(m.homeSource), slot(m.awaySource)]).toEqual([home, away]);
+    });
+  });
+
+  it('never sends a third-placed team to face the winner of its own group', () => {
+    const s = playAllGroups(seed());
+    const thirdMatches = s.matches.filter((m) => m.awaySource?.kind === 'best-third');
+    expect(thirdMatches).toHaveLength(8);
+    for (const m of thirdMatches) {
+      const winnerGroup = m.homeSource!.group!;
+      const thirdGroup = findTeam(s, m.awayId)!.group;
+      // The resolved third is eligible for this slot and isn't from the winner's group.
+      expect(m.awaySource!.thirdGroups).toContain(thirdGroup);
+      expect(thirdGroup).not.toBe(winnerGroup);
+    }
+    // All eight thirds are distinct teams from distinct groups.
+    const groups = thirdMatches.map((m) => findTeam(s, m.awayId)!.group);
+    expect(new Set(groups).size).toBe(8);
   });
 
   it('advances winners through every round to the final', () => {
@@ -437,10 +496,10 @@ describe('bracket population', () => {
     let s = playAllGroups(seed());
     s = setResult(s, { matchId: 'r32-1', home: 3, away: 0 });
     expect(findMatch(s, 'r16-1')!.homeId).toBeTruthy();
-    // Clearing a group A match unseats the group A winner → R32-1 empties, and
-    // its now-orphaned result is dropped, which empties R16-1 too.
-    s = clearResult(s, 'g-A-1');
-    expect(groupComplete(s, 'A')).toBe(false);
+    // r32-1's home is the group E winner; clearing a group E match unseats it →
+    // R32-1 empties, its now-orphaned result is dropped, and that empties R16-1 too.
+    s = clearResult(s, 'g-E-1');
+    expect(groupComplete(s, 'E')).toBe(false);
     expect(findMatch(s, 'r32-1')!.homeId).toBeUndefined();
     expect(findMatch(s, 'r32-1')!.result).toBeUndefined();
     expect(findMatch(s, 'r16-1')!.homeId).toBeUndefined();
@@ -1159,14 +1218,14 @@ describe('nudges', () => {
   });
 
   it('surfaces a knockout tie as pending the moment both its groups finish', () => {
-    // r32-14 is Runner-up B vs Runner-up C — predictable once B and C are done,
+    // r32-14 is Runner-up D vs Runner-up G — predictable once D and G are done,
     // even while the rest of the bracket still has placeholder slots. This is the
     // "1 to predict but the bracket looks empty" case the jump-to-match nudge solves.
     let s = seed();
     const before = pendingForMe(s, s.predictors[0]!.id, new Date('2026-06-01T00:00:00Z'));
     expect(before.some((m) => m.id === 'r32-14')).toBe(false); // teams unknown yet
 
-    for (const g of ['B', 'C']) {
+    for (const g of ['D', 'G']) {
       for (const m of s.matches.filter((x) => x.stage === 'group' && x.group === g)) {
         s = setResult(s, { matchId: m.id, home: 1, away: 0 });
       }
@@ -1215,9 +1274,10 @@ describe('calendar + labels', () => {
   it('labels unresolved knockout slots helpfully', () => {
     const s = seed();
     const r32_1 = findMatch(s, 'r32-1')!;
-    expect(sourceLabel(r32_1.homeSource)).toBe('Winner Group A');
-    expect(slotLabel(s, undefined, r32_1.homeSource)).toBe('Winner Group A');
-    expect(sourceLabel(findMatch(s, 'r32-9')!.awaySource)).toBe('Runner-up Group J');
+    expect(sourceLabel(r32_1.homeSource)).toBe('Winner Group E');
+    expect(slotLabel(s, undefined, r32_1.homeSource)).toBe('Winner Group E');
+    expect(sourceLabel(r32_1.awaySource)).toBe('3rd Group A/B/C/D/F');
+    expect(sourceLabel(findMatch(s, 'r32-9')!.awaySource)).toBe('Runner-up Group F');
     expect(sourceLabel(findMatch(s, 'final-1')!.homeSource)).toBe('Winner of SF 1');
   });
 

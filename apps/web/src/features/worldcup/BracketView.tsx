@@ -114,7 +114,7 @@ function shortSource(source: WcSource | undefined): string {
     case 'runner-group':
       return `2${source.group}`;
     case 'best-third':
-      return `3rd #${source.thirdRank}`;
+      return source.thirdGroups?.length ? `3rd ${source.thirdGroups.join('/')}` : '3rd';
     case 'winner-match':
       return `W ${shortMatch(source.matchId)}`;
     case 'loser-match':

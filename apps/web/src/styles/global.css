@@ -6605,7 +6605,7 @@ label.field {
   flex-direction: column;
   justify-content: space-around;
   gap: 0.6rem;
-  min-width: 168px;
+  min-width: 200px;
 }
 .wc-bracket-head {
   font-size: 0.72rem;
@@ -6653,6 +6653,49 @@ label.field {
   margin-left: auto;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
+}
+/* Kick-off time + countdown / FT / locked badge under each tie. */
+.wc-bracket-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.3rem;
+  padding: 0.3rem 0.5rem;
+  border-top: 1px solid var(--border);
+  background: color-mix(in srgb, var(--muted) 7%, var(--surface));
+  font-size: 0.7rem;
+}
+.wc-bracket-time {
+  color: var(--muted);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.wc-bracket-meta .wc-bracket-badge,
+.wc-bracket-meta .wc-countdown {
+  flex: none;
+  font-size: 0.66rem;
+}
+/* Inline scoreline entry — the same steppers as the fixtures card. */
+.wc-bracket-pick {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  padding: 0.35rem 0.4rem;
+  border-top: 1px solid var(--border);
+}
+.wc-bracket-pick .wc-stepper {
+  transform: scale(0.92);
+}
+.wc-bracket-clear {
+  flex: none;
+  padding: 0.1rem 0.35rem;
+  line-height: 1;
+}
+.wc-bracket-mypick {
+  padding: 0.3rem 0.5rem;
+  border-top: 1px solid var(--border);
+  text-align: center;
 }
 .wc-third-block {
   display: flex;

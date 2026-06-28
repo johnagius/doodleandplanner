@@ -2,20 +2,39 @@ import {
   WC_STAGE_LABEL,
   findMatch,
   findTeam,
+  isMatchLocked,
+  isMatchReady,
+  matchDateKey,
   winnerOf,
   type WcMatch,
   type WcSource,
   type WcStage,
   type WorldCupState,
 } from '@dap/shared';
+import { useToast } from '../../components/Toast.js';
+import { useWorldCupStore } from '../../state/worldCupStore.js';
 import { ChampionPicker } from './ChampionPicker.js';
+import { Countdown } from './Countdown.js';
+import { ScoreStepper } from './ScoreStepper.js';
+import { useNow } from './useNow.js';
+import { formatDay, formatKickoff } from './wcFormat.js';
 
 const ROUNDS: WcStage[] = ['r32', 'r16', 'qf', 'sf', 'final'];
 
-/** A read-only knockout bracket that fills in as results are entered. */
+/** A knockout bracket you can also predict from: each tie shows its Malta
+ * kick-off time and a live countdown, and — once both teams are known and before
+ * kick-off — lets you enter your scoreline right here. Picks save to the same
+ * shared state as the fixtures list, so they appear there too, and the identical
+ * "locked at kick-off" rule applies. */
 export function BracketView({ wc }: { wc: WorldCupState }) {
+  const meId = useWorldCupStore((s) => s.meId);
+  const predict = useWorldCupStore((s) => s.predict);
+  const unpredict = useWorldCupStore((s) => s.unpredict);
+  const now = useNow();
   const hasKnockout = wc.matches.some((m) => m.stage !== 'group' && (m.homeId || m.awayId));
   const third = findMatch(wc, 'third-1');
+
+  const nodeProps = { wc, meId, now, predict, unpredict };
 
   return (
     <div className="stack">
@@ -23,7 +42,8 @@ export function BracketView({ wc }: { wc: WorldCupState }) {
       {!hasKnockout && (
         <p className="muted small">
           The bracket fills in automatically once group results are entered — the group winners,
-          runners-up and best third-placed teams drop into their slots.
+          runners-up and best third-placed teams drop into their slots. You can predict each tie
+          here as soon as both teams are known.
         </p>
       )}
       <div className="wc-bracket-scroll">
@@ -36,7 +56,7 @@ export function BracketView({ wc }: { wc: WorldCupState }) {
               <div key={stage} className="wc-bracket-col">
                 <div className="wc-bracket-head">{WC_STAGE_LABEL[stage]}</div>
                 {matches.map((m) => (
-                  <BracketNode key={m.id} wc={wc} match={m} />
+                  <BracketNode key={m.id} match={m} {...nodeProps} />
                 ))}
               </div>
             );
@@ -48,7 +68,7 @@ export function BracketView({ wc }: { wc: WorldCupState }) {
         <div className="wc-third-block">
           <div className="wc-bracket-head">{WC_STAGE_LABEL.third}</div>
           <div className="wc-bracket-col" style={{ maxWidth: 240 }}>
-            <BracketNode wc={wc} match={third} />
+            <BracketNode match={third} {...nodeProps} />
           </div>
         </div>
       )}
@@ -56,24 +76,118 @@ export function BracketView({ wc }: { wc: WorldCupState }) {
   );
 }
 
-function BracketNode({ wc, match }: { wc: WorldCupState; match: WcMatch }) {
+interface NodeProps {
+  wc: WorldCupState;
+  match: WcMatch;
+  meId: string | null;
+  now: number;
+  predict: (matchId: string, home: number, away: number) => Promise<void>;
+  unpredict: (matchId: string) => Promise<void>;
+}
+
+function BracketNode({ wc, match, meId, now, predict, unpredict }: NodeProps) {
+  const { show } = useToast();
   const winner = winnerOf(match);
+  const result = match.result;
+  const ready = isMatchReady(match);
+  const locked = isMatchLocked(match, new Date(now));
+  const canPredict = ready && !locked && !!meId;
+  const myPick = meId
+    ? wc.predictions.find((p) => p.matchId === match.id && p.predictorId === meId)
+    : undefined;
+  const home = findTeam(wc, match.homeId);
+  const away = findTeam(wc, match.awayId);
+
+  async function adjust(side: 'home' | 'away', delta: number) {
+    const h = (myPick?.home ?? 0) + (side === 'home' ? delta : 0);
+    const a = (myPick?.away ?? 0) + (side === 'away' ? delta : 0);
+    try {
+      await predict(match.id, Math.max(0, h), Math.max(0, a));
+      show('Pick saved ✓');
+    } catch (err) {
+      show(err instanceof Error ? err.message : 'Could not save pick');
+    }
+  }
+
+  async function clearPick() {
+    try {
+      await unpredict(match.id);
+      show('Pick removed');
+    } catch (err) {
+      show(err instanceof Error ? err.message : 'Could not remove pick');
+    }
+  }
+
   return (
-    <div className={`wc-bracket-node ${match.result ? 'played' : ''}`}>
+    <div className={`wc-bracket-node ${result ? 'played' : ''}`}>
       <Slot
         wc={wc}
         teamId={match.homeId}
         source={match.homeSource}
-        score={match.result?.home}
+        score={result?.home}
         isWinner={!!winner && winner === match.homeId}
       />
       <Slot
         wc={wc}
         teamId={match.awayId}
         source={match.awaySource}
-        score={match.result?.away}
+        score={result?.away}
         isWinner={!!winner && winner === match.awayId}
       />
+
+      {match.kickoff && (
+        <div className="wc-bracket-meta">
+          <span className="wc-bracket-time" title="Kick-off (Malta time)">
+            🕒 {formatDay(matchDateKey(match))} · {formatKickoff(match.kickoff)}
+          </span>
+          {result ? (
+            <span className="badge badge-success wc-bracket-badge">FT</span>
+          ) : locked ? (
+            <span className="badge badge-warn wc-bracket-badge">🔒 Kicked off</span>
+          ) : (
+            <Countdown kickoff={match.kickoff} now={now} />
+          )}
+        </div>
+      )}
+
+      {canPredict && (
+        <div className="wc-bracket-pick">
+          <ScoreStepper
+            value={myPick?.home ?? 0}
+            onChange={(n) => adjust('home', n - (myPick?.home ?? 0))}
+            label={`${home?.name ?? 'Home'} goals`}
+          />
+          <span className="wc-dash" aria-hidden>
+            –
+          </span>
+          <ScoreStepper
+            value={myPick?.away ?? 0}
+            onChange={(n) => adjust('away', n - (myPick?.away ?? 0))}
+            label={`${away?.name ?? 'Away'} goals`}
+          />
+          {myPick && (
+            <button
+              type="button"
+              className="btn btn-sm btn-ghost wc-bracket-clear"
+              onClick={clearPick}
+              title="Clear my pick"
+              aria-label="Clear my pick"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+      )}
+
+      {!result && myPick && !canPredict && (
+        <div className="wc-bracket-mypick muted small">
+          Your pick: {myPick.home}–{myPick.away}
+          {locked ? ' · 🔒 locked' : ''}
+        </div>
+      )}
+      {!result && !myPick && ready && !locked && !meId && (
+        <div className="wc-bracket-mypick muted small">Pick your name to predict.</div>
+      )}
     </div>
   );
 }

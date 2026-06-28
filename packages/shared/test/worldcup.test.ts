@@ -1310,6 +1310,39 @@ describe('live results', () => {
     const once = applyLiveResults(seed(), scores);
     expect(applyLiveResults(once, scores)).toEqual(once); // idempotent
   });
+
+  it('grades a knockout on the 90′ score, not extra time / penalties', () => {
+    const ko: WorldCupState = {
+      season: '2026',
+      title: 'T',
+      teams: [
+        { id: 'GER', name: 'Germany', flag: '🇩🇪', group: 'E' },
+        { id: 'FRA', name: 'France', flag: '🇫🇷', group: 'I' },
+      ],
+      matches: [
+        { id: 'r32-1', stage: 'r32', order: 0, kickoff: '2026-06-28T00:00:00Z', homeId: 'GER', awayId: 'FRA' }, // prettier-ignore
+      ],
+      predictors: [{ id: 'p1', name: 'Ann' }],
+      predictions: [{ predictorId: 'p1', matchId: 'r32-1', home: 0, away: 0, updatedAt: 'x' }],
+      createdAt: '2026-01-01T00:00:00.000Z',
+    };
+    // 0–0 at 90', then a Germany goal in extra time (final 1–0). The feed carries
+    // reg90 = 0–0; we record 0–0 with Germany advancing.
+    const after = applyLiveResults(ko, [
+      { homeTla: 'GER', awayTla: 'FRA', status: 'FINISHED', home: 1, away: 0, reg90: { home: 0, away: 0 }, winner: 'HOME_TEAM' }, // prettier-ignore
+    ]);
+    const m = findMatch(after, 'r32-1')!;
+    expect(m.result).toMatchObject({ home: 0, away: 0, advancesId: 'GER' });
+    expect(winnerOf(m)).toBe('GER'); // advanced despite the level scoreline
+    // Ann's 0–0 pick is graded exact against 90', not "missed" against the 1–0 ET line.
+    expect(scorePrediction({ home: 0, away: 0 }, m.result!).category).toBe('exact');
+
+    // Without a reg90 from the feed, it falls back to the final score.
+    const fallback = applyLiveResults(ko, [
+      { homeTla: 'GER', awayTla: 'FRA', status: 'FINISHED', home: 1, away: 0, winner: 'HOME_TEAM' },
+    ]);
+    expect(findMatch(fallback, 'r32-1')!.result).toMatchObject({ home: 1, away: 0 });
+  });
 });
 
 describe('calendar + labels', () => {

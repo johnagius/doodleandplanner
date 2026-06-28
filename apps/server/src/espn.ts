@@ -33,6 +33,9 @@ interface EspnCompetitor {
   homeAway?: string;
   winner?: boolean;
   score?: string | number;
+  /** Per-period goals: [1st half, 2nd half, (ET1, ET2, shootout)]. The first two
+   * are regulation (90' + injury time); the rest are extra time / penalties. */
+  linescores?: { value?: string | number }[];
   form?: string;
   team?: { id?: string; abbreviation?: string; color?: string; alternateColor?: string; logo?: string }; // prettier-ignore
 }
@@ -83,6 +86,26 @@ const intOrNull = (v: unknown): number | null => {
 
 const hex = (c: string | undefined): string | null => (c ? `#${c.replace(/^#/, '')}` : null);
 
+/**
+ * The 90' + injury-time goals from a competitor's per-period `linescores`: the
+ * sum of the first two periods (the two halves). Extra-time periods and the
+ * penalty-shootout period are deliberately excluded. Returns null when the feed
+ * carries no usable period breakdown, so callers fall back to the final score.
+ */
+function regulationGoals(linescores: { value?: string | number }[] | undefined): number | null {
+  if (!Array.isArray(linescores) || linescores.length === 0) return null;
+  let total = 0;
+  let counted = 0;
+  for (const ls of linescores.slice(0, 2)) {
+    const n = intOrNull(ls?.value);
+    if (n != null) {
+      total += n;
+      counted++;
+    }
+  }
+  return counted > 0 ? total : null;
+}
+
 /** Map ESPN's odds block to our compact shape (American moneyline + O/U line). */
 function parseOdds(odds: EspnOdds[] | undefined): WcMatchOdds | null {
   const o = odds?.[0];
@@ -127,6 +150,12 @@ export function parseEspnEvents(events: EspnEvent[]): WcLiveScore[] {
     const city = comp.venue?.address?.city;
     const country = comp.venue?.address?.country;
 
+    // The 90' + injury-time score, when ESPN gives per-period goals — so grading
+    // ignores extra time / penalties.
+    const regH = playing ? regulationGoals(home?.linescores) : null;
+    const regA = playing ? regulationGoals(away?.linescores) : null;
+    const reg90 = regH != null && regA != null ? { home: regH, away: regA } : null;
+
     out.push({
       homeTla: alias(hAbbr),
       awayTla: alias(aAbbr),
@@ -138,6 +167,7 @@ export function parseEspnEvents(events: EspnEvent[]): WcLiveScore[] {
           : null,
       home: playing ? intOrNull(home?.score) : null,
       away: playing ? intOrNull(away?.score) : null,
+      reg90,
       winner: home?.winner ? 'HOME_TEAM' : away?.winner ? 'AWAY_TEAM' : null,
       clock: status === 'IN_PLAY' ? displayClock : null,
       detail: type.shortDetail ?? type.description ?? null,
@@ -162,6 +192,20 @@ export function parseEspnScoreboard(raw: unknown): WcLiveScore[] {
 }
 
 const pairKey = (a: string, b: string): string => [a, b].sort().join('|');
+
+/** Re-orient an ESPN score's 90' figure to a target home/away by team code, so a
+ * feed orientation mismatch can't swap the regulation goals. Null when absent. */
+function remapReg90(
+  e: WcLiveScore,
+  homeTla: string,
+  awayTla: string,
+): { home: number; away: number } | null {
+  if (!e.reg90) return null;
+  const byCode: Record<string, number> = { [e.homeTla]: e.reg90.home, [e.awayTla]: e.reg90.away };
+  const home = byCode[homeTla];
+  const away = byCode[awayTla];
+  return home != null && away != null ? { home, away } : null;
+}
 
 /**
  * Merge the two feeds. football-data is the base (canonical codes + the official
@@ -190,11 +234,15 @@ export function mergeLiveScores(fd: WcLiveScore[], espn: WcLiveScore[]): WcLiveS
     // side regardless of either feed's home/away orientation.
     const colorOf: Record<string, string | null> = { [e.homeTla]: e.homeColor ?? null, [e.awayTla]: e.awayColor ?? null }; // prettier-ignore
     const logoOf: Record<string, string | null> = { [e.homeTla]: e.homeLogo ?? null, [e.awayTla]: e.awayLogo ?? null }; // prettier-ignore
+    // ESPN's 90' score, re-oriented to football-data's home/away by team code
+    // (football-data carries no period breakdown of its own).
+    const reg90 = remapReg90(e, f.homeTla, f.awayTla);
     const meta = {
       venue: f.venue ?? e.venue ?? null,
       venueCity: e.venueCity ?? null,
       attendance: e.attendance ?? null,
       odds: e.odds ?? null,
+      reg90,
       homeColor: colorOf[f.homeTla] ?? null,
       awayColor: colorOf[f.awayTla] ?? null,
       homeLogo: logoOf[f.homeTla] ?? null,

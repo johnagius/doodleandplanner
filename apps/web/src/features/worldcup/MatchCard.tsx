@@ -1734,7 +1734,9 @@ function ResultEditor({ wc, match }: { wc: WorldCupState; match: WcMatch }) {
 
   return (
     <div className="wc-result-editor">
-      <span className="wc-result-label">Enter result</span>
+      <span className="wc-result-label">
+        Enter result <span className="muted">· 90′ + injury time</span>
+      </span>
       <div className="wc-result-controls">
         <ScoreStepper value={home} onChange={setHome} label="Home result goals" />
         <span className="wc-dash">–</span>
@@ -1744,11 +1746,11 @@ function ResultEditor({ wc, match }: { wc: WorldCupState; match: WcMatch }) {
             className="select wc-advance"
             value={advancesId}
             onChange={(e) => setAdvancesId(e.target.value)}
-            aria-label="Who advanced on penalties"
+            aria-label="Who advanced (extra time or penalties)"
           >
             <option value="">Advances…</option>
-            <option value={match.homeId}>{findTeam(wc, match.homeId)?.name} (pens)</option>
-            <option value={match.awayId}>{findTeam(wc, match.awayId)?.name} (pens)</option>
+            <option value={match.homeId}>{findTeam(wc, match.homeId)?.name} (adv.)</option>
+            <option value={match.awayId}>{findTeam(wc, match.awayId)?.name} (adv.)</option>
           </select>
         )}
         <button className="btn btn-sm btn-primary" onClick={save}>
@@ -1760,6 +1762,12 @@ function ResultEditor({ wc, match }: { wc: WorldCupState; match: WcMatch }) {
           </button>
         )}
       </div>
+      {isKnockout && (
+        <p className="muted small wc-hint">
+          Enter the score at 90′ + injury time only — predictions are graded on that. If it’s level,
+          pick who advanced via extra time or penalties (that decides progression, not the score).
+        </p>
+      )}
     </div>
   );
 }

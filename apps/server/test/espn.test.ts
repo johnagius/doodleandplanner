@@ -120,6 +120,45 @@ describe('parseEspnScoreboard', () => {
     expect(s).toMatchObject({ status: 'IN_PLAY', minute: 37, clock: "37'", home: 2, away: 1 });
   });
 
+  it('reads the 90′ score from linescores so extra time is excluded', () => {
+    // 0–0 at 90', a goal in extra time → final 1–0, but reg90 stays 0–0.
+    const [s] = parseEspnScoreboard({
+      events: [
+        {
+          competitions: [
+            {
+              status: { type: { completed: true, state: 'post', shortDetail: 'FT' } },
+              competitors: [
+                { homeAway: 'home', winner: true, score: '1', team: { abbreviation: 'GER' }, linescores: [{ value: 0 }, { value: 0 }, { value: 1 }, { value: 0 }] }, // prettier-ignore
+                { homeAway: 'away', winner: false, score: '0', team: { abbreviation: 'FRA' }, linescores: [{ value: 0 }, { value: 0 }, { value: 0 }, { value: 0 }] }, // prettier-ignore
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    expect(s).toMatchObject({ status: 'FINISHED', home: 1, away: 0, reg90: { home: 0, away: 0 } });
+  });
+
+  it('leaves reg90 null when the feed gives no period breakdown', () => {
+    const [s] = parseEspnScoreboard({
+      events: [
+        {
+          competitions: [
+            {
+              status: { type: { completed: true, state: 'post' } },
+              competitors: [
+                { homeAway: 'home', score: '2', team: { abbreviation: 'ESP' } },
+                { homeAway: 'away', score: '1', team: { abbreviation: 'CPV' } },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    expect(s!.reg90).toBeNull();
+  });
+
   it('reads stoppage time and half-time', () => {
     const [stoppage] = parseEspnScoreboard({
       events: [

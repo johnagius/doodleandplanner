@@ -59,12 +59,19 @@ export interface WcSource {
 
 /** The real-world result of a match, entered by the organiser. */
 export interface WcResult {
+  /**
+   * The score at the end of **90 minutes + injury time** (regulation). This is
+   * what predictions are scored against — extra time and penalties are NOT
+   * included, so a knockout decided in ET or on penalties is recorded as the
+   * (drawn) regulation score, e.g. 0–0, with the winner carried in `advancesId`.
+   */
   home: number;
   away: number;
   /**
-   * For a drawn knockout match: the id of the team that advanced (won on
-   * penalties). Required when `home === away` and the stage isn't the group
-   * stage; ignored otherwise.
+   * For a knockout tie level at the end of regulation: the id of the team that
+   * advanced (via extra time or penalties). Required when `home === away` and the
+   * stage isn't the group stage; ignored otherwise. Decides progression only — it
+   * never changes the scoreline predictions are graded on.
    */
   advancesId?: string;
 }
@@ -634,6 +641,14 @@ export interface WcLiveScore {
   minute?: number | null;
   home: number | null;
   away: number | null;
+  /**
+   * The score at the end of **90' + injury time** (regulation only), when the feed
+   * exposes per-period data — used to grade predictions so extra-time goals don't
+   * count. Oriented to `home`/`away`. Absent/null when the feed gives no period
+   * breakdown; consumers then fall back to `home`/`away`. Equals `home`/`away` for
+   * any match that didn't go beyond 90.
+   */
+  reg90?: { home: number; away: number } | null;
   /** 'HOME_TEAM' | 'AWAY_TEAM' | 'DRAW' | null — the advancing side for KO ties. */
   winner?: string | null;
   /** Display clock from the feed, e.g. "45'+2'" or "90'" (ESPN). */
@@ -813,9 +828,15 @@ export function applyLiveResults(state: WorldCupState, scores: WcLiveScore[]): W
       (m) => m.homeId === sc.homeTla && m.awayId === sc.awayTla && !m.result,
     );
     if (!match) continue;
+    // Grade on the 90' + injury-time score: prefer the feed's regulation-only
+    // figure so extra-time goals never count; fall back to the final score when
+    // no period breakdown is available.
+    const recHome = sc.reg90?.home ?? sc.home;
+    const recAway = sc.reg90?.away ?? sc.away;
     let advancesId: string | undefined;
-    if (match.stage !== 'group' && sc.home === sc.away) {
-      // Knockout tie level after normal time → the feed's winner advanced (pens).
+    if (match.stage !== 'group' && recHome === recAway) {
+      // Knockout tie level after regulation → the feed's winner advanced (extra
+      // time or penalties).
       advancesId =
         sc.winner === 'HOME_TEAM'
           ? match.homeId
@@ -824,7 +845,7 @@ export function applyLiveResults(state: WorldCupState, scores: WcLiveScore[]): W
             : undefined;
       if (!advancesId) continue; // can't tell who advanced yet — leave it
     }
-    next = setResult(next, { matchId: match.id, home: sc.home, away: sc.away, advancesId });
+    next = setResult(next, { matchId: match.id, home: recHome, away: recAway, advancesId });
   }
   return next;
 }

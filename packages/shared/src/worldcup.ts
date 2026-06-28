@@ -152,7 +152,7 @@ export interface WorldCupState {
 }
 
 /** Bump when the seeded teams or fixtures change; boards below this re-seed. */
-export const WC_SEED_VERSION = 4;
+export const WC_SEED_VERSION = 5;
 
 // --- Scoring ---------------------------------------------------------------
 
@@ -3212,34 +3212,35 @@ const GROUP_FIXTURES: Array<[string, number, string, string, string, string]> = 
   ['L', 3, 'CRO', 'GHA', '2026-06-27T21:00:00Z', 'Philadelphia'],
 ];
 
-// Round-of-32 template — the official FIFA World Cup 2026 bracket, listed in its
-// real top-to-bottom layout order (the order the published bracket draws them in,
-// which is also each tie's kick-off order). The plain "consecutive pairs advance"
-// fold below then reproduces the real bracket with no crossing lines: ties 1&2
-// feed R16-1, 3&4 feed R16-2, and so on up to the final. Each tie's real kick-off
-// and venue live in WC_KNOCKOUT_SCHEDULE, keyed by the r32-N id.
+// Round-of-32 template — the official FIFA World Cup 2026 bracket, in the
+// published top-to-bottom layout order (match 74, the winner-of-Group-E tie, sits
+// at the top; the 28 June opener M73 is the third row, exactly as the official
+// bracket draws it). The plain "consecutive pairs advance" fold below reproduces
+// the real bracket with no crossing lines: ties 1&2 feed R16-1, 3&4 feed R16-2,
+// and so on to the final. Each tie's real kick-off and venue live in
+// WC_KNOCKOUT_SCHEDULE, keyed by the r32-N id.
 //
 // 12 group winners + 12 runners-up + 8 best thirds = 32 teams in 16 ties. Tokens:
 // `W:X` winner Group X, `R:X` runner-up Group X, `T:n` best-third slot n (the
 // occupant is resolved from THIRD_PLACE_SLOTS via thirdPlaceAssignment). The
 // trailing comment on each row is FIFA's official match number (73-88).
 const R32_TEMPLATE: Array<[string, string]> = [
-  ['R:A', 'R:B'], // M73 — r32-1
-  ['W:F', 'R:C'], // M75 — r32-2
-  ['W:E', 'T:0'], // M74 — r32-3
-  ['W:I', 'T:1'], // M77 — r32-4
-  ['W:G', 'T:3'], // M82 — r32-5
-  ['W:D', 'T:2'], // M81 — r32-6
-  ['W:H', 'R:J'], // M84 — r32-7
-  ['R:K', 'R:L'], // M83 — r32-8
+  ['W:E', 'T:0'], // M74 — r32-1  (top of the bracket: winner Group E vs a best third)
+  ['W:I', 'T:1'], // M77 — r32-2
+  ['R:A', 'R:B'], // M73 — r32-3  (the 28 June opener)
+  ['W:F', 'R:C'], // M75 — r32-4
+  ['R:K', 'R:L'], // M83 — r32-5
+  ['W:H', 'R:J'], // M84 — r32-6
+  ['W:D', 'T:2'], // M81 — r32-7
+  ['W:G', 'T:3'], // M82 — r32-8
   ['W:C', 'R:F'], // M76 — r32-9
   ['R:E', 'R:I'], // M78 — r32-10
   ['W:A', 'T:4'], // M79 — r32-11
   ['W:L', 'T:5'], // M80 — r32-12
-  ['W:B', 'T:6'], // M85 — r32-13
-  ['W:K', 'T:7'], // M87 — r32-14
-  ['R:D', 'R:G'], // M88 — r32-15
-  ['W:J', 'R:H'], // M86 — r32-16
+  ['W:J', 'R:H'], // M86 — r32-13
+  ['R:D', 'R:G'], // M88 — r32-14
+  ['W:B', 'T:6'], // M85 — r32-15
+  ['W:K', 'T:7'], // M87 — r32-16
 ];
 
 function parseSlot(token: string): WcSource {

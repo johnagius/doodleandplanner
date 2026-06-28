@@ -70,11 +70,11 @@ describe('reseed (board migration)', () => {
 
   it('adopts the corrected knockout structure + real schedule from the fresh seed', () => {
     const next = reseed(staleBoard());
-    // r32-1 is the 28 June opener (M73): the two group runners-up, at its real
-    // kick-off (28 June, 19:00 UTC = 21:00 Malta).
+    // r32-1 is the top tie of the official bracket (M74): Germany's Group E winner
+    // vs a best third, at its real kick-off (29 June, 20:30 UTC = 22:30 Malta).
     const r32_1 = next.matches.find((m) => m.id === 'r32-1');
-    expect(r32_1?.homeSource).toEqual({ kind: 'runner-group', group: 'A' });
-    expect(r32_1?.awaySource).toEqual({ kind: 'runner-group', group: 'B' });
-    expect(r32_1?.kickoff).toBe('2026-06-28T19:00:00Z');
+    expect(r32_1?.homeSource).toEqual({ kind: 'winner-group', group: 'E' });
+    expect(r32_1?.awaySource?.kind).toBe('best-third');
+    expect(r32_1?.kickoff).toBe('2026-06-29T20:30:00Z');
   });
 });

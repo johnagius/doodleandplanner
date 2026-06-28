@@ -19,12 +19,24 @@ function board(): WorldCupState {
       { id: 'PAR', name: 'Paraguay', flag: '🇵🇾', group: 'D' },
       { id: 'BRA', name: 'Brazil', flag: '🇧🇷', group: 'C' },
       { id: 'JPN', name: 'Japan', flag: '🇯🇵', group: 'F' },
+      { id: 'ENG', name: 'England', flag: '🏴', group: 'L' },
+      { id: 'FRA', name: 'France', flag: '🇫🇷', group: 'I' },
     ],
     matches: [
-      // Ready and still in the future → predictable here.
+      // Ready and still in the future → predictable, and the next-up tie.
       { id: 'r32-1', stage: 'r32', order: 0, kickoff: soon, homeId: 'GER', awayId: 'PAR' },
-      // Ready but already kicked off → locked, no entry.
+      // Ready but already kicked off, no result yet → in-play (locked, no entry).
       { id: 'r32-2', stage: 'r32', order: 1, kickoff: past, homeId: 'BRA', awayId: 'JPN' },
+      // Played out → finished.
+      {
+        id: 'r32-3',
+        stage: 'r32',
+        order: 2,
+        kickoff: past,
+        homeId: 'ENG',
+        awayId: 'FRA',
+        result: { home: 2, away: 1 },
+      },
     ],
     predictors: [{ id: 'p1', name: 'John' }],
     predictions: [],
@@ -68,6 +80,13 @@ describe('BracketView', () => {
     const predict = useWorldCupStore.getState().predict;
     await user.click(within(goalGroups[0]!).getByRole('button', { name: /one more/ }));
     expect(predict).toHaveBeenCalledWith('r32-1', 1, 0);
+  });
+
+  it('tints the next tie and in-play ties green, and finished ties orange', () => {
+    const { container } = renderBracket(board());
+    expect(container.querySelector('.wc-bracket-node.is-next')).toBeTruthy(); // r32-1, next up
+    expect(container.querySelector('.wc-bracket-node.is-live')).toBeTruthy(); // r32-2, kicked off
+    expect(container.querySelector('.wc-bracket-node.is-finished')).toBeTruthy(); // r32-3, FT
   });
 
   it('does not offer score entry once a tie has kicked off', () => {

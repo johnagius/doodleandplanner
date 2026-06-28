@@ -35,7 +35,13 @@ export function BracketView({ wc }: { wc: WorldCupState }) {
   const hasKnockout = wc.matches.some((m) => m.stage !== 'group' && (m.homeId || m.awayId));
   const third = findMatch(wc, 'third-1');
 
-  const nodeProps = { wc, meId, now, predict, unpredict };
+  // The single next knockout tie still to kick off — highlighted (with any
+  // in-play ties) in green; finished ties go orange.
+  const nextId = wc.matches
+    .filter((m) => m.stage !== 'group' && !m.result && new Date(m.kickoff).getTime() > now)
+    .sort((a, b) => new Date(a.kickoff).getTime() - new Date(b.kickoff).getTime())[0]?.id;
+
+  const nodeProps = { wc, meId, now, predict, unpredict, nextId };
 
   return (
     <div className="stack">
@@ -57,7 +63,9 @@ export function BracketView({ wc }: { wc: WorldCupState }) {
               <div key={stage} className="wc-bracket-col">
                 <div className="wc-bracket-head">{WC_STAGE_LABEL[stage]}</div>
                 {matches.map((m) => (
-                  <BracketNode key={m.id} match={m} {...nodeProps} />
+                  <div key={m.id} className="wc-bracket-cell">
+                    <BracketNode match={m} {...nodeProps} />
+                  </div>
                 ))}
               </div>
             );
@@ -82,17 +90,27 @@ interface NodeProps {
   match: WcMatch;
   meId: string | null;
   now: number;
+  /** Id of the next tie still to kick off, highlighted alongside any in-play. */
+  nextId: string | undefined;
   predict: (matchId: string, home: number, away: number) => Promise<void>;
   unpredict: (matchId: string) => Promise<void>;
 }
 
-function BracketNode({ wc, match, meId, now, predict, unpredict }: NodeProps) {
+function BracketNode({ wc, match, meId, now, nextId, predict, unpredict }: NodeProps) {
   const { show } = useToast();
   const winner = winnerOf(match);
   const result = match.result;
   const ready = isMatchReady(match);
   const locked = isMatchLocked(match, new Date(now));
   const canPredict = ready && !locked && !!meId;
+  // Light status tint: finished → orange, in-play or next-up → green.
+  const stateClass = result
+    ? 'is-finished'
+    : ready && locked
+      ? 'is-live'
+      : match.id === nextId
+        ? 'is-next'
+        : '';
   const myPick = meId
     ? wc.predictions.find((p) => p.matchId === match.id && p.predictorId === meId)
     : undefined;
@@ -118,7 +136,7 @@ function BracketNode({ wc, match, meId, now, predict, unpredict }: NodeProps) {
   }
 
   return (
-    <div className={`wc-bracket-node ${result ? 'played' : ''}`}>
+    <div className={`wc-bracket-node ${result ? 'played' : ''} ${stateClass}`}>
       <Slot
         team={home}
         source={match.homeSource}

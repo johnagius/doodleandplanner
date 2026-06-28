@@ -380,21 +380,24 @@ describe('bracket population', () => {
   it('fills the Round of 32 from final group standings', () => {
     const s = playAllGroups(seed());
     const r32_1 = findMatch(s, 'r32-1')!;
-    // r32-1 is W:E vs a best third → group E winner vs one of the eight qualifying
-    // thirds (its group is never E — FIFA's candidate set excludes the own group).
-    expect(r32_1.homeId).toBe(seedOrder(s, 'E')[0]); // GER
-    expect(r32_1.awaySource!.kind).toBe('best-third');
+    // r32-1 is the opener M73 = 2A vs 2B → the two group runners-up.
+    expect(r32_1.homeId).toBe(seedOrder(s, 'A')[1]); // RSA (runner-up A)
+    expect(r32_1.awayId).toBe(seedOrder(s, 'B')[1]); // BIH (runner-up B)
+    // r32-9 is M76 = 1C vs 2F → group C winner vs group F runner-up.
+    const r32_9 = findMatch(s, 'r32-9')!;
+    expect(r32_9.homeId).toBe(seedOrder(s, 'C')[0]); // BRA
+    expect(r32_9.awayId).toBe(seedOrder(s, 'F')[1]); // JPN
+    // A best-third slot still resolves to a qualifying third from outside its group.
+    const r32_3 = findMatch(s, 'r32-3')!; // M74 = 1E vs best third
+    expect(r32_3.homeId).toBe(seedOrder(s, 'E')[0]); // GER
+    expect(r32_3.awaySource!.kind).toBe('best-third');
     const qualifyingThirds = new Set(
       thirdPlacedRanking(s)
         .slice(0, 8)
         .map((r) => r.teamId),
     );
-    expect(qualifyingThirds.has(r32_1.awayId!)).toBe(true);
-    expect(findTeam(s, r32_1.awayId)!.group).not.toBe('E');
-    // r32-9 is W:C vs R:F → group C winner vs group F runner-up.
-    const r32_9 = findMatch(s, 'r32-9')!;
-    expect(r32_9.homeId).toBe(seedOrder(s, 'C')[0]); // BRA
-    expect(r32_9.awayId).toBe(seedOrder(s, 'F')[1]); // JPN
+    expect(qualifyingThirds.has(r32_3.awayId!)).toBe(true);
+    expect(findTeam(s, r32_3.awayId)!.group).not.toBe('E');
     // Every R32 slot is filled with a distinct team.
     const r32 = s.matches.filter((m) => m.stage === 'r32');
     const ids = r32.flatMap((m) => [m.homeId, m.awayId]);
@@ -416,22 +419,22 @@ describe('bracket population', () => {
     // Each tie's two slots, in bracket (top-to-bottom) order, with FIFA's match
     // number — so the plain consecutive-pairs fold reproduces the real fixtures.
     const expected: Array<[string, string]> = [
-      ['1E', '3rd'], // M74
-      ['1I', '3rd'], // M77
-      ['2A', '2B'], // M73
-      ['1F', '2C'], // M75
-      ['2K', '2L'], // M83
-      ['1H', '2J'], // M84
-      ['1D', '3rd'], // M81
-      ['1G', '3rd'], // M82
-      ['1C', '2F'], // M76
-      ['2E', '2I'], // M78
-      ['1A', '3rd'], // M79
-      ['1L', '3rd'], // M80
-      ['1J', '2H'], // M86
-      ['2D', '2G'], // M88
-      ['1B', '3rd'], // M85
-      ['1K', '3rd'], // M87
+      ['2A', '2B'], // M73 — r32-1
+      ['1F', '2C'], // M75 — r32-2
+      ['1E', '3rd'], // M74 — r32-3
+      ['1I', '3rd'], // M77 — r32-4
+      ['1G', '3rd'], // M82 — r32-5
+      ['1D', '3rd'], // M81 — r32-6
+      ['1H', '2J'], // M84 — r32-7
+      ['2K', '2L'], // M83 — r32-8
+      ['1C', '2F'], // M76 — r32-9
+      ['2E', '2I'], // M78 — r32-10
+      ['1A', '3rd'], // M79 — r32-11
+      ['1L', '3rd'], // M80 — r32-12
+      ['1B', '3rd'], // M85 — r32-13
+      ['1K', '3rd'], // M87 — r32-14
+      ['2D', '2G'], // M88 — r32-15
+      ['1J', '2H'], // M86 — r32-16
     ];
     const slot = (src: (typeof s.matches)[number]['homeSource']): string => {
       if (src?.kind === 'winner-group') return `1${src.group}`;
@@ -443,6 +446,21 @@ describe('bracket population', () => {
       const m = findMatch(s, `r32-${i + 1}`)!;
       expect([slot(m.homeSource), slot(m.awaySource)]).toEqual([home, away]);
     });
+  });
+
+  it('schedules knockout ties at their real FIFA kick-offs and venues', () => {
+    const s = seed();
+    // The opener (M73) and the final (M104) at their true UTC instants — rendered
+    // in Malta time these read 21:00 on 28 Jun and 21:00 on 19 Jul respectively.
+    expect(findMatch(s, 'r32-1')!.kickoff).toBe('2026-06-28T19:00:00Z');
+    expect(findMatch(s, 'r32-1')!.venue).toBe('SoFi Stadium');
+    expect(findMatch(s, 'final-1')!.kickoff).toBe('2026-07-19T19:00:00Z');
+    expect(findMatch(s, 'final-1')!.venue).toBe('MetLife Stadium');
+    // Every knockout tie has a real (late June–July) kick-off and a venue.
+    for (const m of s.matches.filter((x) => x.stage !== 'group')) {
+      expect(m.kickoff).toMatch(/^2026-0[67]-\d{2}T/);
+      expect(m.venue).toBeTruthy();
+    }
   });
 
   it('never sends a third-placed team to face the winner of its own group', () => {
@@ -525,10 +543,11 @@ describe('bracket population', () => {
     let s = playAllGroups(seed());
     s = setResult(s, { matchId: 'r32-1', home: 3, away: 0 });
     expect(findMatch(s, 'r16-1')!.homeId).toBeTruthy();
-    // r32-1's home is the group E winner; clearing a group E match unseats it →
-    // R32-1 empties, its now-orphaned result is dropped, and that empties R16-1 too.
-    s = clearResult(s, 'g-E-1');
-    expect(groupComplete(s, 'E')).toBe(false);
+    // r32-1 (M73) is 2A vs 2B; clearing a group A match unseats the group A
+    // runner-up → R32-1 empties, its now-orphaned result is dropped, and that
+    // empties R16-1 too.
+    s = clearResult(s, 'g-A-1');
+    expect(groupComplete(s, 'A')).toBe(false);
     expect(findMatch(s, 'r32-1')!.homeId).toBeUndefined();
     expect(findMatch(s, 'r32-1')!.result).toBeUndefined();
     expect(findMatch(s, 'r16-1')!.homeId).toBeUndefined();
@@ -1247,12 +1266,13 @@ describe('nudges', () => {
   });
 
   it('surfaces a knockout tie as pending the moment both its groups finish', () => {
-    // r32-14 is Runner-up D vs Runner-up G — predictable once D and G are done,
-    // even while the rest of the bracket still has placeholder slots. This is the
-    // "1 to predict but the bracket looks empty" case the jump-to-match nudge solves.
+    // r32-15 (M88) is Runner-up D vs Runner-up G — predictable once D and G are
+    // done, even while the rest of the bracket still has placeholder slots. This is
+    // the "1 to predict but the bracket looks empty" case the jump-to-match nudge
+    // solves.
     let s = seed();
     const before = pendingForMe(s, s.predictors[0]!.id, new Date('2026-06-01T00:00:00Z'));
-    expect(before.some((m) => m.id === 'r32-14')).toBe(false); // teams unknown yet
+    expect(before.some((m) => m.id === 'r32-15')).toBe(false); // teams unknown yet
 
     for (const g of ['D', 'G']) {
       for (const m of s.matches.filter((x) => x.stage === 'group' && x.group === g)) {
@@ -1260,10 +1280,10 @@ describe('nudges', () => {
       }
     }
     s = populateBracket(s);
-    const r32_14 = findMatch(s, 'r32-14')!;
-    expect(isMatchReady(r32_14)).toBe(true); // both runners-up resolved
+    const r32_15 = findMatch(s, 'r32-15')!;
+    expect(isMatchReady(r32_15)).toBe(true); // both runners-up resolved
     const after = pendingForMe(s, s.predictors[0]!.id, new Date('2026-06-01T00:00:00Z'));
-    expect(after.some((m) => m.id === 'r32-14')).toBe(true);
+    expect(after.some((m) => m.id === 'r32-15')).toBe(true);
   });
 });
 
@@ -1303,9 +1323,11 @@ describe('calendar + labels', () => {
   it('labels unresolved knockout slots helpfully', () => {
     const s = seed();
     const r32_1 = findMatch(s, 'r32-1')!;
-    expect(sourceLabel(r32_1.homeSource)).toBe('Winner Group E');
-    expect(slotLabel(s, undefined, r32_1.homeSource)).toBe('Winner Group E');
-    expect(sourceLabel(r32_1.awaySource)).toBe('3rd Group A/B/C/D/F');
+    expect(sourceLabel(r32_1.homeSource)).toBe('Runner-up Group A');
+    expect(slotLabel(s, undefined, r32_1.homeSource)).toBe('Runner-up Group A');
+    expect(sourceLabel(r32_1.awaySource)).toBe('Runner-up Group B');
+    // r32-3 (M74) carries the best-third candidate set in its label.
+    expect(sourceLabel(findMatch(s, 'r32-3')!.awaySource)).toBe('3rd Group A/B/C/D/F');
     expect(sourceLabel(findMatch(s, 'r32-9')!.awaySource)).toBe('Runner-up Group F');
     expect(sourceLabel(findMatch(s, 'final-1')!.homeSource)).toBe('Winner of SF 1');
   });

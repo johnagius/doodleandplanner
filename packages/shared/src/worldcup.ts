@@ -15,6 +15,7 @@
 import { generateId } from './ids.js';
 import { toMs } from './time.js';
 import type { ISODateTime, Message } from './types.js';
+import { WC_KNOCKOUT_SCHEDULE } from './worldcupSchedule.js';
 import { WC_THIRD_PLACE_TABLE } from './worldcupThirdPlace.js';
 
 /** Tournament stages, ordered from earliest to latest. */
@@ -151,7 +152,7 @@ export interface WorldCupState {
 }
 
 /** Bump when the seeded teams or fixtures change; boards below this re-seed. */
-export const WC_SEED_VERSION = 3;
+export const WC_SEED_VERSION = 4;
 
 // --- Scoring ---------------------------------------------------------------
 
@@ -3211,32 +3212,34 @@ const GROUP_FIXTURES: Array<[string, number, string, string, string, string]> = 
   ['L', 3, 'CRO', 'GHA', '2026-06-27T21:00:00Z', 'Philadelphia'],
 ];
 
-// Round-of-32 template — the official FIFA World Cup 2026 bracket, listed in
-// bracket (top-to-bottom tree) order so the plain "consecutive pairs advance"
-// fold below reproduces the real fixtures: matches 1&2 feed R16-1, 3&4 feed
-// R16-2, and so on up to the final, with no crossing lines.
+// Round-of-32 template — the official FIFA World Cup 2026 bracket, listed in its
+// real top-to-bottom layout order (the order the published bracket draws them in,
+// which is also each tie's kick-off order). The plain "consecutive pairs advance"
+// fold below then reproduces the real bracket with no crossing lines: ties 1&2
+// feed R16-1, 3&4 feed R16-2, and so on up to the final. Each tie's real kick-off
+// and venue live in WC_KNOCKOUT_SCHEDULE, keyed by the r32-N id.
 //
 // 12 group winners + 12 runners-up + 8 best thirds = 32 teams in 16 ties. Tokens:
 // `W:X` winner Group X, `R:X` runner-up Group X, `T:n` best-third slot n (the
 // occupant is resolved from THIRD_PLACE_SLOTS via thirdPlaceAssignment). The
 // trailing comment on each row is FIFA's official match number (73-88).
 const R32_TEMPLATE: Array<[string, string]> = [
-  ['W:E', 'T:0'], // M74
-  ['W:I', 'T:1'], // M77
-  ['R:A', 'R:B'], // M73
-  ['W:F', 'R:C'], // M75
-  ['R:K', 'R:L'], // M83
-  ['W:H', 'R:J'], // M84
-  ['W:D', 'T:2'], // M81
-  ['W:G', 'T:3'], // M82
-  ['W:C', 'R:F'], // M76
-  ['R:E', 'R:I'], // M78
-  ['W:A', 'T:4'], // M79
-  ['W:L', 'T:5'], // M80
-  ['W:J', 'R:H'], // M86
-  ['R:D', 'R:G'], // M88
-  ['W:B', 'T:6'], // M85
-  ['W:K', 'T:7'], // M87
+  ['R:A', 'R:B'], // M73 — r32-1
+  ['W:F', 'R:C'], // M75 — r32-2
+  ['W:E', 'T:0'], // M74 — r32-3
+  ['W:I', 'T:1'], // M77 — r32-4
+  ['W:G', 'T:3'], // M82 — r32-5
+  ['W:D', 'T:2'], // M81 — r32-6
+  ['W:H', 'R:J'], // M84 — r32-7
+  ['R:K', 'R:L'], // M83 — r32-8
+  ['W:C', 'R:F'], // M76 — r32-9
+  ['R:E', 'R:I'], // M78 — r32-10
+  ['W:A', 'T:4'], // M79 — r32-11
+  ['W:L', 'T:5'], // M80 — r32-12
+  ['W:B', 'T:6'], // M85 — r32-13
+  ['W:K', 'T:7'], // M87 — r32-14
+  ['R:D', 'R:G'], // M88 — r32-15
+  ['W:J', 'R:H'], // M86 — r32-16
 ];
 
 function parseSlot(token: string): WcSource {
@@ -3252,28 +3255,11 @@ function parseSlot(token: string): WcSource {
   throw new Error(`Bad slot token: ${token}`);
 }
 
-const KICK_SLOTS = ['13:00', '16:00', '19:00', '22:00'];
-
-function dayString(base: string, offset: number): string {
-  const ms = Date.parse(`${base}T00:00:00Z`) + offset * 86_400_000;
-  return new Date(ms).toISOString().slice(0, 10);
-}
-
-function kickoff(day: string, slot: number): string {
-  return new Date(`${day}T${KICK_SLOTS[slot % KICK_SLOTS.length]}:00Z`).toISOString();
-}
-
-/**
- * Assign kickoffs to a list of knockout matches: `perDay` matches per day,
- * starting at `startDay`, walking the calendar forward. (Group matches use their
- * exact real times instead.) Mutates `match.kickoff`.
- */
-function schedule(matches: WcMatch[], startDay: string, perDay: number): void {
-  matches.forEach((m, i) => {
-    const dayOffset = Math.floor(i / perDay);
-    const slot = i % perDay;
-    m.kickoff = kickoff(dayString(startDay, dayOffset), slot);
-  });
+/** The real kick-off (UTC) and venue for a knockout match id, from FIFA's
+ * official schedule. Kick-offs are stored as UTC and rendered in Malta time by
+ * the UI, so the displayed local times come out correct automatically. */
+function koSchedule(id: string): { kickoff: string; venue: string } {
+  return WC_KNOCKOUT_SCHEDULE[id] ?? { kickoff: '', venue: '' };
 }
 
 /**
@@ -3308,85 +3294,78 @@ export function seedWorldCup(now: () => Date = () => new Date()): WorldCupState 
     });
   }
 
-  // Round of 32 (28 June – 3 July).
-  const r32: WcMatch[] = R32_TEMPLATE.map(([home, away], i) => ({
-    id: `r32-${i + 1}`,
-    stage: 'r32',
-    order: order++,
-    kickoff: '',
-    homeSource: parseSlot(home),
-    awaySource: parseSlot(away),
-  }));
+  // Round of 32 — the official bracket in its real top-to-bottom layout, each tie
+  // at its true kick-off and venue (28 June – 4 July).
+  const r32: WcMatch[] = R32_TEMPLATE.map(([home, away], i) => {
+    const id = `r32-${i + 1}`;
+    return {
+      id,
+      stage: 'r32',
+      order: order++,
+      ...koSchedule(id),
+      homeSource: parseSlot(home),
+      awaySource: parseSlot(away),
+    };
+  });
   matches.push(...r32);
-  schedule(r32, '2026-06-28', 3);
 
   // Round of 16 — winners of consecutive R32 ties (4–7 July).
-  const r16: WcMatch[] = [];
   for (let i = 0; i < 8; i++) {
-    r16.push({
-      id: `r16-${i + 1}`,
+    const id = `r16-${i + 1}`;
+    matches.push({
+      id,
       stage: 'r16',
       order: order++,
-      kickoff: '',
+      ...koSchedule(id),
       homeSource: { kind: 'winner-match', matchId: `r32-${i * 2 + 1}` },
       awaySource: { kind: 'winner-match', matchId: `r32-${i * 2 + 2}` },
     });
   }
-  matches.push(...r16);
-  schedule(r16, '2026-07-04', 2);
 
-  // Quarter-finals.
-  const qf: WcMatch[] = [];
+  // Quarter-finals (9–12 July).
   for (let i = 0; i < 4; i++) {
-    qf.push({
-      id: `qf-${i + 1}`,
+    const id = `qf-${i + 1}`;
+    matches.push({
+      id,
       stage: 'qf',
       order: order++,
-      kickoff: '',
+      ...koSchedule(id),
       homeSource: { kind: 'winner-match', matchId: `r16-${i * 2 + 1}` },
       awaySource: { kind: 'winner-match', matchId: `r16-${i * 2 + 2}` },
     });
   }
-  matches.push(...qf);
-  schedule(qf, '2026-07-09', 2);
 
-  // Semi-finals.
-  const sf: WcMatch[] = [];
+  // Semi-finals (14–15 July).
   for (let i = 0; i < 2; i++) {
-    sf.push({
-      id: `sf-${i + 1}`,
+    const id = `sf-${i + 1}`;
+    matches.push({
+      id,
       stage: 'sf',
       order: order++,
-      kickoff: '',
+      ...koSchedule(id),
       homeSource: { kind: 'winner-match', matchId: `qf-${i * 2 + 1}` },
       awaySource: { kind: 'winner-match', matchId: `qf-${i * 2 + 2}` },
     });
   }
-  matches.push(...sf);
-  schedule(sf, '2026-07-14', 1);
 
-  // Third-place play-off (semi-final losers) and the final.
-  const third: WcMatch = {
+  // Third-place play-off (semi-final losers, 18 July) and the final (19 July).
+  matches.push({
     id: 'third-1',
     stage: 'third',
     order: order++,
-    kickoff: '',
+    ...koSchedule('third-1'),
     homeSource: { kind: 'loser-match', matchId: 'sf-1' },
     awaySource: { kind: 'loser-match', matchId: 'sf-2' },
-  };
-  matches.push(third);
-  schedule([third], '2026-07-18', 1);
+  });
 
-  const final: WcMatch = {
+  matches.push({
     id: 'final-1',
     stage: 'final',
     order: order++,
-    kickoff: '',
+    ...koSchedule('final-1'),
     homeSource: { kind: 'winner-match', matchId: 'sf-1' },
     awaySource: { kind: 'winner-match', matchId: 'sf-2' },
-  };
-  matches.push(final);
-  schedule([final], '2026-07-19', 1);
+  });
 
   const predictors: WcPredictor[] = DEFAULT_PREDICTOR_NAMES.map((name) => ({
     id: generateId('wcp'),

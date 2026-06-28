@@ -68,11 +68,12 @@ describe('reseed (board migration)', () => {
     expect(authorizeWcWrite(old, sameVersion, new Set([johnId]), null).ok).toBe(false);
   });
 
-  it('adopts the corrected knockout structure from the fresh seed', () => {
+  it('adopts the corrected knockout structure + real schedule from the fresh seed', () => {
     const next = reseed(staleBoard());
-    // r32-1 is the first tie of the official bracket: winner Group E vs a best third.
+    // r32-1 is the opener (M73): the two group runners-up, at its real kick-off.
     const r32_1 = next.matches.find((m) => m.id === 'r32-1');
-    expect(r32_1?.homeSource).toEqual({ kind: 'winner-group', group: 'E' });
-    expect(r32_1?.awaySource?.kind).toBe('best-third');
+    expect(r32_1?.homeSource).toEqual({ kind: 'runner-group', group: 'A' });
+    expect(r32_1?.awaySource).toEqual({ kind: 'runner-group', group: 'B' });
+    expect(r32_1?.kickoff).toBe('2026-06-28T19:00:00Z');
   });
 });

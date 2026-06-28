@@ -149,6 +149,47 @@ export interface WcWriteAuth {
   lockedId?: string;
 }
 
+/** A prediction belongs to a knockout tie if its match isn't a group-stage match
+ * in `wc`. Used so a seed migration may drop knockout picks left over from an old
+ * bracket without the owner present, while group picks stay fully protected. */
+function isKnockoutPick(wc: WorldCupState, matchId: string): boolean {
+  const match = wc.matches.find((m) => m.id === matchId);
+  return !match || match.stage !== 'group';
+}
+
+/**
+ * True when the only change to a claimed predictor's data between `prev` and
+ * `next` is the **removal** of knockout-stage picks: their identity, champion
+ * pick and every group pick are byte-identical, and `next` adds or alters no
+ * knockout pick (each remaining one already existed in `prev`). This is exactly
+ * what a seed-version migration does when it clears a stale knockout bracket.
+ */
+function onlyRemovesKnockoutPicks(prev: WorldCupState, next: WorldCupState, id: string): boolean {
+  const pp = prev.predictors.find((p) => p.id === id);
+  const np = next.predictors.find((p) => p.id === id);
+  if (!pp || !np) return false; // a predictor appearing/disappearing isn't a pick removal
+  if (pp.name !== np.name || (pp.avatarPhotoId ?? '') !== (np.avatarPhotoId ?? '')) return false;
+  if ((prev.championPicks?.[id] ?? '') !== (next.championPicks?.[id] ?? '')) return false;
+
+  const groupPicks = (wc: WorldCupState) =>
+    wc.predictions
+      .filter((p) => p.predictorId === id && !isKnockoutPick(wc, p.matchId))
+      .map((p) => `${p.matchId}:${p.home}-${p.away}`)
+      .sort()
+      .join('|');
+  if (groupPicks(prev) !== groupPicks(next)) return false; // group picks must be untouched
+
+  const prevKo = new Set(
+    prev.predictions
+      .filter((p) => p.predictorId === id && isKnockoutPick(prev, p.matchId))
+      .map((p) => `${p.matchId}:${p.home}-${p.away}`),
+  );
+  // Every knockout pick still present must have existed before — only removals.
+  return next.predictions
+    .filter((p) => p.predictorId === id && isKnockoutPick(next, p.matchId))
+    .every((p) => prevKo.has(`${p.matchId}:${p.home}-${p.away}`));
+}
+
 /**
  * Decide whether a full-state save is allowed. Any change to a **claimed**
  * predictor's picks/champion/name/presence is permitted only by that predictor's
@@ -156,6 +197,12 @@ export interface WcWriteAuth {
  * Unclaimed predictors stay fully open, so the board works for everyone until a
  * name is claimed — and organiser actions (entering match results), comments and
  * reactions touch no predictor picks, so they're never blocked.
+ *
+ * The one exception: a **seed-version upgrade** (`next.version > prev.version`)
+ * may clear knockout picks left over from a superseded bracket even for claimed
+ * names — but only *remove* them, never touch a group pick, champion or identity.
+ * That lets the automatic board migration drop now-invalid knockout predictions
+ * without locking everyone out.
  */
 export function authorizeWcWrite(
   prev: WorldCupState,
@@ -163,8 +210,11 @@ export function authorizeWcWrite(
   claimedIds: ReadonlySet<string>,
   owner: string | null,
 ): WcWriteAuth {
+  const migrating = (next.version ?? 1) > (prev.version ?? 1);
   for (const id of changedPredictorIds(prev, next)) {
-    if (claimedIds.has(id) && id !== owner) return { ok: false, lockedId: id };
+    if (!claimedIds.has(id) || id === owner) continue;
+    if (migrating && onlyRemovesKnockoutPicks(prev, next, id)) continue;
+    return { ok: false, lockedId: id };
   }
   return { ok: true };
 }

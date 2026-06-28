@@ -139,6 +139,52 @@ describe('authorizeWcWrite', () => {
   });
 });
 
+describe('authorizeWcWrite — seed-version migration', () => {
+  const groupMatch = { id: 'g-A-1', stage: 'group', order: 0, kickoff: 'x' } as never;
+  const koMatch = { id: 'r32-1', stage: 'r32', order: 1, kickoff: 'x' } as never;
+  const prev = state({
+    version: 2,
+    matches: [groupMatch, koMatch],
+    predictions: [pick('john', 'g-A-1', 1, 0), pick('john', 'r32-1', 2, 1)],
+  });
+  const migrated = (over: Partial<WorldCupState> = {}) =>
+    state({ version: 3, matches: [groupMatch, koMatch], ...over });
+
+  it('lets a version upgrade clear a claimed name’s knockout picks (group picks kept)', () => {
+    const next = migrated({ predictions: [pick('john', 'g-A-1', 1, 0)] }); // r32-1 removed
+    expect(authorizeWcWrite(prev, next, new Set(['john']), null).ok).toBe(true);
+  });
+
+  it('still blocks the same clear without a version bump', () => {
+    const next = state({
+      version: 2,
+      matches: [groupMatch, koMatch],
+      predictions: [pick('john', 'g-A-1', 1, 0)],
+    });
+    expect(authorizeWcWrite(prev, next, new Set(['john']), null).ok).toBe(false);
+  });
+
+  it('a migration may not touch a claimed name’s group pick', () => {
+    const next = migrated({ predictions: [pick('john', 'g-A-1', 9, 0)] }); // group altered
+    expect(authorizeWcWrite(prev, next, new Set(['john']), null).ok).toBe(false);
+  });
+
+  it('a migration may not add or alter a knockout pick', () => {
+    const next = migrated({
+      predictions: [pick('john', 'g-A-1', 1, 0), pick('john', 'r32-1', 5, 5)],
+    });
+    expect(authorizeWcWrite(prev, next, new Set(['john']), null).ok).toBe(false);
+  });
+
+  it('a migration may not change champion under cover of clearing knockout picks', () => {
+    const next = migrated({
+      predictions: [pick('john', 'g-A-1', 1, 0)],
+      championPicks: { john: 'BRA' },
+    });
+    expect(authorizeWcWrite(prev, next, new Set(['john']), null).ok).toBe(false);
+  });
+});
+
 describe('stampClaimed', () => {
   it('sets the claimed flag from the server set and is identity-stable', () => {
     const s = state();

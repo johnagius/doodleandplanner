@@ -9,6 +9,7 @@ import {
   type WcMatch,
   type WcSource,
   type WcStage,
+  type WcTeam,
   type WorldCupState,
 } from '@dap/shared';
 import { useToast } from '../../components/Toast.js';
@@ -98,11 +99,9 @@ function BracketNode({ wc, match, meId, now, predict, unpredict }: NodeProps) {
   const home = findTeam(wc, match.homeId);
   const away = findTeam(wc, match.awayId);
 
-  async function adjust(side: 'home' | 'away', delta: number) {
-    const h = (myPick?.home ?? 0) + (side === 'home' ? delta : 0);
-    const a = (myPick?.away ?? 0) + (side === 'away' ? delta : 0);
+  async function save(homeGoals: number, awayGoals: number) {
     try {
-      await predict(match.id, Math.max(0, h), Math.max(0, a));
+      await predict(match.id, Math.max(0, homeGoals), Math.max(0, awayGoals));
       show('Pick saved ✓');
     } catch (err) {
       show(err instanceof Error ? err.message : 'Could not save pick');
@@ -121,18 +120,24 @@ function BracketNode({ wc, match, meId, now, predict, unpredict }: NodeProps) {
   return (
     <div className={`wc-bracket-node ${result ? 'played' : ''}`}>
       <Slot
-        wc={wc}
-        teamId={match.homeId}
+        team={home}
         source={match.homeSource}
-        score={result?.home}
         isWinner={!!winner && winner === match.homeId}
+        result={result?.home}
+        canPredict={canPredict}
+        pickValue={myPick?.home}
+        onChange={(n) => save(n, myPick?.away ?? 0)}
+        label={`${home?.name ?? 'Home'} goals`}
       />
       <Slot
-        wc={wc}
-        teamId={match.awayId}
+        team={away}
         source={match.awaySource}
-        score={result?.away}
         isWinner={!!winner && winner === match.awayId}
+        result={result?.away}
+        canPredict={canPredict}
+        pickValue={myPick?.away}
+        onChange={(n) => save(myPick?.home ?? 0, n)}
+        label={`${away?.name ?? 'Away'} goals`}
       />
 
       {match.kickoff && (
@@ -143,32 +148,14 @@ function BracketNode({ wc, match, meId, now, predict, unpredict }: NodeProps) {
           {result ? (
             <span className="badge badge-success wc-bracket-badge">FT</span>
           ) : locked ? (
-            <span className="badge badge-warn wc-bracket-badge">🔒 Kicked off</span>
+            <span className="badge badge-warn wc-bracket-badge">🔒</span>
           ) : (
             <Countdown kickoff={match.kickoff} now={now} />
           )}
-        </div>
-      )}
-
-      {canPredict && (
-        <div className="wc-bracket-pick">
-          <ScoreStepper
-            value={myPick?.home ?? 0}
-            onChange={(n) => adjust('home', n - (myPick?.home ?? 0))}
-            label={`${home?.name ?? 'Home'} goals`}
-          />
-          <span className="wc-dash" aria-hidden>
-            –
-          </span>
-          <ScoreStepper
-            value={myPick?.away ?? 0}
-            onChange={(n) => adjust('away', n - (myPick?.away ?? 0))}
-            label={`${away?.name ?? 'Away'} goals`}
-          />
-          {myPick && (
+          {canPredict && myPick && (
             <button
               type="button"
-              className="btn btn-sm btn-ghost wc-bracket-clear"
+              className="wc-bracket-clear"
               onClick={clearPick}
               title="Clear my pick"
               aria-label="Clear my pick"
@@ -179,12 +166,6 @@ function BracketNode({ wc, match, meId, now, predict, unpredict }: NodeProps) {
         </div>
       )}
 
-      {!result && myPick && !canPredict && (
-        <div className="wc-bracket-mypick muted small">
-          Your pick: {myPick.home}–{myPick.away}
-          {locked ? ' · 🔒 locked' : ''}
-        </div>
-      )}
       {!result && !myPick && ready && !locked && !meId && (
         <div className="wc-bracket-mypick muted small">Pick your name to predict.</div>
       )}
@@ -192,20 +173,28 @@ function BracketNode({ wc, match, meId, now, predict, unpredict }: NodeProps) {
   );
 }
 
+/** One team row: flag, name, and — on the right — its scoreline cell, which is
+ * the final/result number, an inline stepper while you can still predict, or your
+ * locked pick once kicked off. Keeping the number beside the name stays compact. */
 function Slot({
-  wc,
-  teamId,
+  team,
   source,
-  score,
   isWinner,
+  result,
+  canPredict,
+  pickValue,
+  onChange,
+  label,
 }: {
-  wc: WorldCupState;
-  teamId: string | undefined;
+  team: WcTeam | undefined;
   source: WcSource | undefined;
-  score: number | undefined;
   isWinner: boolean;
+  result: number | undefined;
+  canPredict: boolean;
+  pickValue: number | undefined;
+  onChange: (next: number) => void;
+  label: string;
 }) {
-  const team = findTeam(wc, teamId);
   return (
     <div className={`wc-bracket-slot ${isWinner ? 'is-winner' : ''} ${team ? '' : 'is-tbd'}`}>
       <span className="wc-bracket-flag" aria-hidden>
@@ -214,7 +203,15 @@ function Slot({
       <span className="wc-bracket-team" title={team?.name ?? shortSource(source)}>
         {team ? team.name : shortSource(source)}
       </span>
-      <span className="wc-bracket-score">{score ?? ''}</span>
+      {result != null ? (
+        <span className="wc-bracket-score">{result}</span>
+      ) : canPredict ? (
+        <ScoreStepper value={pickValue ?? 0} onChange={onChange} label={label} />
+      ) : pickValue != null ? (
+        <span className="wc-bracket-score wc-bracket-pickval" title="Your pick">
+          {pickValue}
+        </span>
+      ) : null}
     </div>
   );
 }

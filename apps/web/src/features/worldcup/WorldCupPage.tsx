@@ -64,10 +64,10 @@ type Tab =
   | 'bets';
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
+  { id: 'bracket', label: 'Bracket', icon: '🏟️' },
   { id: 'fixtures', label: 'Fixtures', icon: '📅' },
   { id: 'cinema', label: 'Cinema', icon: '🎬' },
   { id: 'groups', label: 'Groups', icon: '🔢' },
-  { id: 'bracket', label: 'Bracket', icon: '🏟️' },
   { id: 'scorers', label: 'Scorers', icon: '🥇' },
   { id: 'leaderboard', label: 'Leaderboard', icon: '🏆' },
   { id: 'timeline', label: 'Timeline', icon: '📈' },

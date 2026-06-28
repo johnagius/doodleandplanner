@@ -6638,9 +6638,24 @@ label.field {
   flex: none;
 }
 .wc-bracket-team {
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+/* The scoreline cell sits at the end of each team row, beside the name. */
+.wc-bracket-slot > .wc-bracket-score,
+.wc-bracket-slot > .wc-stepper {
+  margin-left: auto;
+  flex: none;
+}
+.wc-bracket-slot > .wc-stepper {
+  transform: scale(0.82);
+  transform-origin: right center;
+}
+.wc-bracket-pickval {
+  color: var(--muted);
 }
 .wc-bracket-slot.is-tbd .wc-bracket-team {
   color: var(--muted);
@@ -6675,22 +6690,16 @@ label.field {
   flex: none;
   font-size: 0.66rem;
 }
-/* Inline scoreline entry — the same steppers as the fixtures card. */
-.wc-bracket-pick {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.3rem;
-  padding: 0.35rem 0.4rem;
-  border-top: 1px solid var(--border);
-}
-.wc-bracket-pick .wc-stepper {
-  transform: scale(0.92);
-}
 .wc-bracket-clear {
   flex: none;
-  padding: 0.1rem 0.35rem;
+  margin-left: auto;
+  padding: 0.05rem 0.3rem;
   line-height: 1;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
 }
 .wc-bracket-mypick {
   padding: 0.3rem 0.5rem;

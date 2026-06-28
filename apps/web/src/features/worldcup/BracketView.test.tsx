@@ -54,9 +54,9 @@ describe('BracketView', () => {
     renderBracket(board());
     // Kick-off time label (🕒) appears for the ties.
     expect(screen.getAllByText(/🕒/).length).toBeGreaterThanOrEqual(2);
-    // The upcoming tie gets a live countdown; the kicked-off one shows the lock.
+    // The upcoming tie gets a live countdown; the kicked-off one shows a lock badge.
     expect(screen.getByText(/⏱/)).toBeTruthy();
-    expect(screen.getByText(/Kicked off/)).toBeTruthy();
+    expect(screen.getByText('🔒')).toBeTruthy(); // the locked tie's badge (exact match)
   });
 
   it('lets you enter a scoreline for a ready, not-yet-started tie', async () => {

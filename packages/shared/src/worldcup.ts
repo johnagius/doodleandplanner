@@ -15,6 +15,7 @@
 import { generateId } from './ids.js';
 import { toMs } from './time.js';
 import type { ISODateTime, Message } from './types.js';
+import { WC_THIRD_PLACE_TABLE } from './worldcupThirdPlace.js';
 
 /** Tournament stages, ordered from earliest to latest. */
 export type WcStage = 'group' | 'r32' | 'r16' | 'qf' | 'sf' | 'third' | 'final';
@@ -980,15 +981,14 @@ const THIRD_PLACE_SLOTS: ReadonlyArray<readonly string[]> = [
 
 /**
  * Assign the eight best third-placed teams to the eight Round-of-32 third-place
- * slots (slot index → group letter), honouring FIFA's official candidate sets so
- * no third meets the winner of its own group. Returns an empty map until every
- * group is complete.
+ * slots (slot index → group letter) using FIFA's official Annexe C table, so the
+ * bracket is exactly the real one — including the rule that a third never meets
+ * the winner of its own group. Returns an empty map until every group is complete.
  *
  * FIFA pre-computes one assignment for each of the 495 ways the eight qualifying
- * groups can fall out; rather than embed that table verbatim we find a valid
- * one-to-one matching that respects the same candidate sets (a deterministic
- * backtracking search, so the same standings always yield the same bracket). A
- * defensive rank-order fallback fills the slots should no perfect matching exist.
+ * groups can fall out; we look the live combination up directly in
+ * {@link WC_THIRD_PLACE_TABLE}. The candidate-set matching below is only a
+ * defensive fallback should a combination ever be missing from the table.
  */
 export function thirdPlaceAssignment(state: WorldCupState): Map<number, string> {
   const result = new Map<number, string>();
@@ -1001,9 +1001,17 @@ export function thirdPlaceAssignment(state: WorldCupState): Map<number, string> 
     .filter((g): g is string => !!g);
   if (qualifyingGroups.length < THIRD_PLACE_SLOTS.length) return result;
 
+  // Official lookup: the qualifying groups, sorted, key FIFA's Annexe C table,
+  // whose value lists the group filling each slot (0-7) in order.
+  const row = WC_THIRD_PLACE_TABLE[[...qualifyingGroups].sort().join('')];
+  if (row) {
+    [...row].forEach((group, slot) => result.set(slot, group));
+    return result;
+  }
+
+  // Fallback (shouldn't happen): any matching that respects the candidate sets.
   const available = new Set(qualifyingGroups);
   const assignment = new Array<string | null>(THIRD_PLACE_SLOTS.length).fill(null);
-
   const fill = (slot: number): boolean => {
     if (slot === THIRD_PLACE_SLOTS.length) return true;
     for (const group of THIRD_PLACE_SLOTS[slot]!) {
@@ -1016,12 +1024,9 @@ export function thirdPlaceAssignment(state: WorldCupState): Map<number, string> 
     }
     return false;
   };
-
   if (fill(0)) {
     assignment.forEach((group, slot) => group && result.set(slot, group));
   } else {
-    // No clean matching (shouldn't happen with the official sets) — still place
-    // every qualifying third so the bracket fully populates.
     qualifyingGroups.forEach((group, slot) => result.set(slot, group));
   }
   return result;

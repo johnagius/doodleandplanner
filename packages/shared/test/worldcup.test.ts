@@ -81,6 +81,7 @@ import {
   type WcMatchEvent,
   type WorldCupState,
 } from '../src/worldcup.js';
+import { WC_THIRD_PLACE_TABLE } from '../src/worldcupThirdPlace.js';
 import type { Message } from '../src/types.js';
 
 const NOW = () => new Date('2026-06-01T00:00:00Z');
@@ -458,6 +459,34 @@ describe('bracket population', () => {
     // All eight thirds are distinct teams from distinct groups.
     const groups = thirdMatches.map((m) => findTeam(s, m.awayId)!.group);
     expect(new Set(groups).size).toBe(8);
+  });
+
+  it('fills third-place slots from FIFA Annexe C exactly', () => {
+    const s = playAllGroups(seed());
+    // The combination of qualifying third-place groups keys FIFA's official table.
+    const key = thirdPlacedRanking(s)
+      .slice(0, 8)
+      .map((r) => findTeam(s, r.teamId)!.group)
+      .sort()
+      .join('');
+    const row = WC_THIRD_PLACE_TABLE[key];
+    expect(row).toBeDefined();
+    // Every resolved third matches the group FIFA's table assigns to that slot.
+    for (const m of s.matches.filter((x) => x.awaySource?.kind === 'best-third')) {
+      const slot = m.awaySource!.slot!;
+      expect(findTeam(s, m.awayId)!.group).toBe(row![slot]);
+    }
+  });
+
+  it('embeds all 495 Annexe C combinations as valid permutations', () => {
+    const keys = Object.keys(WC_THIRD_PLACE_TABLE);
+    expect(keys).toHaveLength(495);
+    for (const key of keys) {
+      expect(key).toHaveLength(8);
+      const value = WC_THIRD_PLACE_TABLE[key]!;
+      // The value places each qualifying group exactly once across the 8 slots.
+      expect([...value].sort().join('')).toBe(key);
+    }
   });
 
   it('advances winners through every round to the final', () => {

@@ -6627,6 +6627,57 @@ label.field {
   text-align: center;
   padding-bottom: 0.2rem;
 }
+/* The round header doubles as a fold/unfold control. */
+.wc-bracket-head-btn {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+.wc-bracket-head-btn:hover {
+  color: var(--text);
+}
+/* A collapsed round: a thin vertical strip you tap to expand, so the live rounds
+ * get the width instead. */
+.wc-bracket-col-collapsed {
+  flex: none;
+  align-self: stretch;
+  width: 42px;
+  min-width: 42px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--muted) 7%, var(--surface));
+  color: var(--muted);
+  cursor: pointer;
+}
+.wc-bracket-col-collapsed:hover {
+  color: var(--text);
+  background: color-mix(in srgb, var(--muted) 12%, var(--surface));
+}
+.wc-bracket-collapsed-label {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  text-transform: uppercase;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  font-size: 0.78rem;
+}
+.wc-bracket-collapsed-count {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.1rem 0.35rem;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
 .wc-bracket-node {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);

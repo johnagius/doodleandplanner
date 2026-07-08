@@ -71,6 +71,36 @@ describe('BracketView', () => {
     expect(screen.getByText('🔒')).toBeTruthy(); // the locked tie's badge (exact match)
   });
 
+  it('auto-collapses a completed round to a strip, and expands it on click', async () => {
+    const user = userEvent.setup();
+    // R32 fully played; an R16 tie is still to come → R32 should fold away.
+    const wc: WorldCupState = {
+      season: '2026',
+      title: 'T',
+      teams: [
+        { id: 'GER', name: 'Germany', flag: '🇩🇪', group: 'E' },
+        { id: 'PAR', name: 'Paraguay', flag: '🇵🇾', group: 'D' },
+        { id: 'BRA', name: 'Brazil', flag: '🇧🇷', group: 'C' },
+        { id: 'JPN', name: 'Japan', flag: '🇯🇵', group: 'F' },
+      ],
+      matches: [
+        { id: 'r32-1', stage: 'r32', order: 0, kickoff: past, homeId: 'GER', awayId: 'PAR', result: { home: 1, away: 0 } }, // prettier-ignore
+        { id: 'r32-2', stage: 'r32', order: 1, kickoff: past, homeId: 'BRA', awayId: 'JPN', result: { home: 2, away: 1 } }, // prettier-ignore
+        { id: 'r16-1', stage: 'r16', order: 2, kickoff: soon, homeSource: { kind: 'winner-match', matchId: 'r32-1' }, awaySource: { kind: 'winner-match', matchId: 'r32-2' } }, // prettier-ignore
+      ],
+      predictors: [{ id: 'p1', name: 'John' }],
+      predictions: [],
+      createdAt: '2026-01-01T00:00:00.000Z',
+    };
+    renderBracket(wc);
+    // R32 is folded to a strip — its teams aren't rendered.
+    const strip = screen.getByRole('button', { name: /Show Round of 32/ });
+    expect(screen.queryByText('Germany')).toBeNull();
+    // Expanding it brings the R32 ties (and their teams) back.
+    await user.click(strip);
+    expect(screen.getByText('Germany')).toBeTruthy();
+  });
+
   it('lets you enter a scoreline for a ready, not-yet-started tie', async () => {
     const user = userEvent.setup();
     renderBracket(board());

@@ -12,6 +12,7 @@ import {
   type WcTeam,
   type WorldCupState,
 } from '@dap/shared';
+import { useState } from 'react';
 import { useToast } from '../../components/Toast.js';
 import { useWorldCupStore } from '../../state/worldCupStore.js';
 import { ChampionPicker } from './ChampionPicker.js';
@@ -43,6 +44,26 @@ export function BracketView({ wc }: { wc: WorldCupState }) {
 
   const nodeProps = { wc, meId, now, predict, unpredict, nextId };
 
+  // A round is "done" once every tie in it has a result. Done rounds start
+  // collapsed to a thin strip so the live rounds (QF onward) fit without lots of
+  // scrolling; tapping a round's header folds/unfolds it. Manual toggles win.
+  const roundDone = (stage: WcStage): boolean => {
+    const ms = wc.matches.filter((m) => m.stage === stage);
+    return ms.length > 0 && ms.every((m) => m.result);
+  };
+  const [collapsed, setCollapsed] = useState<Set<WcStage>>(
+    // Only auto-collapse earlier rounds while a later one is still live, so we
+    // never fold everything once the whole bracket is done.
+    () => new Set(ROUNDS.filter((s) => roundDone(s) && ROUNDS.some((l) => !roundDone(l)))),
+  );
+  const toggleRound = (stage: WcStage) =>
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(stage)) next.delete(stage);
+      else next.add(stage);
+      return next;
+    });
+
   return (
     <div className="stack">
       <ChampionPicker wc={wc} />
@@ -59,9 +80,35 @@ export function BracketView({ wc }: { wc: WorldCupState }) {
             const matches = wc.matches
               .filter((m) => m.stage === stage)
               .sort((a, b) => a.order - b.order);
+            if (collapsed.has(stage)) {
+              return (
+                <button
+                  key={stage}
+                  type="button"
+                  className="wc-bracket-col-collapsed"
+                  onClick={() => toggleRound(stage)}
+                  title={`Show ${WC_STAGE_LABEL[stage]}`}
+                  aria-label={`Show ${WC_STAGE_LABEL[stage]}`}
+                  aria-expanded={false}
+                >
+                  <span aria-hidden>▸</span>
+                  <span className="wc-bracket-collapsed-label">{WC_STAGE_LABEL[stage]}</span>
+                  <span className="wc-bracket-collapsed-count">{matches.length}</span>
+                </button>
+              );
+            }
             return (
               <div key={stage} className="wc-bracket-col">
-                <div className="wc-bracket-head">{WC_STAGE_LABEL[stage]}</div>
+                <button
+                  type="button"
+                  className="wc-bracket-head wc-bracket-head-btn"
+                  onClick={() => toggleRound(stage)}
+                  title={`Hide ${WC_STAGE_LABEL[stage]}`}
+                  aria-label={`Hide ${WC_STAGE_LABEL[stage]}`}
+                  aria-expanded={true}
+                >
+                  {WC_STAGE_LABEL[stage]} <span aria-hidden>▾</span>
+                </button>
                 {matches.map((m) => (
                   <div key={m.id} className="wc-bracket-cell">
                     <BracketNode match={m} {...nodeProps} />

@@ -10,9 +10,9 @@
  * Playwright Chromium (video only), then muxes the concatenated narration on top
  * with ffmpeg. No servers, no network — just the checked-in assets.
  *
- * Requirements: ffmpeg on your PATH (macOS: `brew install ffmpeg`,
- * Debian/Ubuntu: `sudo apt install ffmpeg`) and the Playwright browser
- * (`npx playwright install chromium`, already present in CI).
+ * Requirements: ffmpeg on your PATH (Windows: `winget install Gyan.FFmpeg`,
+ * macOS: `brew install ffmpeg`, Debian/Ubuntu: `sudo apt install ffmpeg`) and
+ * the Playwright browser (`npx playwright install chromium`, already in CI).
  */
 import { chromium } from 'playwright';
 import { spawnSync } from 'node:child_process';
@@ -37,10 +37,13 @@ function ffmpeg(args, opts = {}) {
   if (r.error && r.error.code === 'ENOENT') {
     console.error(
       `\n✖ ffmpeg not found (looked for "${FFMPEG}").\n` +
-        `  Install it and re-run:\n` +
-        `    macOS:  brew install ffmpeg\n` +
-        `    Ubuntu: sudo apt install ffmpeg\n` +
-        `  Or point FFMPEG at a binary:  FFMPEG=/path/to/ffmpeg npm run guide:video\n`,
+        `  Install it, open a NEW terminal, and re-run:\n` +
+        `    Windows: winget install Gyan.FFmpeg   (then reopen the terminal)\n` +
+        `    macOS:   brew install ffmpeg\n` +
+        `    Ubuntu:  sudo apt install ffmpeg\n` +
+        `  Or point FFMPEG at a binary you already have:\n` +
+        `    Windows (cmd):  set "FFMPEG=C:\\path\\to\\ffmpeg.exe" && npm run guide:video\n` +
+        `    macOS/Linux:    FFMPEG=/path/to/ffmpeg npm run guide:video\n`,
     );
     process.exit(1);
   }

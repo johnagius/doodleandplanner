@@ -2,6 +2,7 @@ import {
   addClubPredictor,
   clearClubPrediction,
   clearFixtureResult,
+  clubLiveSwings,
   removeClubPredictor,
   removeFixture,
   renameClubPredictor,
@@ -10,7 +11,9 @@ import {
   syncClubFeed,
   type ClubBtts,
   type ClubLeagueState,
+  type ClubLiveInfo,
   type ClubOutcome,
+  type ClubResult,
   type ClubTotals,
   type RoomState,
 } from '@dap/shared';
@@ -59,6 +62,10 @@ interface ClubLeagueStore {
   meId: string | null;
   /** Organiser mode reveals result-override controls (local toggle, no auth). */
   admin: boolean;
+  /** Ephemeral in-play info per fixture id (from the live feed; not persisted). */
+  live: Record<string, ClubLiveInfo>;
+  /** Live "swing" notes per fixture id, newest last (session-only). */
+  liveNotes: Record<string, string[]>;
   unsubscribe: (() => void) | null;
 
   load: () => Promise<void>;
@@ -171,6 +178,8 @@ export const useClubLeagueStore = create<ClubLeagueStore>((set, get) => {
     offline: false,
     meId: readLocal(PREDICTOR_KEY),
     admin: readLocal(ADMIN_KEY) === '1',
+    live: {},
+    liveNotes: {},
     unsubscribe: null,
 
     async load() {
@@ -239,18 +248,51 @@ export const useClubLeagueStore = create<ClubLeagueStore>((set, get) => {
       if (!club) return;
       const { fixtures, window } = await fetchClubFixtures();
       if (fixtures.length === 0) return; // nothing fresh — leave the board as-is
-      // Only write when the reconcile actually changes the board, so we don't spam
-      // the shared room on every poll.
+
+      // Persist the reconciled fixtures (final results, adds/prunes) only when the
+      // board actually changes, so we don't spam the shared room on every poll.
       const next = syncClubFeed(club, fixtures, window ? { window } : undefined);
-      if (JSON.stringify(next.fixtures) === JSON.stringify(club.fixtures)) return;
-      await apply((s) =>
-        s.clubLeague
-          ? {
-              ...s,
-              clubLeague: syncClubFeed(s.clubLeague, fixtures, window ? { window } : undefined),
-            }
-          : s,
+      if (JSON.stringify(next.fixtures) !== JSON.stringify(club.fixtures)) {
+        await apply((s) =>
+          s.clubLeague
+            ? {
+                ...s,
+                clubLeague: syncClubFeed(s.clubLeague, fixtures, window ? { window } : undefined),
+              }
+            : s,
+        );
+      }
+
+      // Fold in-play scores into an ephemeral (device-only) live map, keyed by our
+      // local fixture id, and note any market swings since the last poll.
+      const board = get().state?.clubLeague;
+      if (!board) return;
+      const byExt = new Map(
+        board.fixtures.filter((f) => f.externalId).map((f) => [f.externalId!, f]),
       );
+      const prevLive = get().live;
+      const live: Record<string, ClubLiveInfo> = {};
+      const notes: Record<string, string[]> = { ...get().liveNotes };
+      for (const inc of fixtures) {
+        if (!inc.live) continue;
+        const local = byExt.get(inc.externalId);
+        if (!local) continue;
+        live[local.id] = inc.live;
+        const before = prevLive[local.id];
+        const prevScore: ClubResult | null = before
+          ? { home: before.home, away: before.away }
+          : null;
+        const nowScore: ClubResult = { home: inc.live.home, away: inc.live.away };
+        if (before && (before.home !== nowScore.home || before.away !== nowScore.away)) {
+          const swings = clubLiveSwings(board, local.id, prevScore, nowScore);
+          if (swings.length) {
+            const clock = inc.live.detail ? `${inc.live.detail} · ` : '';
+            const line = `${clock}${nowScore.home}–${nowScore.away} · ${swings.join(' · ')}`;
+            notes[local.id] = [...(notes[local.id] ?? []), line].slice(-6);
+          }
+        }
+      }
+      set({ live, liveNotes: notes });
     },
 
     async enterResult(fixtureId, home, away) {

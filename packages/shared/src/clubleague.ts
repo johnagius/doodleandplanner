@@ -86,6 +86,27 @@ export interface ClubResult {
 /** Feed status of a fixture. */
 export type ClubFixtureStatus = 'scheduled' | 'live' | 'final';
 
+/** A goal or card during a match, from the live feed. Display-only. */
+export interface ClubMatchEvent {
+  kind: 'goal' | 'own-goal' | 'penalty' | 'yellow' | 'red';
+  team: 'home' | 'away';
+  player?: string;
+  /** Display clock, e.g. "67'". */
+  clock?: string;
+}
+
+/** Ephemeral in-play info for a fixture — never persisted, held on the device for
+ * live display + "as it stands" scoring. */
+export interface ClubLiveInfo {
+  home: number;
+  away: number;
+  minute?: number | null;
+  /** Short status text, e.g. "HT", "67'". */
+  detail?: string | null;
+  status: ClubFixtureStatus;
+  events?: ClubMatchEvent[];
+}
+
 export interface ClubFixture {
   id: string;
   competitionId: string;
@@ -168,7 +189,7 @@ export interface ClubLeagueState {
 }
 
 /** Bump when the seeded teams/competitions/periods change; older boards re-seed. */
-export const CLUB_SEED_VERSION = 4;
+export const CLUB_SEED_VERSION = 5;
 
 // --- Scoring ---------------------------------------------------------------
 
@@ -350,22 +371,26 @@ function emptyRow(p: ClubPredictor): ClubLeaderRow {
 /**
  * The overall season table — every player's cumulative points across all
  * resulted fixtures. `fixtureIds`, when given, restricts scoring to that subset
- * (used for per-period and run-in tables).
+ * (used for per-period and run-in tables). `liveScores` folds in-play games into
+ * the totals "as it stands" (fixtureId → current score) — a provisional fixture
+ * with no final result yet is scored against its live score.
  */
 export function clubLeaderboard(
   state: ClubLeagueState,
-  opts?: { fixtureIds?: ReadonlySet<string> },
+  opts?: { fixtureIds?: ReadonlySet<string>; liveScores?: Record<string, ClubResult> },
 ): ClubLeaderRow[] {
   const only = opts?.fixtureIds;
+  const live = opts?.liveScores;
   const rows = new Map(state.predictors.map((p) => [p.id, emptyRow(p)]));
   for (const fixture of state.fixtures) {
-    if (!fixture.result) continue;
+    const result = fixture.result ?? live?.[fixture.id];
+    if (!result) continue;
     if (only && !only.has(fixture.id)) continue;
     for (const pred of state.predictions) {
       if (pred.fixtureId !== fixture.id) continue;
       const row = rows.get(pred.predictorId);
       if (!row) continue;
-      const s = scoreClubPrediction(pred, fixture.result);
+      const s = scoreClubPrediction(pred, result);
       row.points += s.points;
       const markets = (s.hits.result ? 1 : 0) + (s.hits.totals ? 1 : 0) + (s.hits.btts ? 1 : 0);
       if (markets > 0) row.scored++;
@@ -374,6 +399,97 @@ export function clubLeaderboard(
     }
   }
   return sortRows([...rows.values()]);
+}
+
+export interface ClubLeaderRowMoved extends ClubLeaderRowRanked {
+  /** Places climbed since before the live games folded in (+up, −down, 0 same). */
+  movement: number;
+}
+
+/** Season table with rank + how each player has moved once the live "as it
+ * stands" scores are folded in — the World-Cup-style who-pips-who. */
+export function clubLeaderboardWithMovement(
+  state: ClubLeagueState,
+  liveScores?: Record<string, ClubResult>,
+): ClubLeaderRowMoved[] {
+  const live = clubLeaderboard(state, liveScores ? { liveScores } : undefined);
+  const settled = liveScores ? clubLeaderboard(state) : live;
+  const prevRank = new Map(settled.map((r, i) => [r.predictorId, i + 1]));
+  return live.map((r, i) => ({
+    ...r,
+    rank: i + 1,
+    movement: (prevRank.get(r.predictorId) ?? i + 1) - (i + 1),
+  }));
+}
+
+/**
+ * Human notes for how a live score change swings the markets — "one team
+ * equalises → now a draw, favours Daniel". Pure: pass the previous and new live
+ * score; returns a note per market that flipped.
+ */
+export function clubLiveSwings(
+  state: ClubLeagueState,
+  fixtureId: string,
+  prev: ClubResult | null,
+  next: ClubResult,
+): string[] {
+  const pm = prev ? marketsForResult(prev) : null;
+  const nm = marketsForResult(next);
+  const preds = state.predictions.filter((p) => p.fixtureId === fixtureId);
+  const nameOf = (id: string) => state.predictors.find((p) => p.id === id)?.name;
+  const who = (pick: (p: ClubPrediction) => boolean): string[] =>
+    preds
+      .filter(pick)
+      .map((p) => nameOf(p.predictorId))
+      .filter((n): n is string => !!n);
+  const notes: string[] = [];
+  if (!pm || pm.outcome !== nm.outcome) {
+    const label = nm.outcome === '1' ? 'a home win' : nm.outcome === '2' ? 'an away win' : 'a draw';
+    const names = who((p) => p.outcome === nm.outcome);
+    notes.push(`Now ${label}${names.length ? ` — favours ${names.join(', ')}` : ''}`);
+  }
+  if (!pm || pm.totals !== nm.totals) {
+    const names = who((p) => p.totals === nm.totals);
+    notes.push(
+      `${nm.totals === 'over' ? 'Over' : 'Under'} 2.5 now${names.length ? ` — favours ${names.join(', ')}` : ''}`,
+    );
+  }
+  if ((!pm || pm.btts !== nm.btts) && nm.btts === 'yes') {
+    const names = who((p) => p.btts === 'yes');
+    notes.push(`Both teams have scored${names.length ? ` — favours ${names.join(', ')}` : ''}`);
+  }
+  return notes;
+}
+
+export interface ClubRivalry {
+  rank: number;
+  of: number;
+  points: number;
+  /** The player directly above (to catch) and below (to hold off), with the gap. */
+  ahead?: { name: string; gap: number };
+  behind?: { name: string; gap: number };
+}
+
+/** "Where you stand" for one player — rank plus the gap to the rivals either
+ * side, folding in live scores when given. */
+export function clubRivalry(
+  state: ClubLeagueState,
+  predictorId: string,
+  liveScores?: Record<string, ClubResult>,
+): ClubRivalry | null {
+  const rows = clubLeaderboard(state, liveScores ? { liveScores } : undefined);
+  const i = rows.findIndex((r) => r.predictorId === predictorId);
+  if (i < 0) return null;
+  const me = rows[i]!;
+  const above = rows[i - 1];
+  const below = rows[i + 1];
+  return {
+    rank: i + 1,
+    of: rows.length,
+    points: me.points,
+    ahead: above ? { name: above.name, gap: above.points - me.points } : undefined,
+    behind: below ? { name: below.name, gap: me.points - below.points } : undefined,
+  };
 }
 
 function sortRows(rows: ClubLeaderRow[]): ClubLeaderRow[] {
@@ -467,19 +583,18 @@ export interface ClubTrophy {
   emoji: string;
 }
 
-/** The elite finale for the leaders — the most prestigious prize. */
+/** The elite finale for the leaders — the most prestigious league prize. */
 export const CLUB_TROPHY_TOP: ClubTrophy = {
-  runInName: 'Champions Run-In',
-  name: "The Champions' Crown",
+  runInName: 'Master League Run-In',
+  name: 'Master League Trophy',
   icon: 'trophy',
   emoji: '🏆',
 };
 
-/** The second-tier finale for the top of League 2 — a cool prize of its own,
- * just a notch below the Crown. */
+/** The second-tier finale for the top of League 2 — a prize of its own. */
 export const CLUB_TROPHY_SECOND: ClubTrophy = {
-  runInName: "Challengers' Run-In",
-  name: "The Challengers' Shield",
+  runInName: 'First Division Run-In',
+  name: 'First Division Shield',
   icon: 'shield',
   emoji: '🛡️',
 };
@@ -750,6 +865,8 @@ export interface ClubFeedFixture {
   status: ClubFixtureStatus;
   /** Present once the game is final (the 90-minute regulation score). */
   result?: ClubResult;
+  /** In-play score + minute (live games) — ephemeral, never persisted. */
+  live?: ClubLiveInfo;
 }
 
 /** Re-apply our tracked club's canonical name/short/colour to a side that the
@@ -1003,7 +1120,7 @@ const PERIODS: SeasonPeriod[] = [
 export function seedClubLeague(now: () => Date = () => new Date()): ClubLeagueState {
   return {
     season: '2026/27',
-    title: 'Club Football Predictions',
+    title: 'Club Football',
     version: CLUB_SEED_VERSION,
     teams: TEAMS,
     competitions: COMPETITIONS,

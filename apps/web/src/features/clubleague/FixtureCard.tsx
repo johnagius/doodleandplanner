@@ -8,7 +8,9 @@ import {
   type ClubCompetition,
   type ClubFixture,
   type ClubLeagueState,
+  type ClubMatchEvent,
   type ClubOutcome,
+  type ClubResult,
   type ClubTotals,
 } from '@dap/shared';
 import { useState } from 'react';
@@ -17,19 +19,26 @@ import { formatKickoff } from './clubFormat.js';
 import { TeamChip } from './TeamChip.js';
 
 /** One fixture: the markets to predict, the reveal after kick-off, the result and
- * everyone's points. Organisers get a result-override for edge cases only. */
+ * everyone's points. Live games show the in-play score, scorers/cards, swing
+ * notes and an "as it stands" reveal. Organisers get a result-override only. */
 export function FixtureCard({ club, fixture }: { club: ClubLeagueState; fixture: ClubFixture }) {
   const meId = useClubLeagueStore((s) => s.meId);
   const admin = useClubLeagueStore((s) => s.admin);
+  const liveInfo = useClubLeagueStore((s) => s.live[fixture.id]);
+  const notes = useClubLeagueStore((s) => s.liveNotes[fixture.id]);
   const now = new Date();
   const locked = isFixtureLocked(fixture, now);
-  const live = fixture.status === 'live' && !fixture.result;
+  const isLive = !fixture.result && !!liveInfo;
   const comp = findCompetition(club, fixture.competitionId);
   const mine = meId ? findPrediction(club, fixture.id, meId) : undefined;
-  const settled = fixture.result ? marketsForResult(fixture.result) : null;
+
+  // "As it stands" score for a live game; the real result once final.
+  const liveScore: ClubResult | null = isLive ? { home: liveInfo.home, away: liveInfo.away } : null;
+  const effective = fixture.result ?? liveScore;
+  const settled = effective ? marketsForResult(effective) : null;
 
   return (
-    <div className="card club-fixture" id={`club-fx-${fixture.id}`}>
+    <div className={`card club-fixture ${isLive ? 'is-live' : ''}`} id={`club-fx-${fixture.id}`}>
       <div className="club-fixture-head">
         <CompChip comp={comp} />
         <span className="muted small">
@@ -39,8 +48,11 @@ export function FixtureCard({ club, fixture }: { club: ClubLeagueState; fixture:
           <span className="club-result-badge">
             {fixture.result.home}–{fixture.result.away} FT
           </span>
-        ) : live ? (
-          <span className="badge club-live-badge">🔴 Live</span>
+        ) : isLive ? (
+          <span className="badge club-live-badge">
+            🔴 {liveInfo.home}–{liveInfo.away}
+            {liveInfo.detail ? ` · ${liveInfo.detail}` : ''}
+          </span>
         ) : locked ? (
           <span className="badge">🔒 Locked</span>
         ) : (
@@ -50,9 +62,19 @@ export function FixtureCard({ club, fixture }: { club: ClubLeagueState; fixture:
 
       <div className="club-fixture-teams">
         <TeamChip side={fixture.home} />
-        <span className="club-vs">v</span>
+        <span className="club-vs">
+          {fixture.result
+            ? `${fixture.result.home} – ${fixture.result.away}`
+            : isLive
+              ? `${liveInfo.home} – ${liveInfo.away}`
+              : 'v'}
+        </span>
         <TeamChip side={fixture.away} align="right" />
       </div>
+
+      {isLive && liveInfo.events && liveInfo.events.length > 0 && (
+        <EventsList events={liveInfo.events} home={fixture.home.short} away={fixture.away.short} />
+      )}
 
       {!locked && meId && <MarketPicker club={club} fixture={fixture} />}
 
@@ -62,11 +84,62 @@ export function FixtureCard({ club, fixture }: { club: ClubLeagueState; fixture:
         </p>
       )}
 
-      {locked && <RevealTable club={club} fixture={fixture} settled={settled} />}
+      {locked && (
+        <RevealTable club={club} fixture={fixture} settled={settled} liveScore={liveScore} />
+      )}
 
-      {mine && <MyTicket club={club} fixture={fixture} />}
+      {mine && <MyTicket club={club} fixture={fixture} liveScore={liveScore} />}
+
+      {isLive && notes && notes.length > 0 && (
+        <ul className="club-live-notes">
+          {[...notes].reverse().map((n, i) => (
+            <li key={i}>📣 {n}</li>
+          ))}
+        </ul>
+      )}
 
       {admin && <ResultEditor fixture={fixture} />}
+    </div>
+  );
+}
+
+/** Goals + cards for a live game, split by side. */
+function EventsList({
+  events,
+  home,
+  away,
+}: {
+  events: ClubMatchEvent[];
+  home: string;
+  away: string;
+}) {
+  const icon = (k: ClubMatchEvent['kind']) =>
+    k === 'yellow'
+      ? '🟨'
+      : k === 'red'
+        ? '🟥'
+        : k === 'own-goal'
+          ? '⚽(og)'
+          : k === 'penalty'
+            ? '⚽(p)'
+            : '⚽';
+  const line = (side: 'home' | 'away') =>
+    events
+      .filter((e) => e.team === side)
+      .map((e, i) => (
+        <span key={i} className="club-ev">
+          {icon(e.kind)} {e.player ?? ''}
+          {e.clock ? ` ${e.clock}` : ''}
+        </span>
+      ));
+  return (
+    <div className="club-events">
+      <div className="club-events-side">
+        <span className="muted small">{home}</span> {line('home')}
+      </div>
+      <div className="club-events-side club-events-away">
+        {line('away')} <span className="muted small">{away}</span>
+      </div>
     </div>
   );
 }
@@ -180,22 +253,32 @@ function MarketBtn({
   );
 }
 
-/** Your own ticket summary (with live points once the result lands). */
-function MyTicket({ club, fixture }: { club: ClubLeagueState; fixture: ClubFixture }) {
+/** Your own ticket summary (with live/final points). */
+function MyTicket({
+  club,
+  fixture,
+  liveScore,
+}: {
+  club: ClubLeagueState;
+  fixture: ClubFixture;
+  liveScore: ClubResult | null;
+}) {
   const meId = useClubLeagueStore((s) => s.meId)!;
   const clearMyPrediction = useClubLeagueStore((s) => s.clearMyPrediction);
   const locked = isFixtureLocked(fixture, new Date());
   const mine = findPrediction(club, fixture.id, meId);
   if (!mine) return null;
-  const score = fixture.result ? scoreClubPrediction(mine, fixture.result) : null;
+  const effective = fixture.result ?? liveScore;
+  const score = effective ? scoreClubPrediction(mine, effective) : null;
 
   return (
     <div className="club-myticket">
       <span className="muted small">Your pick:</span>
-      <TicketPills pred={mine} settled={fixture.result ? marketsForResult(fixture.result) : null} />
+      <TicketPills pred={mine} settled={effective ? marketsForResult(effective) : null} />
       {score != null && (
         <span className={`club-ticket-pts ${score.points > 0 ? 'is-hit' : 'is-miss'}`}>
           +{score.points}
+          {!fixture.result && liveScore ? ' *' : ''}
         </span>
       )}
       {!locked && (
@@ -240,17 +323,21 @@ function TicketPills({
   );
 }
 
-/** After lock-in, reveal everyone's picks + points. */
+/** After lock-in, reveal everyone's picks + points (live "as it stands", or final). */
 function RevealTable({
   club,
   fixture,
   settled,
+  liveScore,
 }: {
   club: ClubLeagueState;
   fixture: ClubFixture;
   settled: { outcome: ClubOutcome; totals: ClubTotals; btts: ClubBtts } | null;
+  liveScore: ClubResult | null;
 }) {
   const meId = useClubLeagueStore((s) => s.meId);
+  const effective = fixture.result ?? liveScore;
+  const asStands = !fixture.result && !!liveScore;
   const rows = club.predictors
     .map((p) => ({ p, pred: findPrediction(club, fixture.id, p.id) }))
     .filter((r) => r.pred);
@@ -265,13 +352,14 @@ function RevealTable({
     <div className="club-reveal">
       {settled && (
         <div className="club-reveal-key muted small">
-          Settled: {settled.outcome} · {settled.totals === 'over' ? 'Over 2.5' : 'Under 2.5'} · BTTS{' '}
+          {asStands ? 'As it stands' : 'Settled'}: {settled.outcome} ·{' '}
+          {settled.totals === 'over' ? 'Over 2.5' : 'Under 2.5'} · BTTS{' '}
           {settled.btts === 'yes' ? 'Yes' : 'No'}
         </div>
       )}
       <ul className="club-reveal-list">
         {rows.map(({ p, pred }) => {
-          const score = fixture.result && pred ? scoreClubPrediction(pred, fixture.result) : null;
+          const score = effective && pred ? scoreClubPrediction(pred, effective) : null;
           return (
             <li key={p.id} className={p.id === meId ? 'is-me' : ''}>
               <span className="club-reveal-name">{p.name}</span>
@@ -279,6 +367,7 @@ function RevealTable({
               {score != null && (
                 <span className={`club-ticket-pts ${score.points > 0 ? 'is-hit' : 'is-miss'}`}>
                   +{score.points}
+                  {asStands ? ' *' : ''}
                 </span>
               )}
             </li>

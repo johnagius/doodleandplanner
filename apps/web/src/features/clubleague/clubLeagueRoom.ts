@@ -26,6 +26,7 @@ export function reseed(old: ClubLeagueState): ClubLeagueState {
   return {
     ...old,
     version: CLUB_SEED_VERSION,
+    title: fresh.title,
     teams: fresh.teams,
     competitions: fresh.competitions,
     // Keep the organiser's own periods/tuning if they've been customised beyond
@@ -54,7 +55,7 @@ export async function loadOrCreateClubLeague(
   }
 
   const { room } = await createRoom({
-    name: 'Club Football Predictions',
+    name: 'Club Football',
     ownerName: 'Predictions',
     slug: CLUB_LEAGUE_SLUG,
   });

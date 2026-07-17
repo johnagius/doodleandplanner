@@ -56,13 +56,18 @@ export function ClubLeaguePage() {
 
   // Pull the automatic fixture feed once the board is open, then poll it. Fixtures
   // come straight from ESPN's public scoreboard (CORS-open), so this works without
-  // any backend of our own; when the realtime backend is on, the reconcile is
-  // shared to everyone.
+  // any backend of our own. Ticks every 30s: it actually fetches every tick while
+  // a game is live (fast, ~real-time scores), else every ~3 minutes.
   useEffect(() => {
     if (!boardReady) return;
-    const tick = () => void useClubLeagueStore.getState().syncFixtures();
+    let n = 0;
+    const tick = () => {
+      const hasLive = Object.keys(useClubLeagueStore.getState().live).length > 0;
+      if (hasLive || n % 6 === 0) void useClubLeagueStore.getState().syncFixtures();
+      n++;
+    };
     tick();
-    const id = setInterval(tick, 3 * 60_000);
+    const id = setInterval(tick, 30_000);
     return () => clearInterval(id);
   }, [boardReady]);
 
@@ -105,7 +110,7 @@ export function ClubLeaguePage() {
         <div className="club-hero-scrim" aria-hidden />
         <div className="row spread row-wrap" style={{ gap: '0.75rem' }}>
           <div style={{ minWidth: 0 }}>
-            <h1 className="club-hero-title">⚽ Club Football Predictions</h1>
+            <h1 className="club-hero-title">⚽ Club Football</h1>
             <p className="muted" style={{ margin: '0.25rem 0 0' }}>
               {club.season} · every game our clubs play, three markets each, promotion &amp;
               relegation.

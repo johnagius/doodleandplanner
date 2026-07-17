@@ -8668,3 +8668,53 @@ label.field {
 .club-day-flip-date {
   font-weight: 700;
 }
+
+/* Live match layer */
+.club-fixture.is-live {
+  border-color: color-mix(in srgb, var(--danger) 45%, var(--border));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--danger) 25%, transparent);
+}
+.club-live-banner {
+  background: var(--danger-soft);
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 40%, transparent);
+  font-weight: 600;
+}
+.club-rivalry {
+  background: var(--primary-soft);
+  color: var(--primary-darker);
+  border-color: color-mix(in srgb, var(--primary) 30%, transparent);
+}
+.club-events {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.78rem;
+  border-top: 1px dashed var(--border);
+  border-bottom: 1px dashed var(--border);
+  padding: 0.35rem 0;
+}
+.club-events-side {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+.club-events-away {
+  justify-content: flex-end;
+  text-align: right;
+}
+.club-ev {
+  white-space: nowrap;
+}
+.club-live-notes {
+  list-style: none;
+  margin: 0.2rem 0 0;
+  padding: 0.4rem 0.5rem;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.82rem;
+}

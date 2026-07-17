@@ -1,19 +1,15 @@
 import { CLUB_TROPHY_SECOND, CLUB_TROPHY_TOP } from '@dap/shared';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  hasGoodVoice,
-  primeVoices,
-  speak,
-  speechSupported,
-  stopSpeaking,
-} from './clubNarration.js';
 import { ShieldIcon, TrophyIcon } from './TrophyIcons.js';
+
+/** Pre-rendered narration in a natural voice, bundled as static audio so it
+ * sounds the same (and never robotic) on every device. */
+const VO = (id: string) => `${import.meta.env.BASE_URL}club-vo/${id}.mp3`;
 
 interface Scene {
   id: string;
-  /** Seconds this scene stays on screen. */
+  /** Seconds this scene stays on screen (fallback when narration is off). */
   seconds: number;
-  narration: string;
   caption: string;
   Visual: () => JSX.Element;
 }
@@ -29,23 +25,22 @@ export function ClubExplainer() {
   const [idx, setIdx] = useState(0);
   const [playing, setPlaying] = useState(true);
   const [narrate, setNarrate] = useState(false);
-  // Only offer narration when the device actually has a high-quality (neural)
-  // voice — otherwise the built-in robotic voice sounds bad, so we simply don't
-  // offer it and let the captions carry the words.
-  const [goodVoice, setGoodVoice] = useState(false);
   const timer = useRef<number | null>(null);
-
-  useEffect(() => {
-    if (speechSupported()) primeVoices(() => setGoodVoice(hasGoodVoice()));
-  }, []);
+  const audio = useRef<HTMLAudioElement | null>(null);
 
   const clear = () => {
     if (timer.current) window.clearTimeout(timer.current);
     timer.current = null;
   };
+  const stopAudio = () => {
+    if (audio.current) {
+      audio.current.pause();
+      audio.current = null;
+    }
+  };
 
-  // Drive the timeline. Each scene shows for its duration, or until narration
-  // finishes (whichever is longer), then advances — looping at the end.
+  // Drive the timeline. With narration on, each scene plays its bundled voice-over
+  // and advances when the audio ends; otherwise it holds for a fixed duration.
   useEffect(() => {
     if (!playing) return;
     const scene = scenes[idx]!;
@@ -55,12 +50,16 @@ export function ClubExplainer() {
       setIdx((i) => (i + 1) % scenes.length);
     };
     const holdMs = scene.seconds * 1000;
-    if (narrate && speechSupported()) {
-      const started = Date.now();
-      void speak(scene.narration).then(() => {
-        if (cancelled) return;
-        const remaining = Math.max(600, holdMs - (Date.now() - started));
-        timer.current = window.setTimeout(advance, remaining);
+    if (narrate) {
+      const el = new Audio(VO(scene.id));
+      audio.current = el;
+      el.onended = advance;
+      // If the audio can't load, fall back to the timed hold so the tour still runs.
+      el.onerror = () => {
+        timer.current = window.setTimeout(advance, holdMs);
+      };
+      void el.play().catch(() => {
+        timer.current = window.setTimeout(advance, holdMs);
       });
     } else {
       timer.current = window.setTimeout(advance, holdMs);
@@ -68,16 +67,16 @@ export function ClubExplainer() {
     return () => {
       cancelled = true;
       clear();
-      stopSpeaking();
+      stopAudio();
     };
   }, [idx, playing, narrate, scenes]);
 
-  useEffect(() => () => stopSpeaking(), []);
+  useEffect(() => () => stopAudio(), []);
 
   const go = useCallback(
     (next: number) => {
       clear();
-      stopSpeaking();
+      stopAudio();
       setIdx(((next % scenes.length) + scenes.length) % scenes.length);
     },
     [scenes.length],
@@ -91,20 +90,18 @@ export function ClubExplainer() {
       <div className="row spread" style={{ alignItems: 'center' }}>
         <h3 style={{ margin: 0 }}>🎬 The 60-second guide</h3>
         <div className="row" style={{ gap: '0.35rem' }}>
-          {goodVoice && (
-            <button
-              type="button"
-              className={`btn btn-sm ${narrate ? 'btn-primary' : ''}`}
-              aria-pressed={narrate}
-              onClick={() => {
-                setNarrate((n) => !n);
-                if (narrate) stopSpeaking();
-              }}
-              title="Toggle narration"
-            >
-              {narrate ? '🔊 Narration on' : '🔈 Narrate'}
-            </button>
-          )}
+          <button
+            type="button"
+            className={`btn btn-sm ${narrate ? 'btn-primary' : ''}`}
+            aria-pressed={narrate}
+            onClick={() => {
+              if (narrate) stopAudio();
+              setNarrate((n) => !n);
+            }}
+            title="Toggle narration"
+          >
+            {narrate ? '🔊 Narration on' : '🔈 Narrate'}
+          </button>
           <button
             type="button"
             className="btn btn-sm"
@@ -176,7 +173,7 @@ function IntroVisual() {
       <div className="cx-ball" aria-hidden>
         ⚽
       </div>
-      <div className="cx-title">Club Football Predictions</div>
+      <div className="cx-title">Club Football</div>
       <div className="cx-sub">Every game our clubs play — league, cups &amp; Europe</div>
     </div>
   );
@@ -310,50 +307,38 @@ const SCENES: Scene[] = [
   {
     id: 'intro',
     seconds: 5,
-    narration:
-      'Welcome to Club Football Predictions. Predict every game our ten clubs play, across the league, the cups and Europe.',
     caption: 'Predict every game our clubs play — across the league, cups and Europe.',
     Visual: IntroVisual,
   },
   {
     id: 'markets',
     seconds: 9,
-    narration:
-      'Each fixture is three quick bets. The result — one, X or two, worth three points. Over or under two and a half goals, worth two. And both teams to score, worth two. Fill in as many as you like.',
     caption: 'Three markets a game: Result (+3), Over/Under 2.5 (+2), Both teams to score (+2).',
     Visual: MarketsVisual,
   },
   {
     id: 'scoring',
     seconds: 7,
-    narration:
-      'When the game ends, every market you called right scores on its own. Nail all three and that is seven points.',
     caption: 'Each market scores on its own — nail all three and it’s a perfect +7.',
     Visual: ScoringVisual,
   },
   {
     id: 'divisions',
     seconds: 8,
-    narration:
-      'The season runs in periods, and the field splits into two divisions — League One for the leaders, and League Two for the chasing pack. Everyone still predicts every game.',
     caption: 'The field splits into League 1 and League 2 — everyone still predicts every game.',
     Visual: DivisionsVisual,
   },
   {
     id: 'promo',
     seconds: 8,
-    narration:
-      'Promotion and relegation happen only when a period ends, on set dates — never after a single game. Climb into the top four and you go up.',
     caption: 'Promotion & relegation happen only at period end, on set dates — never mid-game.',
     Visual: PromoVisual,
   },
   {
     id: 'trophies',
     seconds: 9,
-    narration:
-      'And the finale is a double decider. Points reset to level: the leaders fight for the Champions Crown, while the top of League Two battle for the Challengers Shield. Two trophies, all to play for.',
     caption:
-      'The finale: points reset — the Crown for the leaders, the Shield for League 2’s best.',
+      'The finale: points reset — the Master League Trophy for the leaders, the First Division Shield for League 2’s best.',
     Visual: TrophyVisual,
   },
 ];

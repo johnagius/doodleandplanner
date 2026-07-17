@@ -78,7 +78,7 @@ function PeriodPanel({ panel }: { panel: PeriodDivisions }) {
           of League 2 for {panel.runInSecond?.trophy.name ?? 'their own trophy'}.
         </div>
         <DivisionTable
-          title={`${panel.runIn.trophy.runInName} — ${panel.runIn.trophy.name}`}
+          title={panel.runIn.trophy.name}
           icon={<TrophyIcon size={22} />}
           rows={panel.runIn.contenders}
           meId={meId}
@@ -87,7 +87,7 @@ function PeriodPanel({ panel }: { panel: PeriodDivisions }) {
         />
         {panel.runInSecond && (
           <DivisionTable
-            title={`${panel.runInSecond.trophy.runInName} — ${panel.runInSecond.trophy.name}`}
+            title={panel.runInSecond.trophy.name}
             icon={<ShieldIcon size={22} />}
             rows={panel.runInSecond.contenders}
             meId={meId}

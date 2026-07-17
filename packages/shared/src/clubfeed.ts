@@ -12,6 +12,7 @@ import {
   espnCrestUrl,
   type ClubFeedFixture,
   type ClubFixtureStatus,
+  type ClubMatchEvent,
   type ClubSide,
 } from './clubleague.js';
 
@@ -26,28 +27,73 @@ interface EspnTeam {
 }
 interface EspnCompetitor {
   homeAway?: string;
+  id?: string;
   team?: EspnTeam;
   score?: string | number;
 }
 interface EspnStatusType {
   state?: string;
   completed?: boolean;
+  shortDetail?: string;
+}
+interface EspnDetailType {
+  text?: string;
+}
+interface EspnDetail {
+  type?: EspnDetailType;
+  clock?: { displayValue?: string };
+  team?: { id?: string };
+  scoringPlay?: boolean;
+  redCard?: boolean;
+  yellowCard?: boolean;
+  penaltyKick?: boolean;
+  ownGoal?: boolean;
+  athletesInvolved?: { displayName?: string }[];
 }
 interface EspnCompetition {
   competitors?: EspnCompetitor[];
-  status?: { type?: EspnStatusType };
+  status?: { displayClock?: string; type?: EspnStatusType };
+  details?: EspnDetail[];
 }
 interface EspnEvent {
   id?: string;
   date?: string;
   competitions?: EspnCompetition[];
-  status?: { type?: EspnStatusType };
+  status?: { displayClock?: string; type?: EspnStatusType };
 }
 
 function toStatus(type: EspnStatusType): ClubFixtureStatus {
   if (type.completed || type.state === 'post') return 'final';
   if (type.state === 'in') return 'live';
   return 'scheduled';
+}
+
+/** Parse ESPN scoring/card plays into our compact events, oriented home/away. */
+function toEvents(comp: EspnCompetition, homeTeamId?: string): ClubMatchEvent[] {
+  const out: ClubMatchEvent[] = [];
+  for (const d of comp.details ?? []) {
+    const isGoal = d.scoringPlay;
+    const isYellow = d.yellowCard;
+    const isRed = d.redCard;
+    if (!isGoal && !isYellow && !isRed) continue;
+    const kind: ClubMatchEvent['kind'] = isRed
+      ? 'red'
+      : isYellow
+        ? 'yellow'
+        : d.ownGoal
+          ? 'own-goal'
+          : d.penaltyKick
+            ? 'penalty'
+            : 'goal';
+    const team: 'home' | 'away' = d.team?.id && d.team.id === homeTeamId ? 'home' : 'away';
+    out.push({
+      kind,
+      team,
+      player: d.athletesInvolved?.[0]?.displayName,
+      clock: d.clock?.displayValue,
+    });
+  }
+  return out;
 }
 
 function num(v: string | number | undefined): number | null {
@@ -89,6 +135,8 @@ export function parseClubScoreboard(raw: unknown, competitionId: string): ClubFe
 
     const type = comp.status?.type ?? ev.status?.type ?? {};
     const status = toStatus(type);
+    const h = num(home.score);
+    const a = num(away.score);
     const fixture: ClubFeedFixture = {
       externalId: `espn:${ev.id}`,
       competitionId,
@@ -97,10 +145,19 @@ export function parseClubScoreboard(raw: unknown, competitionId: string): ClubFe
       away: toSide(away.team),
       status,
     };
-    if (status === 'final') {
-      const h = num(home.score);
-      const a = num(away.score);
-      if (h != null && a != null) fixture.result = { home: h, away: a };
+    if (status === 'final' && h != null && a != null) {
+      fixture.result = { home: h, away: a };
+    }
+    if (status === 'live' && h != null && a != null) {
+      const events = toEvents(comp, home.team.id);
+      fixture.live = {
+        home: h,
+        away: a,
+        detail: type.shortDetail ?? comp.status?.displayClock ?? null,
+        minute: null,
+        status,
+        events: events.length ? events : undefined,
+      };
     }
     out.push(fixture);
   }

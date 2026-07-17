@@ -1,4 +1,10 @@
-import { CLUB_POINTS, CLUB_TOTALS_LINE, type ClubLeagueState } from '@dap/shared';
+import {
+  CLUB_POINTS,
+  CLUB_TOTALS_LINE,
+  CLUB_TROPHY_SECOND,
+  CLUB_TROPHY_TOP,
+  type ClubLeagueState,
+} from '@dap/shared';
 
 /**
  * The in-app rulebook. World Cup players struggled to understand how points were
@@ -86,21 +92,35 @@ export function ClubRules({ club }: { club: ClubLeagueState }) {
           </li>
         </ul>
         <p>
-          Between periods there’s <strong>promotion &amp; relegation</strong>: the bottom of League
-          1 drops down and the top of League 2 comes up. Every player still predicts every fixture —
+          <strong>Promotion &amp; relegation happen only at the end of a period</strong> — on set
+          calendar dates, never after a single game. When a period closes, the bottom of League 1
+          drops down and the top of League 2 comes up. Every player still predicts every fixture —
           the divisions just decide which table you’re racing in, so even if a leader runs away with
           the overall total, there’s always a live battle in your own league.
         </p>
       </Section>
 
-      <Section emoji="🏁" title="4 · The Champions Run-In">
+      <Section emoji="🏁" title="4 · The finale — two trophies">
         <p>
-          The final period is a title decider. The top <strong>{club.runInContenders}</strong>{' '}
-          players on the overall table are pulled into the <strong>Champions Run-In</strong>: their
-          points <strong>reset to level</strong> and they fight it out head-to-head over the closing
-          fixtures. Whoever scores most in the run-in is crowned champion — so a season-long chase
-          can still be caught right at the death. Everyone else keeps playing their own league to
-          the finish.
+          The final period is a double title decider. Everyone’s season points feed the seeding,
+          then two sets of contenders <strong>reset to level</strong> and fight head-to-head over
+          the closing fixtures:
+        </p>
+        <ul>
+          <li>
+            {CLUB_TROPHY_TOP.emoji} <strong>{CLUB_TROPHY_TOP.runInName}</strong> — the top{' '}
+            {club.runInContenders} players overall battle for{' '}
+            <strong>{CLUB_TROPHY_TOP.name}</strong>, the big one.
+          </li>
+          <li>
+            {CLUB_TROPHY_SECOND.emoji} <strong>{CLUB_TROPHY_SECOND.runInName}</strong> — the top{' '}
+            {club.runInContenders} of League 2 play for <strong>{CLUB_TROPHY_SECOND.name}</strong> —
+            a cool prize of its own, a notch below the Crown.
+          </li>
+        </ul>
+        <p>
+          Because points reset, a season-long chase can still be caught right at the death — and
+          even if you never troubled the leaders, there’s silverware to fight for.
         </p>
       </Section>
 

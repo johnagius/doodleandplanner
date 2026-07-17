@@ -1,14 +1,32 @@
 import type { ClubLeagueState } from '@dap/shared';
 import { useState } from 'react';
 import { useClubLeagueStore } from '../../state/clubLeagueStore.js';
+import { hasSession } from '../worldcup/wcAuthClient.js';
 
-/** Pick who you are — every player shown as a one-tap chip. */
-export function IdentityBar({ club }: { club: ClubLeagueState }) {
+/** Pick who you are — every player shown as a one-tap chip. A claimed name (its
+ * owner locked it with their email) shows 🔒 until you log in as them. */
+export function IdentityBar({
+  club,
+  onClaim,
+}: {
+  club: ClubLeagueState;
+  onClaim: (id: string) => void;
+}) {
   const meId = useClubLeagueStore((s) => s.meId);
   const select = useClubLeagueStore((s) => s.selectPredictor);
   const addName = useClubLeagueStore((s) => s.addName);
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState('');
+  const mine = club.predictors.find((p) => p.id === meId);
+
+  const pick = (id: string, claimed: boolean) => {
+    // Choosing a claimed name you haven't unlocked on this device opens the login.
+    if (claimed && !hasSession(id)) {
+      onClaim(id);
+      return;
+    }
+    select(id);
+  };
 
   return (
     <div className="club-identity">
@@ -16,16 +34,23 @@ export function IdentityBar({ club }: { club: ClubLeagueState }) {
       <div className="club-name-chips">
         {club.predictors.map((p) => {
           const isMe = p.id === meId;
+          const locked = !!p.claimed && !hasSession(p.id);
           return (
             <button
               key={p.id}
               type="button"
               className={`club-name-chip ${isMe ? 'is-me' : ''}`}
               aria-pressed={isMe}
-              onClick={() => select(p.id)}
-              title={`Play as ${p.name}`}
+              onClick={() => pick(p.id, !!p.claimed)}
+              title={
+                p.claimed
+                  ? isMe
+                    ? `Logged in as ${p.name}`
+                    : `${p.name} is locked — tap to log in`
+                  : `Play as ${p.name}`
+              }
             >
-              {isMe ? '✓ ' : ''}
+              {locked ? '🔒 ' : isMe ? '✓ ' : ''}
               {p.name}
             </button>
           );
@@ -64,6 +89,20 @@ export function IdentityBar({ club }: { club: ClubLeagueState }) {
           </button>
         )}
       </div>
+      {mine && (
+        <button
+          type="button"
+          className="btn btn-sm btn-ghost"
+          onClick={() => onClaim(mine.id)}
+          title="Protect your name with your email so only you can edit your picks"
+        >
+          {mine.claimed && hasSession(mine.id)
+            ? '🔓 Account'
+            : mine.claimed
+              ? '🔒 Log in'
+              : '🔒 Lock my name'}
+        </button>
+      )}
     </div>
   );
 }

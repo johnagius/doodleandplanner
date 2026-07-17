@@ -3,11 +3,13 @@
  * fans every change out to all connected WebSocket clients in real time.
  */
 import {
+  authorizeClubWrite,
   authorizeWcWrite,
   bumpRev,
   isStaleSave,
   readSessionToken,
   stampClaimed,
+  stampClaimedClub,
   type RoomState,
 } from '@dap/shared';
 import { emailConfigured, sendOtpEmail } from './brevo.js';
@@ -148,6 +150,21 @@ export class RoomDurableObject {
       const stampedWc = stampClaimed(body.worldCup, claimed);
       if (stampedWc !== body.worldCup) toSave = { ...body, worldCup: stampedWc };
     }
+    // Same per-name lock for the Club Football board (a different singleton room,
+    // so its own predictor ids are claimed independently).
+    if (this.authSvc && body.clubLeague) {
+      const claimed = await this.authSvc.claimedIds();
+      if (claimed.size > 0 && prev?.clubLeague) {
+        const token = request.headers.get('X-WC-Session');
+        const owner = token ? await readSessionToken(token, this.env.AUTH_SECRET!) : null;
+        const decision = authorizeClubWrite(prev.clubLeague, body.clubLeague, claimed, owner);
+        if (!decision.ok) {
+          return json({ error: 'locked', lockedId: decision.lockedId }, { status: 403 }, cors);
+        }
+      }
+      const stampedClub = stampClaimedClub(body.clubLeague, claimed);
+      if (stampedClub !== body.clubLeague) toSave = { ...toSave, clubLeague: stampedClub };
+    }
     // Stamp the next revision so clients move forward in lock-step.
     toSave = { ...toSave, rev: bumpRev(prev?.rev) };
     const saved = await this.service.save(toSave);
@@ -160,12 +177,18 @@ export class RoomDurableObject {
   private async restampAndBroadcast(): Promise<void> {
     if (!this.authSvc) return;
     const room = await this.service.get();
-    if (!room?.worldCup) return;
+    if (!room) return;
     const claimed = await this.authSvc.claimedIds();
-    const stampedWc = stampClaimed(room.worldCup, claimed);
-    if (stampedWc !== room.worldCup) {
-      this.broadcast(await this.service.save({ ...room, worldCup: stampedWc }));
+    let next = room;
+    if (room.worldCup) {
+      const stampedWc = stampClaimed(room.worldCup, claimed);
+      if (stampedWc !== room.worldCup) next = { ...next, worldCup: stampedWc };
     }
+    if (room.clubLeague) {
+      const stampedClub = stampClaimedClub(room.clubLeague, claimed);
+      if (stampedClub !== room.clubLeague) next = { ...next, clubLeague: stampedClub };
+    }
+    if (next !== room) this.broadcast(await this.service.save(next));
   }
 
   /** POST /wc-auth/request — email a login code for a name (frugally). */
@@ -182,7 +205,10 @@ export class RoomDurableObject {
       return json({ error: 'bad-request' }, { status: 400 }, cors);
     }
     const room = await this.service.get();
-    if (!room?.worldCup?.predictors.some((p) => p.id === body.predictorId)) {
+    const known =
+      room?.worldCup?.predictors.some((p) => p.id === body.predictorId) ||
+      room?.clubLeague?.predictors.some((p) => p.id === body.predictorId);
+    if (!known) {
       return json({ error: 'unknown-predictor' }, { status: 404 }, cors);
     }
     try {

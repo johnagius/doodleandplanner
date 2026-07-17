@@ -127,6 +127,10 @@ export interface ClubPrediction {
 export interface ClubPredictor {
   id: string;
   name: string;
+  /** Server-set: true once an email has been verified for this name. Clients can
+   * read it (to show a lock) but cannot forge it — the Worker recomputes it on
+   * every save from its private bindings. */
+  claimed?: boolean;
 }
 
 /** A named stretch of the season. Periods tile the calendar in order; a fixture
@@ -164,7 +168,7 @@ export interface ClubLeagueState {
 }
 
 /** Bump when the seeded teams/competitions/periods change; older boards re-seed. */
-export const CLUB_SEED_VERSION = 3;
+export const CLUB_SEED_VERSION = 4;
 
 // --- Scoring ---------------------------------------------------------------
 
@@ -873,12 +877,17 @@ export const CLUB_ESPN_LEAGUES: ClubEspnLeague[] = [
   { slug: 'eng.1', competitionId: 'epl', scope: 'ENG' },
   { slug: 'eng.fa', competitionId: 'facup', scope: 'ENG' },
   { slug: 'eng.league_cup', competitionId: 'efl', scope: 'ENG' },
+  { slug: 'eng.charity', competitionId: 'charity', scope: 'ENG' },
   { slug: 'esp.1', competitionId: 'laliga', scope: 'ESP' },
   { slug: 'esp.copa_del_rey', competitionId: 'copa', scope: 'ESP' },
+  { slug: 'esp.super_cup', competitionId: 'essup', scope: 'ESP' },
   { slug: 'ita.1', competitionId: 'seriea', scope: 'ITA' },
   { slug: 'ita.coppa_italia', competitionId: 'coppa', scope: 'ITA' },
+  { slug: 'ita.super_cup', competitionId: 'itsup', scope: 'ITA' },
   { slug: 'uefa.champions', competitionId: 'ucl', scope: 'UEFA' },
   { slug: 'uefa.europa', competitionId: 'uel', scope: 'UEFA' },
+  { slug: 'uefa.super_cup', competitionId: 'usup', scope: 'UEFA' },
+  { slug: 'fifa.cwc', competitionId: 'cwc', scope: 'UEFA' },
 ];
 
 /** Which nation each tracked club belongs to, for league scoping. */
@@ -928,6 +937,29 @@ const COMPETITIONS: ClubCompetition[] = [
   { id: 'efl', name: 'EFL Cup', short: 'EFL Cup', emoji: '🏴', logo: LEAGUE_LOGO('41') },
   { id: 'copa', name: 'Copa del Rey', short: 'Copa', emoji: '🇪🇸', logo: LEAGUE_LOGO('80') },
   { id: 'coppa', name: 'Coppa Italia', short: 'Coppa', emoji: '🇮🇹', logo: LEAGUE_LOGO('2192') },
+  { id: 'charity', name: 'Community Shield', short: 'Shield', emoji: '🛡️' },
+  {
+    id: 'usup',
+    name: 'UEFA Super Cup',
+    short: 'Super Cup',
+    emoji: '🏆',
+    logo: LEAGUE_LOGO('1272'),
+  },
+  {
+    id: 'cwc',
+    name: 'FIFA Club World Cup',
+    short: 'Club WC',
+    emoji: '🌍',
+    logo: LEAGUE_LOGO('1932'),
+  },
+  {
+    id: 'essup',
+    name: 'Spanish Super Cup',
+    short: 'Supercopa',
+    emoji: '🇪🇸',
+    logo: LEAGUE_LOGO('431'),
+  },
+  { id: 'itsup', name: 'Italian Super Cup', short: 'Supercoppa', emoji: '🇮🇹' },
   { id: 'other', name: 'Other', short: 'Other', emoji: '⚽' },
 ];
 

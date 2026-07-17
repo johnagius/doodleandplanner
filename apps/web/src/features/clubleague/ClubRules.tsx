@@ -1,11 +1,15 @@
 import {
+  CLUB_ESPN_TEAM_IDS,
   CLUB_POINTS,
   CLUB_TOTALS_LINE,
   CLUB_TROPHY_MEISTER,
   CLUB_TROPHY_SECOND,
   CLUB_TROPHY_TOP,
+  espnCrestUrl,
   type ClubLeagueState,
+  type ClubTeam,
 } from '@dap/shared';
+import { useState } from 'react';
 import { ShieldIcon, TrophyIcon } from './TrophyIcons.js';
 
 /**
@@ -25,7 +29,21 @@ export function ClubRules({ club }: { club: ClubLeagueState }) {
         </p>
       </div>
 
-      <Section emoji="🎯" title="1 · Three markets per fixture">
+      <Section emoji="🛡️" title="1 · The ten clubs">
+        <p>
+          We track <strong>ten clubs</strong> across England, Spain and Italy.{' '}
+          <strong>Every single game they play is on the board to bet</strong> — league, domestic
+          cups, the Champions League, the Europa League, the Super Cups and the Club World Cup. If
+          one of these clubs is playing, you can predict it.
+        </p>
+        <div className="club-roster">
+          {club.teams.map((t) => (
+            <ClubCrest key={t.id} team={t} />
+          ))}
+        </div>
+      </Section>
+
+      <Section emoji="🎯" title="2 · Three markets per fixture">
         <p>
           For every fixture you can fill in up to three independent markets. Each one is scored on
           its own, so a wrong result doesn’t sink your whole ticket:
@@ -58,7 +76,7 @@ export function ClubRules({ club }: { club: ClubLeagueState }) {
         </p>
       </Section>
 
-      <Section emoji="📅" title="2 · Fixtures are automatic">
+      <Section emoji="📅" title="3 · Fixtures are automatic">
         <p>
           You never have to add games. Every fixture our ten clubs play — league, domestic cups and
           Europe — appears <strong>automatically</strong>, straight from a live feed:
@@ -80,7 +98,7 @@ export function ClubRules({ club }: { club: ClubLeagueState }) {
         </p>
       </Section>
 
-      <Section emoji="🗂️" title="3 · Periods, League 1 & League 2">
+      <Section emoji="🗂️" title="4 · Periods, League 1 & League 2">
         <p>
           The season is split into <strong>periods</strong>. The opening period is one combined
           table; where you finish it decides your division. From then on the field splits into two:
@@ -102,7 +120,7 @@ export function ClubRules({ club }: { club: ClubLeagueState }) {
         </p>
       </Section>
 
-      <Section emoji="🏁" title="4 · The finale — how it plays out">
+      <Section emoji="🏁" title="5 · The finale — how it plays out">
         <p>
           The final period is the decider. It runs in three acts. First, the two divisions are{' '}
           <strong>cut</strong> — the season table entering the finale sets who’s still standing:
@@ -149,7 +167,7 @@ export function ClubRules({ club }: { club: ClubLeagueState }) {
         </p>
       </Section>
 
-      <Section emoji="🥇" title="5 · The Meister Cup — the grand finale">
+      <Section emoji="🥇" title="6 · The Meister Cup — the grand finale">
         <p>
           One trophy sits above them all. The <strong>{CLUB_TROPHY_TOP.name}</strong> winner and the{' '}
           <strong>{CLUB_TROPHY_SECOND.name}</strong> winner meet in a one-game showdown: the{' '}
@@ -176,7 +194,7 @@ export function ClubRules({ club }: { club: ClubLeagueState }) {
         </p>
       </Section>
 
-      <Section emoji="🧮" title="6 · The overall table">
+      <Section emoji="🧮" title="7 · The overall table">
         <p>
           Your <strong>season total</strong> is simply every point you’ve earned across all
           fixtures. It drives the overall standings and decides who enters the Champions Run-In.
@@ -184,6 +202,33 @@ export function ClubRules({ club }: { club: ClubLeagueState }) {
           then alphabetical.
         </p>
       </Section>
+    </div>
+  );
+}
+
+/** A club's official crest + name (falls back to a coloured code badge). */
+function ClubCrest({ team }: { team: ClubTeam }) {
+  const [broken, setBroken] = useState(false);
+  const espnId = CLUB_ESPN_TEAM_IDS[team.id];
+  const crest = espnId ? espnCrestUrl(espnId) : undefined;
+  return (
+    <div className="club-roster-item" title={team.name}>
+      {crest && !broken ? (
+        <img
+          className="club-roster-crest"
+          src={crest}
+          alt=""
+          width={44}
+          height={44}
+          loading="lazy"
+          onError={() => setBroken(true)}
+        />
+      ) : (
+        <span className="club-roster-badge" style={{ background: team.color }} aria-hidden>
+          {team.short}
+        </span>
+      )}
+      <span className="club-roster-name">{team.name}</span>
     </div>
   );
 }

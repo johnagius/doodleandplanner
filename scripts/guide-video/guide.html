@@ -1,0 +1,605 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Club Football — Guide</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      :root {
+        --gold: #d4af37;
+        --ink: #0a1024;
+      }
+      html,
+      body {
+        width: 1280px;
+        height: 720px;
+        overflow: hidden;
+        font-family:
+          'Segoe UI',
+          system-ui,
+          -apple-system,
+          Roboto,
+          Helvetica,
+          Arial,
+          sans-serif;
+        color: #fff;
+        background: radial-gradient(120% 100% at 50% -10%, #1a2a5e 0%, #0a1024 55%, #05070f 100%);
+      }
+      #stars {
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+      }
+      .stage {
+        position: relative;
+        width: 1280px;
+        height: 720px;
+        display: grid;
+        place-items: center;
+      }
+      .scene {
+        position: absolute;
+        inset: 0;
+        display: none;
+        place-items: center;
+        text-align: center;
+      }
+      .scene.active {
+        display: grid;
+      }
+      /* Top progress bar */
+      #bar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 6px;
+        width: 0;
+        background: linear-gradient(90deg, var(--gold), #f6e08a);
+        box-shadow: 0 0 12px rgba(212, 175, 55, 0.6);
+        z-index: 5;
+      }
+      /* Brand chip */
+      #brand {
+        position: fixed;
+        top: 18px;
+        right: 22px;
+        font-weight: 800;
+        letter-spacing: 0.02em;
+        opacity: 0.8;
+        font-size: 20px;
+        z-index: 5;
+      }
+      /* Caption */
+      #caption {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        padding: 26px 60px 40px;
+        font-size: 30px;
+        line-height: 1.35;
+        font-weight: 600;
+        background: linear-gradient(0deg, rgba(4, 6, 14, 0.92), transparent);
+        z-index: 5;
+      }
+      .active .anim {
+        animation: pop 0.7s cubic-bezier(0.2, 0.9, 0.3, 1.3) both;
+      }
+      .active .slide {
+        animation: slide 0.7s ease both;
+      }
+      @keyframes pop {
+        from {
+          opacity: 0;
+          transform: scale(0.6);
+        }
+      }
+      @keyframes slide {
+        from {
+          opacity: 0;
+          transform: translateY(26px);
+        }
+      }
+      @keyframes float {
+        50% {
+          transform: translateY(-16px);
+        }
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      .title {
+        font-size: 96px;
+        font-weight: 900;
+        letter-spacing: 0.01em;
+        text-shadow: 0 6px 30px rgba(0, 0, 0, 0.5);
+      }
+      .sub {
+        font-size: 30px;
+        opacity: 0.85;
+        margin-top: 14px;
+      }
+      .ball {
+        font-size: 120px;
+        animation: float 2.4s ease-in-out infinite;
+      }
+
+      .fixture {
+        display: grid;
+        gap: 34px;
+        width: 900px;
+      }
+      .teams {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 40px;
+        font-size: 46px;
+        font-weight: 800;
+      }
+      .badge {
+        width: 96px;
+        height: 96px;
+        border-radius: 20px;
+        display: grid;
+        place-items: center;
+        font-size: 34px;
+        font-weight: 900;
+        color: #fff;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      }
+      .markets {
+        display: grid;
+        gap: 16px;
+      }
+      .mkt {
+        display: grid;
+        grid-template-columns: 220px 1fr 90px;
+        align-items: center;
+        gap: 18px;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        border-radius: 16px;
+        padding: 16px 22px;
+        font-size: 30px;
+      }
+      .mkt .lbl {
+        text-align: left;
+        opacity: 0.85;
+        font-weight: 700;
+      }
+      .chips {
+        display: flex;
+        gap: 12px;
+        justify-content: center;
+      }
+      .chip {
+        min-width: 78px;
+        padding: 10px 0;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        font-weight: 800;
+      }
+      .chip.on {
+        background: var(--gold);
+        color: #221a00;
+        border-color: var(--gold);
+      }
+      .pts {
+        font-weight: 900;
+        color: var(--gold);
+        font-size: 34px;
+      }
+
+      .scoreline {
+        font-size: 90px;
+        font-weight: 900;
+        letter-spacing: 0.04em;
+      }
+      .pills {
+        display: flex;
+        gap: 18px;
+        justify-content: center;
+        margin-top: 26px;
+      }
+      .pill {
+        padding: 14px 26px;
+        border-radius: 14px;
+        font-size: 30px;
+        font-weight: 800;
+        background: rgba(46, 204, 113, 0.16);
+        border: 1px solid rgba(46, 204, 113, 0.6);
+        color: #7dffb0;
+      }
+      .total {
+        margin-top: 30px;
+        font-size: 60px;
+        font-weight: 900;
+        color: var(--gold);
+      }
+
+      .cols {
+        display: flex;
+        gap: 60px;
+      }
+      .col {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        border-radius: 20px;
+        padding: 26px 30px;
+        min-width: 320px;
+      }
+      .col h3 {
+        font-size: 34px;
+        margin-bottom: 16px;
+      }
+      .name {
+        font-size: 30px;
+        font-weight: 700;
+        padding: 10px 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      .up {
+        color: #7dffb0;
+      }
+      .down {
+        color: #ff8a8a;
+      }
+      .swap {
+        font-size: 70px;
+        animation: float 2s ease-in-out infinite;
+      }
+      .mid {
+        display: grid;
+        place-items: center;
+        gap: 10px;
+      }
+      .date {
+        font-size: 22px;
+        opacity: 0.75;
+      }
+
+      .reset-row {
+        display: grid;
+        grid-template-columns: 240px 90px 60px 90px;
+        align-items: center;
+        gap: 22px;
+        font-size: 34px;
+        font-weight: 800;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 14px;
+        padding: 14px 26px;
+        margin: 10px 0;
+      }
+      .reset-row .old {
+        opacity: 0.6;
+        text-decoration: line-through;
+      }
+      .reset-row .zero {
+        color: var(--gold);
+        font-size: 42px;
+      }
+      .cut {
+        font-size: 30px;
+        color: #ff8a8a;
+        text-decoration: line-through;
+        opacity: 0.8;
+        margin-bottom: 18px;
+      }
+
+      .trophies {
+        display: flex;
+        gap: 70px;
+      }
+      .trophy {
+        width: 320px;
+        padding: 30px;
+        border-radius: 22px;
+        background: linear-gradient(160deg, rgba(212, 175, 55, 0.18), rgba(255, 255, 255, 0.04));
+        border: 1px solid rgba(212, 175, 55, 0.5);
+      }
+      .trophy .ic {
+        font-size: 96px;
+      }
+      .trophy .tn {
+        font-size: 34px;
+        font-weight: 900;
+        margin-top: 10px;
+      }
+      .trophy .ts {
+        font-size: 24px;
+        opacity: 0.8;
+        margin-top: 6px;
+      }
+
+      .duel {
+        display: flex;
+        align-items: center;
+        gap: 50px;
+      }
+      .seat {
+        width: 320px;
+        padding: 30px;
+        border-radius: 22px;
+        background: rgba(212, 175, 55, 0.14);
+        border: 1px solid rgba(212, 175, 55, 0.5);
+      }
+      .seat .ic {
+        font-size: 70px;
+      }
+      .seat .st {
+        font-size: 30px;
+        font-weight: 900;
+        margin-top: 8px;
+      }
+      .seat .sw {
+        font-size: 22px;
+        opacity: 0.8;
+      }
+      .vs {
+        font-size: 56px;
+        font-weight: 900;
+        color: var(--gold);
+      }
+      .meister-name {
+        margin-top: 34px;
+        font-size: 56px;
+        font-weight: 900;
+        color: var(--gold);
+        text-shadow: 0 4px 24px rgba(212, 175, 55, 0.4);
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="stars" width="1280" height="720"></canvas>
+    <div id="bar"></div>
+    <div id="brand">⚽ Club Football</div>
+
+    <div class="stage" id="stage">
+      <!-- 0 intro -->
+      <section class="scene" data-i="0">
+        <div>
+          <div class="ball anim">⚽</div>
+          <div class="title anim">Club Football</div>
+          <div class="sub anim">Predict every game our clubs play — league, cups &amp; Europe</div>
+        </div>
+      </section>
+
+      <!-- 1 markets -->
+      <section class="scene" data-i="1">
+        <div class="fixture">
+          <div class="teams anim">
+            <span class="badge" style="background: #da020e">MUN</span>
+            <span>v</span>
+            <span class="badge" style="background: #ef0107">ARS</span>
+          </div>
+          <div class="markets">
+            <div class="mkt anim" style="animation-delay: 0.1s">
+              <span class="lbl">Result</span>
+              <span class="chips"
+                ><span class="chip">1</span><span class="chip">X</span
+                ><span class="chip on">2</span></span
+              >
+              <span class="pts">+3</span>
+            </div>
+            <div class="mkt anim" style="animation-delay: 0.35s">
+              <span class="lbl">Over / Under 2.5</span>
+              <span class="chips"
+                ><span class="chip on">Over</span><span class="chip">Under</span></span
+              >
+              <span class="pts">+2</span>
+            </div>
+            <div class="mkt anim" style="animation-delay: 0.6s">
+              <span class="lbl">Both teams to score</span>
+              <span class="chips"
+                ><span class="chip on">Yes</span><span class="chip">No</span></span
+              >
+              <span class="pts">+2</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2 scoring -->
+      <section class="scene" data-i="2">
+        <div>
+          <div class="teams anim" style="justify-content: center">
+            <span class="badge" style="background: #da020e">MUN</span>
+            <span class="scoreline">1 – 3</span>
+            <span class="badge" style="background: #ef0107">ARS</span>
+          </div>
+          <div class="pills anim" style="animation-delay: 0.4s">
+            <span class="pill">2 ✓</span>
+            <span class="pill">Over 2.5 ✓</span>
+            <span class="pill">BTTS Yes ✓</span>
+          </div>
+          <div class="total anim" style="animation-delay: 0.9s">+7 points</div>
+        </div>
+      </section>
+
+      <!-- 3 divisions -->
+      <section class="scene" data-i="3">
+        <div class="cols">
+          <div class="col slide">
+            <h3>🥇 League 1</h3>
+            <div class="name">John</div>
+            <div class="name">Noel</div>
+            <div class="name">Daniel</div>
+            <div class="name">Saviour</div>
+          </div>
+          <div class="col slide" style="animation-delay: 0.3s">
+            <h3>League 2</h3>
+            <div class="name">Manuel</div>
+            <div class="name">Kevin</div>
+            <div class="name">Jonathan</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4 promo -->
+      <section class="scene" data-i="4">
+        <div class="cols" style="align-items: center">
+          <div class="col slide">
+            <h3>🥇 League 1</h3>
+            <div class="name down">Saviour ▼</div>
+          </div>
+          <div class="mid anim" style="animation-delay: 0.3s">
+            <div class="date">at period end · 1 Nov</div>
+            <div class="swap">⇅</div>
+          </div>
+          <div class="col slide" style="animation-delay: 0.2s">
+            <h3>League 2</h3>
+            <div class="name up">Manuel ▲</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 5 reset -->
+      <section class="scene" data-i="5">
+        <div>
+          <div class="cut slide">Saviour ✗ knocked out · Jonathan ✗ knocked out</div>
+          <div class="reset-row slide" style="animation-delay: 0.2s">
+            <span>John</span><span class="old">28</span><span>→</span
+            ><span class="zero anim" style="animation-delay: 0.5s">0</span>
+          </div>
+          <div class="reset-row slide" style="animation-delay: 0.4s">
+            <span>Daniel</span><span class="old">24</span><span>→</span
+            ><span class="zero anim" style="animation-delay: 0.7s">0</span>
+          </div>
+          <div class="reset-row slide" style="animation-delay: 0.6s">
+            <span>Noel</span><span class="old">21</span><span>→</span
+            ><span class="zero anim" style="animation-delay: 0.9s">0</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- 6 trophies -->
+      <section class="scene" data-i="6">
+        <div class="trophies">
+          <div class="trophy anim">
+            <div class="ic">🏆</div>
+            <div class="tn">Master League Trophy</div>
+            <div class="ts">League 1 survivors · from 0</div>
+          </div>
+          <div class="trophy anim" style="animation-delay: 0.4s">
+            <div class="ic">🛡️</div>
+            <div class="tn">First Division Shield</div>
+            <div class="ts">League 2 survivors · from 0</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 7 meister -->
+      <section class="scene" data-i="7">
+        <div>
+          <div class="duel">
+            <div class="seat slide">
+              <div class="ic">🏆</div>
+              <div class="st">Master League</div>
+              <div class="sw">winner</div>
+            </div>
+            <div class="anim" style="animation-delay: 0.3s">
+              <div class="vs">VS</div>
+              <div class="date">Champions League final</div>
+            </div>
+            <div class="seat slide" style="animation-delay: 0.2s">
+              <div class="ic">🛡️</div>
+              <div class="st">First Division</div>
+              <div class="sw">winner</div>
+            </div>
+          </div>
+          <div class="meister-name anim" style="animation-delay: 1s">🥇 Meister Cup</div>
+        </div>
+      </section>
+    </div>
+
+    <div id="caption"></div>
+
+    <script>
+      // Subtle drifting starfield (brand backdrop).
+      const cv = document.getElementById('stars');
+      const ctx = cv.getContext('2d');
+      const stars = Array.from({ length: 90 }, () => ({
+        x: Math.random() * 1280,
+        y: Math.random() * 720,
+        r: Math.random() * 1.6 + 0.3,
+        a: Math.random() * 0.6 + 0.2,
+      }));
+      function drawStars() {
+        ctx.clearRect(0, 0, 1280, 720);
+        for (const s of stars) {
+          ctx.globalAlpha = s.a;
+          ctx.fillStyle = '#cdd8ff';
+          ctx.beginPath();
+          ctx.arc(s.x, s.y, s.r, 0, 6.3);
+          ctx.fill();
+          s.y += 0.12;
+          if (s.y > 720) s.y = 0;
+        }
+        requestAnimationFrame(drawStars);
+      }
+      drawStars();
+
+      const CAPTIONS = [
+        'Predict every game our clubs play — across the league, cups and Europe.',
+        'Three markets a game: Result (+3), Over/Under 2.5 (+2), Both teams to score (+2).',
+        'Each market scores on its own — nail all three and it’s a perfect +7.',
+        'The field splits into League 1 and League 2 — everyone still predicts every game.',
+        'Promotion & relegation happen only at period end, on set dates — never mid-game.',
+        'At the finale each division cuts its last-placed player — survivors reset to 0.',
+        'The leaders play for the Master League Trophy; League 2’s best for the First Division Shield.',
+        'Then the winners face off on the Champions League final — the Meister Cup.',
+      ];
+
+      // Durations (seconds) per scene are injected by the recorder; fall back to fixed.
+      const DUR = window.SCENE_DURATIONS || CAPTIONS.map(() => 6);
+      const scenes = [...document.querySelectorAll('.scene')];
+      const bar = document.getElementById('bar');
+      const cap = document.getElementById('caption');
+      const total = DUR.reduce((a, b) => a + b, 0);
+
+      let elapsed = 0;
+      function show(i) {
+        scenes.forEach((s) => s.classList.remove('active'));
+        const el = scenes[i];
+        // Force reflow so the pop/slide animations restart for this scene.
+        void el.offsetWidth;
+        el.classList.add('active');
+        cap.textContent = CAPTIONS[i];
+      }
+
+      function run(i) {
+        if (i >= scenes.length) {
+          bar.style.width = '100%';
+          window.__done = true;
+          document.title = 'DONE';
+          return;
+        }
+        show(i);
+        const ms = DUR[i] * 1000;
+        const start = performance.now();
+        const tick = (t) => {
+          const p = Math.min(1, (t - start) / ms);
+          bar.style.width = ((elapsed + DUR[i] * p) / total) * 100 + '%';
+          if (p < 1) requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+        setTimeout(() => {
+          elapsed += DUR[i];
+          run(i + 1);
+        }, ms);
+      }
+      // Small lead-in so the first frame isn't mid-animation.
+      setTimeout(() => run(0), 400);
+    </script>
+  </body>
+</html>

@@ -16,12 +16,13 @@ import {
 } from './espn.js';
 import { findWcMatch, mapHeadToHead, mapWorldCupScores } from './football.js';
 import {
+  CLUB_ESPN_LEAGUES,
   clubFeedWindow,
   clubScoreboardUrl,
   mergeClubFeeds,
   parseClubScoreboard,
-} from './clubFeed.js';
-import { CLUB_ESPN_LEAGUES, type ClubFeedFixture } from '@dap/shared';
+  type ClubFeedFixture,
+} from '@dap/shared';
 import { parseTmValueM } from './transfermarkt.js';
 import { RoomDurableObject, type Env } from './roomObject.js';
 import { corsHeaders, json, route } from './router.js';

@@ -4,7 +4,7 @@ import {
   clubScoreboardUrl,
   mergeClubFeeds,
   parseClubScoreboard,
-} from '../src/clubFeed.js';
+} from '../src/clubfeed.js';
 
 /** A minimal ESPN scoreboard payload in the shape the parser reads. */
 function scoreboard(events: unknown[]) {

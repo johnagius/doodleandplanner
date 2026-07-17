@@ -12,7 +12,7 @@ import {
   type ClubFeedFixture,
   type ClubFixtureStatus,
   type ClubSide,
-} from '@dap/shared';
+} from './clubleague.js';
 
 interface EspnTeam {
   id?: string;

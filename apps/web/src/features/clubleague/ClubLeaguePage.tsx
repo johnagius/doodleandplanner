@@ -27,8 +27,20 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'fixtures', label: 'Fixtures', icon: '📅' },
   { id: 'table', label: 'Season table', icon: '🏆' },
   { id: 'divisions', label: 'Divisions', icon: '🗂️' },
-  { id: 'rules', label: 'Rules', icon: '📖' },
+  { id: 'rules', label: 'How to play', icon: '📖' },
 ];
+
+const TAB_IDS = new Set<Tab>(['fixtures', 'table', 'divisions', 'rules']);
+
+/** Open on the tab named in the URL hash (so a shared #rules link lands on the
+ * guide), else Fixtures. */
+function initialTab(): Tab {
+  if (typeof window !== 'undefined') {
+    const h = window.location.hash.replace(/^#/, '') as Tab;
+    if (TAB_IDS.has(h)) return h;
+  }
+  return 'fixtures';
+}
 
 export function ClubLeaguePage() {
   const { load, leave, setAdmin } = useClubLeagueStore();
@@ -38,13 +50,44 @@ export function ClubLeaguePage() {
   const offline = useClubLeagueStore((s) => s.offline);
   const admin = useClubLeagueStore((s) => s.admin);
   const meId = useClubLeagueStore((s) => s.meId);
-  const [tab, setTab] = useState<Tab>('fixtures');
+  const [tab, setTab] = useState<Tab>(initialTab);
   const [claimId, setClaimId] = useState<string | null>(null);
+  // Auto-play the narrated guide for a first-time visitor (or a shared #rules link).
+  const [autoGuide, setAutoGuide] = useState(false);
 
   // Attach the current name's verified session token to every club-room save.
   useEffect(() => {
     installWcSaveAuth(() => useClubLeagueStore.getState().meId);
   }, []);
+
+  // First visit → open the "How to play" guide and start the narrated walkthrough.
+  // A shared #rules link also auto-narrates. Both are remembered so we only nudge once.
+  useEffect(() => {
+    const fromHash = window.location.hash.replace(/^#/, '') === 'rules';
+    let seen = false;
+    try {
+      seen = localStorage.getItem('club-guide-seen') === '1';
+    } catch {
+      /* private mode — treat as first visit */
+    }
+    if (fromHash || !seen) {
+      setTab('rules');
+      setAutoGuide(true);
+      try {
+        localStorage.setItem('club-guide-seen', '1');
+      } catch {
+        /* ignore */
+      }
+    }
+  }, []);
+
+  // Keep the URL hash in step with the tab so the current section is shareable.
+  useEffect(() => {
+    const desired = `#${tab}`;
+    if (window.location.hash !== desired) {
+      window.history.replaceState(null, '', `${window.location.pathname}${desired}`);
+    }
+  }, [tab]);
 
   useEffect(() => {
     void load();
@@ -201,7 +244,8 @@ export function ClubLeaguePage() {
         {tab === 'divisions' && <DivisionsView club={club} />}
         {tab === 'rules' && (
           <div className="stack">
-            <ClubExplainer />
+            <ShareGuide />
+            <ClubExplainer autoNarrate={autoGuide} />
             <ClubRules club={club} />
           </div>
         )}
@@ -342,6 +386,49 @@ function DayFlipper({
         aria-label="Next match-day"
       >
         Next ›
+      </button>
+    </div>
+  );
+}
+
+/** A one-tap "share the guide" bar — copies a direct link to the How-to-play
+ * section so friends open straight into the narrated walkthrough. */
+function ShareGuide() {
+  const [copied, setCopied] = useState(false);
+  const link = () =>
+    typeof window === 'undefined'
+      ? ''
+      : `${window.location.origin}${window.location.pathname}#rules`;
+
+  const share = async () => {
+    const url = link();
+    const data = {
+      title: 'Club Football — how to play',
+      text: 'Learn Club Football in 60 seconds:',
+      url,
+    };
+    try {
+      if (navigator.share) {
+        await navigator.share(data);
+        return;
+      }
+    } catch {
+      /* user dismissed the share sheet — fall through to copy */
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      window.prompt('Copy this link to share the guide:', url);
+    }
+  };
+
+  return (
+    <div className="banner club-share-guide">
+      <span>📣 New here? This is the full guide — share it so everyone learns the game.</span>
+      <button type="button" className="btn btn-sm btn-primary" onClick={() => void share()}>
+        {copied ? '✓ Link copied' : '🔗 Share the guide'}
       </button>
     </div>
   );

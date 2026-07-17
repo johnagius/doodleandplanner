@@ -682,15 +682,16 @@ export function computeDivisions(state: ClubLeagueState): PeriodDivisions[] {
     let runInSecond: RunIn | undefined;
     let runInOthers: ClubLeaderRow[] | undefined;
     if (isRunIn) {
-      // Elite: the top of League 1 (= the top contenders overall) play for the Crown.
-      const eliteIds = orderBefore
-        .filter((id) => membership[id] === 'league1')
-        .slice(0, state.runInContenders);
-      // Second tier: the top of League 2 play for the Plate. Disjoint from the elite
-      // because the divisions never overlap.
-      const secondIds = orderBefore
-        .filter((id) => membership[id] === 'league2')
-        .slice(0, state.runInContenders);
+      // Entering the finale, each division CUTS its last-placed player (by the
+      // cumulative table). The survivors reset to level and contest the run-in:
+      //   • League 1 → the bottom one is knocked out; the rest play for the top trophy.
+      //   • League 2 → the last-placed is knocked out; the rest play for the shield.
+      // With the default 4 / 3 split that's a 3-way top race and a 2-way second race.
+      const league1Ordered = orderBefore.filter((id) => membership[id] === 'league1');
+      const league2Ordered = orderBefore.filter((id) => membership[id] === 'league2');
+      const dropLast = (ids: string[]): string[] => ids.slice(0, Math.max(0, ids.length - 1));
+      const eliteIds = dropLast(league1Ordered);
+      const secondIds = dropLast(league2Ordered);
       const inRunIn = new Set([...eliteIds, ...secondIds]);
       // Reset to level: rank each run-in purely on its run-in (period) points.
       runIn = {

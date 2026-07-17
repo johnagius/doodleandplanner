@@ -8622,6 +8622,108 @@ label.field {
   font-size: 1.3rem;
   color: #b8860b;
 }
+.cx-arrow.up {
+  color: var(--success);
+  display: inline-block;
+  animation: cx-bob-up 0.9s ease-in-out infinite;
+}
+.cx-arrow.down {
+  color: var(--danger);
+  display: inline-block;
+  animation: cx-bob-down 0.9s ease-in-out infinite;
+}
+@keyframes cx-bob-up {
+  50% {
+    transform: translateY(-4px);
+  }
+}
+@keyframes cx-bob-down {
+  50% {
+    transform: translateY(4px);
+  }
+}
+.cx-reset {
+  display: grid;
+  gap: 0.8rem;
+  place-items: center;
+  width: 100%;
+}
+.cx-reset-cut {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--danger) 14%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--danger) 40%, var(--border));
+  text-decoration: line-through;
+  opacity: 0.75;
+}
+.cx-reset-cut-tag {
+  font-size: 0.72rem;
+  color: var(--danger);
+  text-decoration: none;
+}
+.cx-reset-survivors {
+  display: grid;
+  gap: 0.4rem;
+  width: min(320px, 90%);
+}
+.cx-reset-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.35rem 0.7rem;
+  border-radius: var(--radius);
+  background: var(--surface-2, rgba(127, 127, 127, 0.06));
+  border: 1px solid var(--border);
+}
+.cx-reset-name {
+  font-weight: 700;
+}
+.cx-reset-old {
+  color: var(--muted);
+  text-decoration: line-through;
+  font-variant-numeric: tabular-nums;
+}
+.cx-reset-arrow {
+  color: var(--muted);
+}
+.cx-reset-zero {
+  font-weight: 900;
+  color: #d4af37;
+  font-variant-numeric: tabular-nums;
+  min-width: 1.2rem;
+  text-align: center;
+}
+.club-share-guide {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.club-stage-sound {
+  position: absolute;
+  bottom: 0.6rem;
+  right: 0.6rem;
+  border: none;
+  border-radius: 999px;
+  padding: 0.35rem 0.7rem;
+  font-weight: 700;
+  font-size: 0.8rem;
+  cursor: pointer;
+  background: rgba(0, 0, 0, 0.72);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+  animation: cx-pulse 1.6s ease-in-out infinite;
+}
+@keyframes cx-pulse {
+  50% {
+    transform: scale(1.06);
+  }
+}
 
 .club-comp-logo {
   object-fit: contain;

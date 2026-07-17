@@ -102,32 +102,50 @@ export function ClubRules({ club }: { club: ClubLeagueState }) {
         </p>
       </Section>
 
-      <Section emoji="🏁" title="4 · The finale — two trophies">
+      <Section emoji="🏁" title="4 · The finale — how it plays out">
         <p>
-          The final period is a double title decider. Everyone’s season points feed the seeding,
-          then two sets of contenders <strong>reset to level</strong> and fight head-to-head over
-          the closing fixtures:
+          The final period is the decider. It runs in three acts. First, the two divisions are{' '}
+          <strong>cut</strong> — the season table entering the finale sets who’s still standing:
+        </p>
+        <ul>
+          <li>
+            <strong>Top league (League 1):</strong> the{' '}
+            <strong>bottom-placed player is knocked out</strong> of the title race. With{' '}
+            {club.league1Size} in League 1, that leaves{' '}
+            <strong>{topRunInCount(club)} still competing</strong>.
+          </li>
+          <li>
+            <strong>Bottom league (League 2):</strong> the{' '}
+            <strong>last-placed player is knocked out</strong> too. With {leagueTwoSize(club)} in
+            League 2, that leaves <strong>{secondRunInCount(club)} still competing</strong>.
+          </li>
+        </ul>
+        <p>
+          Second, <strong>everyone still standing resets to 0 points</strong>. The whole season’s
+          lead is wiped — the finale is a clean sprint decided only on the closing fixtures. Third,
+          they race head-to-head for two trophies:
         </p>
         <ul>
           <li className="club-rule-trophy">
             <TrophyIcon size={26} />
             <span>
-              <strong>{CLUB_TROPHY_TOP.runInName}</strong> — the top {club.runInContenders} players
-              overall battle for <strong>{CLUB_TROPHY_TOP.name}</strong>, the big one.
+              <strong>{CLUB_TROPHY_TOP.runInName}</strong> — the {topRunInCount(club)} survivors of
+              League 1 battle for <strong>{CLUB_TROPHY_TOP.name}</strong>, the big one.
             </span>
           </li>
           <li className="club-rule-trophy">
             <ShieldIcon size={26} />
             <span>
-              <strong>{CLUB_TROPHY_SECOND.runInName}</strong> — the top {club.runInContenders} of
-              League 2 play for <strong>{CLUB_TROPHY_SECOND.name}</strong> — a cool prize of its
-              own, a notch below the {CLUB_TROPHY_TOP.name}.
+              <strong>{CLUB_TROPHY_SECOND.runInName}</strong> — the {secondRunInCount(club)}{' '}
+              survivors of League 2 play for <strong>{CLUB_TROPHY_SECOND.name}</strong> — a prize of
+              its own, a notch below the {CLUB_TROPHY_TOP.name}.
             </span>
           </li>
         </ul>
-        <p>
-          Because points reset, a season-long chase can still be caught right at the death — and
-          even if you never troubled the leaders, there’s silverware to fight for.
+        <p className="muted small">
+          The knocked-out players still predict every game to the end — the results just don’t win
+          them a trophy. Because points reset, a season-long chase can still be reeled in right at
+          the death, and a mid-table run can still end with silverware.
         </p>
       </Section>
 
@@ -168,6 +186,17 @@ export function ClubRules({ club }: { club: ClubLeagueState }) {
       </Section>
     </div>
   );
+}
+
+/** How many stay in each division's finale after the last-placed player is cut. */
+function leagueTwoSize(club: ClubLeagueState): number {
+  return Math.max(0, club.predictors.length - club.league1Size);
+}
+function topRunInCount(club: ClubLeagueState): number {
+  return Math.max(0, club.league1Size - 1);
+}
+function secondRunInCount(club: ClubLeagueState): number {
+  return Math.max(0, leagueTwoSize(club) - 1);
 }
 
 function Section({

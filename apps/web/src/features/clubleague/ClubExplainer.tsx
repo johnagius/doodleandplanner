@@ -20,11 +20,15 @@ interface Scene {
  * synced on-screen captions, and optional narration using the device's best free
  * voice, so it reads professionally whether the sound is on or off.
  */
-export function ClubExplainer() {
+export function ClubExplainer({ autoNarrate = false }: { autoNarrate?: boolean }) {
   const scenes = SCENES;
   const [idx, setIdx] = useState(0);
   const [playing, setPlaying] = useState(true);
-  const [narrate, setNarrate] = useState(false);
+  const [narrate, setNarrate] = useState(autoNarrate);
+  // True when the browser blocked autoplaying the voice-over until a tap.
+  const [soundBlocked, setSoundBlocked] = useState(false);
+  // Bumped to force the current scene's narration to replay (from a tap gesture).
+  const [nonce, setNonce] = useState(0);
   const timer = useRef<number | null>(null);
   const audio = useRef<HTMLAudioElement | null>(null);
 
@@ -58,9 +62,15 @@ export function ClubExplainer() {
       el.onerror = () => {
         timer.current = window.setTimeout(advance, holdMs);
       };
-      void el.play().catch(() => {
-        timer.current = window.setTimeout(advance, holdMs);
-      });
+      void el
+        .play()
+        .then(() => setSoundBlocked(false))
+        .catch(() => {
+          // Browsers block autoplay with sound until the user interacts — keep the
+          // visuals rolling and surface a one-tap "turn sound on" prompt.
+          setSoundBlocked(true);
+          timer.current = window.setTimeout(advance, holdMs);
+        });
     } else {
       timer.current = window.setTimeout(advance, holdMs);
     }
@@ -69,7 +79,7 @@ export function ClubExplainer() {
       clear();
       stopAudio();
     };
-  }, [idx, playing, narrate, scenes]);
+  }, [idx, playing, narrate, scenes, nonce]);
 
   useEffect(() => () => stopAudio(), []);
 
@@ -115,6 +125,20 @@ export function ClubExplainer() {
 
       <div className="club-stage" key={idx}>
         <Visual />
+        {narrate && soundBlocked && (
+          <button
+            type="button"
+            className="club-stage-sound"
+            onClick={() => {
+              setNarrate(true);
+              setSoundBlocked(false);
+              setPlaying(true);
+              setNonce((n) => n + 1); // replay this scene's voice from the tap gesture
+            }}
+          >
+            🔊 Tap for sound
+          </button>
+        )}
       </div>
 
       <div className="club-stage-caption" aria-live="polite">
@@ -266,7 +290,9 @@ function PromoVisual() {
     <div className="cx-promo">
       <div className="cx-promo-col">
         <div className="cx-league-title">🥇 League 1</div>
-        <span className="cx-player cx-demote">Saviour ▼</span>
+        <span className="cx-player cx-demote">
+          Saviour <span className="cx-arrow down">▼</span>
+        </span>
       </div>
       <div className="cx-promo-mid">
         <span className="cx-date">at period end · 1 Nov</span>
@@ -276,7 +302,40 @@ function PromoVisual() {
       </div>
       <div className="cx-promo-col">
         <div className="cx-league-title">League 2</div>
-        <span className="cx-player cx-promote">Manuel ▲</span>
+        <span className="cx-player cx-promote">
+          Manuel <span className="cx-arrow up">▲</span>
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/** The finale beat: each division cuts its last-placed player, the rest reset to 0. */
+function ResetVisual() {
+  const survivors = ['John', 'Daniel', 'Noel'];
+  return (
+    <div className="cx-reset">
+      <div className="cx-reset-cut cx-slide">
+        <span className="cx-reset-cut-name">Saviour</span>
+        <span className="cx-reset-cut-tag">✗ knocked out</span>
+      </div>
+      <div className="cx-reset-survivors">
+        {survivors.map((n, i) => (
+          <div
+            key={n}
+            className="cx-reset-row cx-slide"
+            style={{ animationDelay: `${0.3 + i * 0.25}s` }}
+          >
+            <span className="cx-reset-name">{n}</span>
+            <span className="cx-reset-old">28</span>
+            <span className="cx-reset-arrow" aria-hidden>
+              →
+            </span>
+            <span className="cx-reset-zero cx-pop" style={{ animationDelay: `${0.6 + i * 0.25}s` }}>
+              0
+            </span>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -290,14 +349,14 @@ function TrophyVisual() {
           <TrophyIcon size={58} />
         </div>
         <div className="cx-trophy-name">{CLUB_TROPHY_TOP.name}</div>
-        <div className="cx-trophy-sub">Top 3 overall · reset to 0</div>
+        <div className="cx-trophy-sub">League 1 survivors · from 0</div>
       </div>
       <div className="cx-trophy cx-pop" style={{ animationDelay: '0.5s' }}>
         <div className="cx-trophy-icon">
           <ShieldIcon size={58} />
         </div>
         <div className="cx-trophy-name">{CLUB_TROPHY_SECOND.name}</div>
-        <div className="cx-trophy-sub">Top of League 2 · reset to 0</div>
+        <div className="cx-trophy-sub">League 2 survivors · from 0</div>
       </div>
     </div>
   );
@@ -359,6 +418,13 @@ const SCENES: Scene[] = [
     seconds: 8,
     caption: 'Promotion & relegation happen only at period end, on set dates — never mid-game.',
     Visual: PromoVisual,
+  },
+  {
+    id: 'reset',
+    seconds: 9,
+    caption:
+      'At the finale each division cuts its last-placed player — the survivors reset to 0 and sprint the closing games.',
+    Visual: ResetVisual,
   },
   {
     id: 'trophies',

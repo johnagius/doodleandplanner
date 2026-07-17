@@ -80,9 +80,11 @@ function PeriodPanel({ panel, club }: { panel: PeriodDivisions; club: ClubLeague
     return (
       <div className="stack">
         <div className="banner club-runin-banner">
-          🏁 <strong>The finale.</strong> Contenders <strong>reset to level</strong> and fight it
-          out over this period’s fixtures — the leaders for the {panel.runIn.trophy.name}, the top
-          of League 2 for {panel.runInSecond?.trophy.name ?? 'their own trophy'}.
+          🏁 <strong>The finale.</strong> Each division’s{' '}
+          <strong>last-placed player is knocked out</strong>; the survivors{' '}
+          <strong>reset to 0</strong> and sprint the closing fixtures — League 1 for the{' '}
+          {panel.runIn.trophy.name}, League 2 for{' '}
+          {panel.runInSecond?.trophy.name ?? 'their own trophy'}.
         </div>
         <DivisionTable
           title={panel.runIn.trophy.name}
@@ -104,7 +106,7 @@ function PeriodPanel({ panel, club }: { panel: PeriodDivisions; club: ClubLeague
         )}
         {panel.runInOthers && panel.runInOthers.length > 0 && (
           <DivisionTable
-            title="Also playing"
+            title="🚫 Knocked out of the finale — still predicting"
             rows={panel.runInOthers}
             meId={meId}
             moveOf={moveOf}

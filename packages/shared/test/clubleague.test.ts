@@ -447,12 +447,17 @@ describe('divisions, promotion/relegation, run-in', () => {
     // The two run-ins never share a player.
     expect([...elite].some((id) => second.has(id))).toBe(false);
     // The second-tier contenders are all from League 2 entering the final period.
-    const l2 = new Set(
-      Object.entries(p.membership)
-        .filter(([, d]) => d === 'league2')
-        .map(([id]) => id),
-    );
-    expect([...second].every((id) => l2.has(id))).toBe(true);
+    const l2 = ([...ids] as string[]).filter((id) => p.membership[id] === 'league2');
+    expect([...second].every((id) => new Set(l2).has(id))).toBe(true);
+    // Each division CUTS its last-placed player entering the finale: League 1 (4)
+    // keeps 3, League 2 (3) keeps 2. The two knocked-out players still play on.
+    expect(elite.size).toBe(3);
+    expect(second.size).toBe(2);
+    expect(l2.length).toBe(3);
+    // Exactly one League 2 player is knocked out of the shield race (into "others");
+    // the rest reset to level and contest it.
+    expect(l2.filter((id) => second.has(id)).length).toBe(2);
+    expect(l2.filter((id) => others.has(id)).length).toBe(1);
     // Everyone is accounted for exactly once.
     expect(elite.size + second.size + others.size).toBe(7);
   });

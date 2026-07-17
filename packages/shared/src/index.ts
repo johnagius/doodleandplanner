@@ -29,6 +29,7 @@ export * from './games.js';
 export * from './meet.js';
 export * from './photos.js';
 export * from './worldcup.js';
+export * from './clubleague.js';
 export * from './squads.js';
 export * from './playerCards.js';
 export * from './betting.js';

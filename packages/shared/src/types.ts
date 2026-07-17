@@ -7,6 +7,7 @@
  */
 import type { GameSession } from './games.js';
 import type { WorldCupState } from './worldcup.js';
+import type { ClubLeagueState } from './clubleague.js';
 
 export type ISODateTime = string;
 
@@ -333,4 +334,6 @@ export interface RoomState {
   photos?: Photo[];
   /** World Cup predictions board (only on the dedicated singleton room). */
   worldCup?: WorldCupState;
+  /** Club Football predictions board (only on its dedicated singleton room). */
+  clubLeague?: ClubLeagueState;
 }

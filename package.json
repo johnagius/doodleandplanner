@@ -25,6 +25,7 @@
     "test:smoke": "npm run test:smoke --workspace @dap/web",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "eslint .",
+    "guide:video": "node scripts/guide-video/make-video.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },

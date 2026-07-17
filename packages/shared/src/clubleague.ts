@@ -189,7 +189,7 @@ export interface ClubLeagueState {
 }
 
 /** Bump when the seeded teams/competitions/periods change; older boards re-seed. */
-export const CLUB_SEED_VERSION = 5;
+export const CLUB_SEED_VERSION = 6;
 
 // --- Scoring ---------------------------------------------------------------
 
@@ -599,6 +599,16 @@ export const CLUB_TROPHY_SECOND: ClubTrophy = {
   emoji: '🛡️',
 };
 
+/** The grand finale: a one-game faceoff between the Master League Trophy winner
+ * and the First Division Shield winner, decided by their bet on the Champions
+ * League final. Only those two may bet it — everyone else's season is done. */
+export const CLUB_TROPHY_MEISTER: ClubTrophy = {
+  runInName: 'Meister Cup Final',
+  name: 'Meister Cup',
+  icon: 'trophy',
+  emoji: '🥇',
+};
+
 /**
  * Compute the division picture for every period, threading promotion/relegation
  * through the season.
@@ -713,6 +723,138 @@ export function computeDivisions(state: ClubLeagueState): PeriodDivisions[] {
   return out;
 }
 
+// --- Meister Cup (grand finale) --------------------------------------------
+
+/** The two Meister Cup finalists — the current leader of each run-in: the Master
+ * League Trophy winner (top run-in) and the First Division Shield winner (second
+ * run-in). Either is absent until its run-in exists. */
+export function meisterContenderIds(state: ClubLeagueState): {
+  masterId?: string;
+  firstDivId?: string;
+} {
+  const divisions = computeDivisions(state);
+  const last = divisions[divisions.length - 1];
+  return {
+    masterId: last?.runIn?.contenders[0]?.predictorId,
+    firstDivId: last?.runInSecond?.contenders[0]?.predictorId,
+  };
+}
+
+/** The Champions League final — the single latest-kick-off UCL fixture. The
+ * leagues finish before it, so it sits after every period: the Meister decider,
+ * bet only by the two finalists. Undefined until the feed lists a UCL game. */
+export function clFinalFixture(state: ClubLeagueState): ClubFixture | undefined {
+  const ucl = state.fixtures
+    .filter((f) => f.competitionId === 'ucl')
+    .sort((a, b) => toMs(b.kickoff) - toMs(a.kickoff) || b.order - a.order);
+  return ucl[0];
+}
+
+export interface MeisterContender {
+  predictorId: string;
+  name: string;
+  /** Which title earned them the seat. */
+  side: 'master' | 'firstDiv';
+  /** Points scored on the Champions League final bet (0 until it's played). */
+  points: number;
+  /** Total points across the closing week — the tie-break when the final is level. */
+  lastWeekPoints: number;
+  /** Their prediction on the final, if made. */
+  prediction?: ClubPrediction;
+}
+
+export interface MeisterCup {
+  trophy: ClubTrophy;
+  /** The Champions League final that decides it (if the feed lists one). */
+  finalFixtureId?: string;
+  /** [Master League finalist, First Division finalist] — whichever are known. */
+  contenders: MeisterContender[];
+  /** True once the final carries a score (final or live "as it stands"). */
+  decided: boolean;
+  /** Winner once decided. */
+  winnerId?: string;
+  /** How the winner was settled: on the final itself, the closing-week tie-break,
+   * or (level on both) the more prestigious Master League seat. */
+  tiebreak?: 'final' | 'lastWeek' | 'seniority';
+}
+
+/**
+ * The Meister Cup — a one-game grand finale between the Master League Trophy
+ * winner and the First Division Shield winner, decided purely by their bet on
+ * the Champions League final. If they score **level on the final**, the highest
+ * points across the **closing week** breaks the tie; if still level, the Master
+ * League winner (the more prestigious title) takes it.
+ */
+export function computeMeister(
+  state: ClubLeagueState,
+  opts?: { liveScores?: Record<string, ClubResult> },
+): MeisterCup {
+  const { masterId, firstDivId } = meisterContenderIds(state);
+  const final = clFinalFixture(state);
+  const finalScore = final ? (final.result ?? opts?.liveScores?.[final.id]) : undefined;
+  const weekMs = 7 * 86_400_000;
+  const finalKick = final ? toMs(final.kickoff) : null;
+
+  const build = (id: string | undefined, side: 'master' | 'firstDiv'): MeisterContender | null => {
+    if (!id) return null;
+    const person = findClubPredictor(state, id);
+    if (!person) return null;
+    const prediction = final ? findPrediction(state, final.id, id) : undefined;
+    const points =
+      final && finalScore && prediction ? scoreClubPrediction(prediction, finalScore).points : 0;
+    let lastWeekPoints = 0;
+    if (finalKick != null) {
+      for (const f of state.fixtures) {
+        const res = f.result ?? opts?.liveScores?.[f.id];
+        if (!res) continue;
+        const k = toMs(f.kickoff);
+        if (k < finalKick - weekMs || k >= finalKick) continue; // only the closing week, pre-final
+        const pred = findPrediction(state, f.id, id);
+        if (pred) lastWeekPoints += scoreClubPrediction(pred, res).points;
+      }
+    }
+    return { predictorId: id, name: person.name, side, points, lastWeekPoints, prediction };
+  };
+
+  const contenders = [build(masterId, 'master'), build(firstDivId, 'firstDiv')].filter(
+    (c): c is MeisterContender => !!c,
+  );
+  const decided = !!(final && finalScore);
+
+  let winnerId: string | undefined;
+  let tiebreak: MeisterCup['tiebreak'];
+  if (decided && contenders.length > 0) {
+    if (contenders.length === 1) {
+      winnerId = contenders[0]!.predictorId;
+      tiebreak = 'final';
+    } else {
+      const [master, firstDiv] = contenders as [MeisterContender, MeisterContender];
+      if (master.points !== firstDiv.points) {
+        winnerId = master.points > firstDiv.points ? master.predictorId : firstDiv.predictorId;
+        tiebreak = 'final';
+      } else if (master.lastWeekPoints !== firstDiv.lastWeekPoints) {
+        winnerId =
+          master.lastWeekPoints > firstDiv.lastWeekPoints
+            ? master.predictorId
+            : firstDiv.predictorId;
+        tiebreak = 'lastWeek';
+      } else {
+        winnerId = master.predictorId; // level on both — the Master League seat prevails
+        tiebreak = 'seniority';
+      }
+    }
+  }
+
+  return {
+    trophy: CLUB_TROPHY_MEISTER,
+    finalFixtureId: final?.id,
+    contenders,
+    decided,
+    winnerId,
+    tiebreak,
+  };
+}
+
 // --- Mutations (pure) ------------------------------------------------------
 
 function touch(now: () => Date): ISODateTime {
@@ -741,6 +883,17 @@ export function setClubPrediction(
   if (!fixture) throw new Error('Unknown fixture');
   if (!opts.force && isFixtureLocked(fixture, now())) {
     throw new Error('This fixture is locked — predictions closed at kick-off.');
+  }
+  // The Champions League final is the Meister Cup decider — only its two
+  // finalists may predict it; everyone else's season is already over.
+  if (!opts.force) {
+    const final = clFinalFixture(state);
+    if (final && final.id === input.fixtureId) {
+      const { masterId, firstDivId } = meisterContenderIds(state);
+      if (input.predictorId !== masterId && input.predictorId !== firstDivId) {
+        throw new Error('Only the Meister Cup finalists may predict the Champions League final.');
+      }
+    }
   }
   const existing = findPrediction(state, input.fixtureId, input.predictorId);
   const merged: ClubPrediction = {
@@ -1110,7 +1263,9 @@ const PERIODS: SeasonPeriod[] = [
     id: 'p4',
     name: 'Champions Run-In',
     startsAt: '2027-05-01T00:00:00.000Z',
-    endsAt: '2027-07-01T00:00:00.000Z',
+    // The leagues finish before the Champions League final — the closing week
+    // ends here, and the final (which falls after) decides the Meister Cup.
+    endsAt: '2027-05-24T00:00:00.000Z',
     runIn: true,
   },
 ];

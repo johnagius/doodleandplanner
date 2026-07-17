@@ -1,8 +1,10 @@
 import {
+  clFinalFixture,
   findCompetition,
   findPrediction,
   isFixtureLocked,
   marketsForResult,
+  meisterContenderIds,
   scoreClubPrediction,
   type ClubBtts,
   type ClubCompetition,
@@ -32,6 +34,12 @@ export function FixtureCard({ club, fixture }: { club: ClubLeagueState; fixture:
   const comp = findCompetition(club, fixture.competitionId);
   const mine = meId ? findPrediction(club, fixture.id, meId) : undefined;
 
+  // The Champions League final is the Meister Cup decider — only the Master League
+  // Trophy winner and First Division Shield winner may bet it.
+  const isClFinal = clFinalFixture(club)?.id === fixture.id;
+  const meister = isClFinal ? meisterContenderIds(club) : null;
+  const canBetFinal = !isClFinal || meId === meister?.masterId || meId === meister?.firstDivId;
+
   // "As it stands" score for a live game; the real result once final.
   const liveScore: ClubResult | null = isLive ? { home: liveInfo.home, away: liveInfo.away } : null;
   const effective = fixture.result ?? liveScore;
@@ -58,6 +66,7 @@ export function FixtureCard({ club, fixture }: { club: ClubLeagueState; fixture:
         ) : (
           <span className="badge badge-success">Open</span>
         )}
+        {isClFinal && <span className="badge club-meister-badge">🥇 Meister Cup decider</span>}
       </div>
 
       <div className="club-fixture-teams">
@@ -76,7 +85,14 @@ export function FixtureCard({ club, fixture }: { club: ClubLeagueState; fixture:
         <EventsList events={liveInfo.events} home={fixture.home.short} away={fixture.away.short} />
       )}
 
-      {!locked && meId && <MarketPicker club={club} fixture={fixture} />}
+      {!locked && meId && canBetFinal && <MarketPicker club={club} fixture={fixture} />}
+
+      {!locked && meId && !canBetFinal && (
+        <p className="muted small club-meister-lock" style={{ margin: '0.25rem 0 0' }}>
+          🥇 Only the <strong>Meister Cup</strong> finalists — the Master League Trophy &amp; First
+          Division Shield winners — may predict the Champions League final.
+        </p>
+      )}
 
       {!locked && !meId && (
         <p className="muted small" style={{ margin: '0.25rem 0 0' }}>

@@ -2,16 +2,12 @@
  * Club Football Predictions — a self-contained, multi-competition prediction game.
  *
  * A small group of friends predicts every fixture played by a fixed set of clubs
- * (across their league, domestic cups and the Champions League). Instead of
- * guessing exact scorelines, each fixture offers three **markets**:
+ * across every competition they're in — league, domestic cups and Europe. Each
+ * fixture offers three **markets**:
  *
  *   • Result   — 1 / X / 2 (home win / draw / away win)               → 3 pts
  *   • Goals    — Over / Under 2.5 (i.e. "3 or more goals?")           → 2 pts
  *   • BTTS     — will both teams score?                               → 2 pts
- *
- * Once per **period** each player may nominate one fixture as their **Banker**:
- * everything they earn on that fixture is doubled — the conviction lever that
- * rewards a brave call.
  *
  * The season is split into ordered **periods**. Within every period the field is
  * split into two divisions — **League 1** (the top players) and **League 2** —
@@ -20,10 +16,15 @@
  * with the overall total. The final period is a **Champions Run-In**: the top
  * contenders reset to level and fight out the title over the closing fixtures.
  *
+ * **Fixtures are automatic.** They're pulled from a live feed of every game our
+ * clubs play: new cup rounds appear as they're drawn, an eliminated club's future
+ * cup games never show up, and kick-off dates/times self-adjust when they move.
+ * Finished games auto-fill their result. The organiser only ever steps in for an
+ * edge case — e.g. correcting a cup tie that went to extra time so the 90-minute
+ * markets settle right — via a manual override the feed then leaves alone.
+ *
  * Everything here is **pure, immutable and serialisable** so it can live inside a
  * {@link RoomState} and sync through the same Repository as the rest of the app.
- * Fixtures are organiser-managed (added, rescheduled and resulted by hand), which
- * is what lets kick-off dates and times change freely mid-season.
  */
 import { generateId } from './ids.js';
 import { toMs } from './time.js';
@@ -56,8 +57,8 @@ export interface ClubCompetition {
 
 /**
  * One side of a fixture. Usually a tracked {@link ClubTeam} (via `teamId`), but
- * the opponent can be any club — organisers just type a name, so a side is fully
- * self-describing and scoring never depends on team identity.
+ * the opponent can be any club — the feed carries a name/abbreviation, so a side
+ * is fully self-describing and scoring never depends on team identity.
  */
 export interface ClubSide {
   name: string;
@@ -67,11 +68,14 @@ export interface ClubSide {
   teamId?: string;
 }
 
-/** The real-world full-time result of a fixture, entered by the organiser. */
+/** The real-world full-time result of a fixture. */
 export interface ClubResult {
   home: number;
   away: number;
 }
+
+/** Feed status of a fixture. */
+export type ClubFixtureStatus = 'scheduled' | 'live' | 'final';
 
 export interface ClubFixture {
   id: string;
@@ -82,7 +86,15 @@ export interface ClubFixture {
   /** Global ordering fallback for a stable display when times are equal. */
   order: number;
   result?: ClubResult;
-  /** Organiser note, e.g. "Postponed", "2nd leg". Purely informational. */
+  /** Stable id of the source feed event (e.g. "espn:707980"). Present on every
+   * feed-sourced fixture; the reconciler keys off it. Absent ⇒ organiser-added. */
+  externalId?: string;
+  /** Latest status from the feed. */
+  status?: ClubFixtureStatus;
+  /** Set when the organiser hand-enters a result (e.g. an extra-time correction).
+   * The feed will not overwrite a manual result. */
+  resultManual?: boolean;
+  /** Organiser note, e.g. "2nd leg". Purely informational. */
   note?: string;
 }
 
@@ -100,9 +112,6 @@ export interface ClubPrediction {
   outcome?: ClubOutcome;
   totals?: ClubTotals;
   btts?: ClubBtts;
-  /** Doubles everything earned on this fixture. At most one banker per predictor
-   * per period (enforced by {@link setBanker}). */
-  banker?: boolean;
   updatedAt: ISODateTime;
 }
 
@@ -140,11 +149,13 @@ export interface ClubLeagueState {
   league1Size: number;
   /** How many top players contest the closing Champions Run-In. */
   runInContenders: number;
+  /** When the fixture feed was last successfully applied (ISO). */
+  feedSyncedAt?: ISODateTime;
   createdAt: ISODateTime;
 }
 
 /** Bump when the seeded teams/competitions/periods change; older boards re-seed. */
-export const CLUB_SEED_VERSION = 1;
+export const CLUB_SEED_VERSION = 2;
 
 // --- Scoring ---------------------------------------------------------------
 
@@ -160,6 +171,9 @@ export const CLUB_POINTS = {
 
 /** The Over/Under line. 2.5 means "3 or more goals" = Over. */
 export const CLUB_TOTALS_LINE = 2.5;
+
+/** The most a single fixture can be worth (all three markets right). */
+export const CLUB_MAX_FIXTURE_POINTS = CLUB_POINTS.result + CLUB_POINTS.totals + CLUB_POINTS.btts;
 
 export interface ClubMarketOutcome {
   outcome: ClubOutcome;
@@ -183,16 +197,13 @@ export interface ClubScoreBreakdown {
   btts: number;
   /** Which markets were correctly called. */
   hits: { result: boolean; totals: boolean; btts: boolean };
-  /** Sum of the market points, before the banker multiplier. */
-  base: number;
-  banker: boolean;
-  /** Final points for the fixture (base, doubled when bankered). */
+  /** Total points for the fixture. */
   points: number;
 }
 
 /** Score a single prediction against the actual scoreline. */
 export function scoreClubPrediction(
-  pred: Pick<ClubPrediction, 'outcome' | 'totals' | 'btts' | 'banker'>,
+  pred: Pick<ClubPrediction, 'outcome' | 'totals' | 'btts'>,
   actual: ClubResult,
 ): ClubScoreBreakdown {
   const m = marketsForResult(actual);
@@ -204,14 +215,8 @@ export function scoreClubPrediction(
   const result = hits.result ? CLUB_POINTS.result : 0;
   const totals = hits.totals ? CLUB_POINTS.totals : 0;
   const btts = hits.btts ? CLUB_POINTS.btts : 0;
-  const base = result + totals + btts;
-  const banker = !!pred.banker;
-  return { result, totals, btts, hits, base, banker, points: banker ? base * 2 : base };
+  return { result, totals, btts, hits, points: result + totals + btts };
 }
-
-/** The most a single fixture can be worth (all three markets, bankered). */
-export const CLUB_MAX_FIXTURE_POINTS =
-  (CLUB_POINTS.result + CLUB_POINTS.totals + CLUB_POINTS.btts) * 2;
 
 // --- Lookups & helpers -----------------------------------------------------
 
@@ -252,8 +257,8 @@ export function findPrediction(
   return state.predictions.find((p) => p.fixtureId === fixtureId && p.predictorId === predictorId);
 }
 
-/** Whether a fixture is closed to (non-organiser) predictions: kicked off or
- * already resulted. Rescheduling the kick-off re-opens it automatically. */
+/** Whether a fixture is closed to predictions: kicked off or already resulted.
+ * A feed reschedule to the future re-opens it automatically. */
 export function isFixtureLocked(fixture: ClubFixture, now: Date): boolean {
   return !!fixture.result || now.getTime() >= toMs(fixture.kickoff);
 }
@@ -304,7 +309,7 @@ export function clubLockingSoon(
   return clubPendingForMe(state, predictorId, now).filter((f) => toMs(f.kickoff) - t <= withinMs);
 }
 
-// --- Season clubLeaderboard ----------------------------------------------------
+// --- Season leaderboard ----------------------------------------------------
 
 export interface ClubLeaderRow {
   predictorId: string;
@@ -316,8 +321,6 @@ export interface ClubLeaderRow {
   resultsRight: number;
   /** Individual markets called correctly across all fixtures. */
   marketsRight: number;
-  /** Bankers that have landed (been scored). */
-  bankersHit: number;
 }
 
 function emptyRow(p: ClubPredictor): ClubLeaderRow {
@@ -328,7 +331,6 @@ function emptyRow(p: ClubPredictor): ClubLeaderRow {
     scored: 0,
     resultsRight: 0,
     marketsRight: 0,
-    bankersHit: 0,
   };
 }
 
@@ -356,7 +358,6 @@ export function clubLeaderboard(
       if (markets > 0) row.scored++;
       row.marketsRight += markets;
       if (s.hits.result) row.resultsRight++;
-      if (s.banker && s.base > 0) row.bankersHit++;
     }
   }
   return sortRows([...rows.values()]);
@@ -519,8 +520,6 @@ export function computeDivisions(state: ClubLeagueState): PeriodDivisions[] {
       if (m) m.change = change;
     };
 
-    // Runners appearing in League 1 that were League 2 last period were promoted;
-    // vice-versa relegated. Movement is derived from the membership diff below.
     const league1Rows = l1Ids.map((id) => byId.get(id)!).filter(Boolean);
     const league2Rows = l2Ids.map((id) => byId.get(id)!).filter(Boolean);
 
@@ -607,7 +606,6 @@ export function setClubPrediction(
     outcome: input.outcome ?? existing?.outcome,
     totals: input.totals ?? existing?.totals,
     btts: input.btts ?? existing?.btts,
-    banker: existing?.banker,
     updatedAt: touch(now),
   };
   const predictions = existing
@@ -630,56 +628,13 @@ export function clearClubPrediction(
   };
 }
 
-/**
- * Nominate (or clear) a player's Banker for a fixture. Setting a banker clears
- * any other banker that player holds **in the same period**, so it stays one per
- * period. A banker requires an existing prediction on the fixture.
- */
-export function setBanker(
-  state: ClubLeagueState,
-  fixtureId: string,
-  predictorId: string,
-  on: boolean,
-  opts: { now?: () => Date; force?: boolean } = {},
-): ClubLeagueState {
-  const now = opts.now ?? (() => new Date());
-  const fixture = findFixture(state, fixtureId);
-  if (!fixture) throw new Error('Unknown fixture');
-  if (!opts.force && isFixtureLocked(fixture, now())) {
-    throw new Error('This fixture is locked — the banker can no longer change.');
-  }
-  const period = periodForFixture(state, fixture);
-  const samePeriodFixtureIds = period
-    ? new Set(
-        state.fixtures.filter((f) => periodForFixture(state, f)?.id === period.id).map((f) => f.id),
-      )
-    : new Set([fixtureId]);
-
-  let found = false;
-  let predictions = state.predictions.map((p) => {
-    if (p.predictorId !== predictorId) return p;
-    if (p.fixtureId === fixtureId) {
-      found = true;
-      return { ...p, banker: on, updatedAt: touch(now) };
-    }
-    // Clear a rival banker in the same period when turning one on.
-    if (on && p.banker && samePeriodFixtureIds.has(p.fixtureId)) {
-      return { ...p, banker: false, updatedAt: touch(now) };
-    }
-    return p;
-  });
-  if (on && !found) {
-    // No prediction yet — create a bare one carrying the banker flag.
-    predictions = [...predictions, { fixtureId, predictorId, banker: true, updatedAt: touch(now) }];
-  }
-  return { ...state, predictions };
-}
-
-/** Organiser: enter (or overwrite) a fixture's full-time result. */
+/** Organiser: enter (or overwrite) a fixture's full-time result. Marks it manual
+ * so the feed won't clobber the correction (e.g. an extra-time adjustment). */
 export function setFixtureResult(
   state: ClubLeagueState,
   fixtureId: string,
   result: ClubResult,
+  opts: { manual?: boolean } = {},
 ): ClubLeagueState {
   const fixture = findFixture(state, fixtureId);
   if (!fixture) throw new Error('Unknown fixture');
@@ -687,68 +642,27 @@ export function setFixtureResult(
   return {
     ...state,
     fixtures: state.fixtures.map((f) =>
-      f.id === fixtureId ? { ...f, result: { home: result.home, away: result.away } } : f,
+      f.id === fixtureId
+        ? {
+            ...f,
+            result: { home: result.home, away: result.away },
+            status: 'final',
+            resultManual: opts.manual ? true : f.resultManual,
+          }
+        : f,
     ),
   };
 }
 
+/** Organiser: clear a fixture's result (and its manual flag). */
 export function clearFixtureResult(state: ClubLeagueState, fixtureId: string): ClubLeagueState {
   return {
     ...state,
     fixtures: state.fixtures.map((f) => {
       if (f.id !== fixtureId) return f;
-      const { result: _drop, ...rest } = f;
+      const { result: _r, resultManual: _m, ...rest } = f;
       return rest;
     }),
-  };
-}
-
-export interface FixtureDraft {
-  competitionId: string;
-  home: ClubSide;
-  away: ClubSide;
-  kickoff: ISODateTime;
-  note?: string;
-}
-
-/** Organiser: add a new fixture. */
-export function addFixture(state: ClubLeagueState, draft: FixtureDraft): ClubLeagueState {
-  if (!findCompetition(state, draft.competitionId)) throw new Error('Unknown competition');
-  const fixture: ClubFixture = {
-    id: generateId('cf'),
-    competitionId: draft.competitionId,
-    home: draft.home,
-    away: draft.away,
-    kickoff: draft.kickoff,
-    order: nextOrder(state),
-    note: draft.note?.trim() || undefined,
-  };
-  return { ...state, fixtures: [...state.fixtures, fixture] };
-}
-
-/** Organiser: edit a fixture — reschedule the kick-off, fix teams, add a note.
- * Rescheduling to the future automatically re-opens predictions. */
-export function updateFixture(
-  state: ClubLeagueState,
-  fixtureId: string,
-  patch: Partial<Pick<ClubFixture, 'competitionId' | 'home' | 'away' | 'kickoff' | 'note'>>,
-): ClubLeagueState {
-  const fixture = findFixture(state, fixtureId);
-  if (!fixture) throw new Error('Unknown fixture');
-  if (patch.competitionId && !findCompetition(state, patch.competitionId)) {
-    throw new Error('Unknown competition');
-  }
-  return {
-    ...state,
-    fixtures: state.fixtures.map((f) =>
-      f.id === fixtureId
-        ? {
-            ...f,
-            ...patch,
-            note: patch.note !== undefined ? patch.note.trim() || undefined : f.note,
-          }
-        : f,
-    ),
   };
 }
 
@@ -794,6 +708,175 @@ export function removeClubPredictor(state: ClubLeagueState, id: string): ClubLea
   };
 }
 
+// --- Fixture feed (automatic) ----------------------------------------------
+
+/** One fixture as delivered by the live feed (produced by the Worker from the
+ * upstream football provider). Pure data, so the reconciler unit-tests easily. */
+export interface ClubFeedFixture {
+  /** Stable source id, e.g. "espn:707980". */
+  externalId: string;
+  competitionId: string;
+  kickoff: ISODateTime;
+  home: ClubSide;
+  away: ClubSide;
+  status: ClubFixtureStatus;
+  /** Present once the game is final (the 90-minute regulation score). */
+  result?: ClubResult;
+}
+
+/** Re-apply our tracked club's canonical name/short/colour to a side that the
+ * feed tagged with one of our team ids, so crests stay consistent. */
+function enrichSide(state: ClubLeagueState, side: ClubSide): ClubSide {
+  const team = side.teamId ? findClubTeam(state, side.teamId) : undefined;
+  if (!team) return side;
+  return { name: team.name, short: team.short, color: team.color, teamId: team.id };
+}
+
+/**
+ * Reconcile the board against the latest feed. This is the automatic-fixtures
+ * engine:
+ *
+ * - **New** feed fixtures are added (new cup rounds appear as they're drawn).
+ * - **Existing** feed fixtures update in place — kick-off, competition, teams and
+ *   status all self-adjust; a final score auto-fills unless the organiser has hand-
+ *   set a manual result.
+ * - **Vanished** feed fixtures that never kicked off and have no result are removed
+ *   (a cancelled game, or a cup round an eliminated club will now never play),
+ *   dropping their predictions with them.
+ *
+ * The feed is a rolling *window* of upcoming games (the next week or two), so a
+ * fixture is only pruned when it disappears from **within the covered window** —
+ * a game scheduled beyond the window simply isn't fetched yet and must be left
+ * alone. Pass `window` (the [from, to] the feed actually covered) so pruning
+ * stays scoped; without it, any vanished unplayed fixture is pruned.
+ *
+ * Organiser-added fixtures (no `externalId`) and manual results are never touched.
+ * Predictions survive because a fixture keeps its stable local id across updates.
+ */
+export function syncClubFeed(
+  state: ClubLeagueState,
+  feed: ClubFeedFixture[],
+  opts: { now?: () => Date; window?: { from: ISODateTime; to: ISODateTime } } = {},
+): ClubLeagueState {
+  const now = opts.now ?? (() => new Date());
+  const nowMs = now().getTime();
+  const winFrom = opts.window ? toMs(opts.window.from) : -Infinity;
+  const winTo = opts.window ? toMs(opts.window.to) : Infinity;
+  const byExt = new Map(state.fixtures.filter((f) => f.externalId).map((f) => [f.externalId!, f]));
+  const feedIds = new Set(feed.map((f) => f.externalId));
+  let order = nextOrder(state);
+
+  // Update existing + add new.
+  const touched = new Set<string>();
+  let fixtures = state.fixtures.map((f) => {
+    if (!f.externalId) return f; // organiser-added — never touched by the feed
+    const inc = feed.find((x) => x.externalId === f.externalId);
+    if (!inc) return f;
+    touched.add(f.externalId);
+    const keepManual = f.resultManual && f.result;
+    return {
+      ...f,
+      competitionId: inc.competitionId,
+      home: enrichSide(state, inc.home),
+      away: enrichSide(state, inc.away),
+      kickoff: inc.kickoff,
+      status: inc.status,
+      result: keepManual ? f.result : (inc.result ?? f.result),
+    };
+  });
+
+  for (const inc of feed) {
+    if (byExt.has(inc.externalId)) continue;
+    fixtures.push({
+      id: generateId('cf'),
+      externalId: inc.externalId,
+      competitionId: inc.competitionId,
+      home: enrichSide(state, inc.home),
+      away: enrichSide(state, inc.away),
+      kickoff: inc.kickoff,
+      order: order++,
+      status: inc.status,
+      result: inc.result,
+    });
+  }
+
+  // Remove vanished, unplayed feed fixtures (cancelled / now-impossible cup games)
+  // — but only within the window the feed actually covered, so a game scheduled
+  // beyond the window (not yet fetched) is never wrongly dropped.
+  const removedIds = new Set<string>();
+  fixtures = fixtures.filter((f) => {
+    if (!f.externalId || feedIds.has(f.externalId)) return true;
+    const played = !!f.result || nowMs >= toMs(f.kickoff);
+    if (played) return true; // keep anything that actually happened
+    const k = toMs(f.kickoff);
+    if (k < winFrom || k > winTo) return true; // outside the covered window — keep
+    removedIds.add(f.id);
+    return false;
+  });
+
+  const predictions = removedIds.size
+    ? state.predictions.filter((p) => !removedIds.has(p.fixtureId))
+    : state.predictions;
+
+  return { ...state, fixtures, predictions, feedSyncedAt: touch(now) };
+}
+
+// --- ESPN feed configuration (used by the Worker) --------------------------
+
+/** ESPN's public soccer team ids for our tracked clubs. The Worker queries each
+ * club's schedule across the league slugs below to assemble every fixture. */
+export const CLUB_ESPN_TEAM_IDS: Record<string, string> = {
+  MUN: '360',
+  TOT: '367',
+  MCI: '382',
+  LIV: '364',
+  ARS: '359',
+  RMA: '86',
+  BAR: '83',
+  INT: '110',
+  JUV: '111',
+  MIL: '103',
+};
+
+/** ESPN league slug → our competition id, with the scope that decides which
+ * clubs are queried in it (a nation's clubs, or every club for UEFA). */
+export interface ClubEspnLeague {
+  slug: string;
+  competitionId: string;
+  scope: 'ENG' | 'ESP' | 'ITA' | 'UEFA';
+}
+
+export const CLUB_ESPN_LEAGUES: ClubEspnLeague[] = [
+  { slug: 'eng.1', competitionId: 'epl', scope: 'ENG' },
+  { slug: 'eng.fa', competitionId: 'facup', scope: 'ENG' },
+  { slug: 'eng.league_cup', competitionId: 'efl', scope: 'ENG' },
+  { slug: 'esp.1', competitionId: 'laliga', scope: 'ESP' },
+  { slug: 'esp.copa_del_rey', competitionId: 'copa', scope: 'ESP' },
+  { slug: 'ita.1', competitionId: 'seriea', scope: 'ITA' },
+  { slug: 'ita.coppa_italia', competitionId: 'coppa', scope: 'ITA' },
+  { slug: 'uefa.champions', competitionId: 'ucl', scope: 'UEFA' },
+  { slug: 'uefa.europa', competitionId: 'uel', scope: 'UEFA' },
+];
+
+/** Which nation each tracked club belongs to, for league scoping. */
+export const CLUB_ESPN_NATION: Record<string, 'ENG' | 'ESP' | 'ITA'> = {
+  MUN: 'ENG',
+  TOT: 'ENG',
+  MCI: 'ENG',
+  LIV: 'ENG',
+  ARS: 'ENG',
+  RMA: 'ESP',
+  BAR: 'ESP',
+  INT: 'ITA',
+  JUV: 'ITA',
+  MIL: 'ITA',
+};
+
+/** ESPN team id → our tracked team id (reverse of {@link CLUB_ESPN_TEAM_IDS}). */
+export const CLUB_TEAM_BY_ESPN_ID: Record<string, string> = Object.fromEntries(
+  Object.entries(CLUB_ESPN_TEAM_IDS).map(([teamId, espnId]) => [espnId, teamId]),
+);
+
 // --- Seed ------------------------------------------------------------------
 
 const TEAMS: ClubTeam[] = [
@@ -819,6 +902,7 @@ const COMPETITIONS: ClubCompetition[] = [
   { id: 'efl', name: 'EFL Cup', short: 'EFL Cup', emoji: '🏴' },
   { id: 'copa', name: 'Copa del Rey', short: 'Copa', emoji: '🇪🇸' },
   { id: 'coppa', name: 'Coppa Italia', short: 'Coppa', emoji: '🇮🇹' },
+  { id: 'other', name: 'Other', short: 'Other', emoji: '⚽' },
 ];
 
 const PREDICTOR_NAMES = ['John', 'Noel', 'Daniel', 'Saviour', 'Manuel', 'Kevin', 'Jonathan'];
@@ -851,72 +935,8 @@ const PERIODS: SeasonPeriod[] = [
   },
 ];
 
-function side(teamId: string): ClubSide {
-  const t = TEAMS.find((x) => x.id === teamId)!;
-  return { name: t.name, short: t.short, color: t.color, teamId: t.id };
-}
-
-function opponent(name: string, short: string): ClubSide {
-  return { name, short };
-}
-
-/** A small illustrative set of opening fixtures — organisers edit/replace these
- * with the real calendar as the season unfolds. */
-function seedFixtures(): ClubFixture[] {
-  const raw: Omit<ClubFixture, 'id' | 'order'>[] = [
-    {
-      competitionId: 'epl',
-      home: side('MUN'),
-      away: side('ARS'),
-      kickoff: '2026-08-15T16:30:00.000Z',
-    },
-    {
-      competitionId: 'epl',
-      home: side('LIV'),
-      away: opponent('Everton', 'EVE'),
-      kickoff: '2026-08-15T14:00:00.000Z',
-    },
-    {
-      competitionId: 'epl',
-      home: opponent('Chelsea', 'CHE'),
-      away: side('TOT'),
-      kickoff: '2026-08-16T15:30:00.000Z',
-    },
-    {
-      competitionId: 'epl',
-      home: side('MCI'),
-      away: opponent('Newcastle', 'NEW'),
-      kickoff: '2026-08-16T13:00:00.000Z',
-    },
-    {
-      competitionId: 'laliga',
-      home: side('RMA'),
-      away: opponent('Sevilla', 'SEV'),
-      kickoff: '2026-08-17T19:00:00.000Z',
-    },
-    {
-      competitionId: 'laliga',
-      home: opponent('Atlético Madrid', 'ATM'),
-      away: side('BAR'),
-      kickoff: '2026-08-18T19:00:00.000Z',
-    },
-    {
-      competitionId: 'seriea',
-      home: side('INT'),
-      away: side('MIL'),
-      kickoff: '2026-08-22T18:45:00.000Z',
-    },
-    {
-      competitionId: 'seriea',
-      home: side('JUV'),
-      away: opponent('Napoli', 'NAP'),
-      kickoff: '2026-08-23T18:45:00.000Z',
-    },
-  ];
-  return raw.map((f, i) => ({ ...f, id: generateId('cf'), order: i + 1 }));
-}
-
-/** Build a fresh Club Football board. */
+/** Build a fresh Club Football board. Fixtures start empty and are populated by
+ * the live feed the first time it syncs. */
 export function seedClubLeague(now: () => Date = () => new Date()): ClubLeagueState {
   return {
     season: '2026/27',
@@ -924,7 +944,7 @@ export function seedClubLeague(now: () => Date = () => new Date()): ClubLeagueSt
     version: CLUB_SEED_VERSION,
     teams: TEAMS,
     competitions: COMPETITIONS,
-    fixtures: seedFixtures(),
+    fixtures: [],
     predictors: PREDICTOR_NAMES.map((name) => ({ id: generateId('clp'), name })),
     predictions: [],
     periods: PERIODS,

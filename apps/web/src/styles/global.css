@@ -8001,3 +8001,12 @@ label.field {
   margin-top: 0.2rem;
   color: var(--primary-dark);
 }
+
+.club-live-badge {
+  background: var(--danger-soft);
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 40%, transparent);
+}
+.club-feed-note {
+  margin-left: auto;
+}

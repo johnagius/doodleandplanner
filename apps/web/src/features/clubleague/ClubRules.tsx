@@ -1,13 +1,8 @@
-import {
-  CLUB_MAX_FIXTURE_POINTS,
-  CLUB_POINTS,
-  CLUB_TOTALS_LINE,
-  type ClubLeagueState,
-} from '@dap/shared';
+import { CLUB_POINTS, CLUB_TOTALS_LINE, type ClubLeagueState } from '@dap/shared';
 
 /**
  * The in-app rulebook. World Cup players struggled to understand how points were
- * awarded, so this lays out every rule — scoring, the banker, the divisions and
+ * awarded, so this lays out every rule — scoring, the fixtures, the divisions and
  * the run-in — in plain language with worked examples.
  */
 export function ClubRules({ club }: { club: ClubLeagueState }) {
@@ -55,27 +50,29 @@ export function ClubRules({ club }: { club: ClubLeagueState }) {
         </p>
       </Section>
 
-      <Section emoji="⭐" title="2 · The Banker — back your bravery">
+      <Section emoji="📅" title="2 · Fixtures are automatic">
         <p>
-          Once per <strong>period</strong> you can tag one fixture as your <strong>Banker</strong>.
-          Everything you earn on that fixture is <strong>doubled</strong> — so a Banker where you
-          nail all three markets is worth <strong>{CLUB_MAX_FIXTURE_POINTS} points</strong>. Choose
-          the game you’re most confident about; set a new Banker and it moves off the old one
-          automatically. There’s no penalty — a Banker that misses simply scores its normal (zero or
-          small) total, so being brave only ever helps.
+          You never have to add games. Every fixture our ten clubs play — league, domestic cups and
+          Europe — appears <strong>automatically</strong>, straight from a live feed:
+        </p>
+        <ul>
+          <li>New cup rounds show up as soon as they’re drawn.</li>
+          <li>
+            If a club is knocked out of a cup, its future games in that cup simply never appear —
+            there’s nothing to bet on.
+          </li>
+          <li>If a kick-off is moved, the date and time update themselves.</li>
+          <li>Finished games fill in their score on their own, and points land straight away.</li>
+        </ul>
+        <p>
+          Your picks <strong>lock at kick-off</strong>: after that they’re revealed to everyone and
+          can’t be changed. The organiser only ever steps in for a rare edge case — for example, a
+          cup tie that goes to extra time, where the 90-minute markets should settle on the
+          regulation score.
         </p>
       </Section>
 
-      <Section emoji="📅" title="3 · Fixtures & lock-in">
-        <p>
-          Fixtures are managed by the organiser and cover every game our clubs play. Kick-off dates
-          and times can change — if a match is moved, its prediction window moves with it. Your
-          picks <strong>lock at kick-off</strong>: after that they’re revealed to everyone and can’t
-          be changed. Points land as soon as the organiser enters the full-time score.
-        </p>
-      </Section>
-
-      <Section emoji="🗂️" title="4 · Periods, League 1 & League 2">
+      <Section emoji="🗂️" title="3 · Periods, League 1 & League 2">
         <p>
           The season is split into <strong>periods</strong>. The opening period is one combined
           table; where you finish it decides your division. From then on the field splits into two:
@@ -96,7 +93,7 @@ export function ClubRules({ club }: { club: ClubLeagueState }) {
         </p>
       </Section>
 
-      <Section emoji="🏁" title="5 · The Champions Run-In">
+      <Section emoji="🏁" title="4 · The Champions Run-In">
         <p>
           The final period is a title decider. The top <strong>{club.runInContenders}</strong>{' '}
           players on the overall table are pulled into the <strong>Champions Run-In</strong>: their
@@ -107,12 +104,12 @@ export function ClubRules({ club }: { club: ClubLeagueState }) {
         </p>
       </Section>
 
-      <Section emoji="🧮" title="6 · The overall table">
+      <Section emoji="🧮" title="5 · The overall table">
         <p>
-          Your <strong>season total</strong> is simply every point you’ve earned across all fixtures
-          (Bankers included). It drives the overall standings and decides who enters the Champions
-          Run-In. Tie-breakers, in order: most correct results, then most individual markets called
-          right, then alphabetical.
+          Your <strong>season total</strong> is simply every point you’ve earned across all
+          fixtures. It drives the overall standings and decides who enters the Champions Run-In.
+          Tie-breakers, in order: most correct results, then most individual markets called right,
+          then alphabetical.
         </p>
       </Section>
     </div>

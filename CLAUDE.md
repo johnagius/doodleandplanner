@@ -27,6 +27,18 @@ with opt-in live locations. Rooms are shareable via
 invite link and can be password protected, and sync live across devices through
 the Worker when configured.
 
+There is also a standalone **Club Football predictions** board at `/club` (no
+login): friends predict every game a fixed set of ten clubs play — across their
+league, domestic cups and Europe — via three markets per fixture (Result 1/X/2,
+Over/Under 2.5 goals, both-teams-to-score). Fixtures are **automatic**: the
+Worker pulls each competition's ESPN scoreboard for a rolling upcoming window
+(`/api/football/club-fixtures`) and the pure reconciler `syncClubFeed` in
+`packages/shared/src/clubleague.ts` adds/updates/prunes them and auto-fills
+results; the organiser only overrides edge cases (e.g. an extra-time cup tie).
+The season runs in periods with League 1 / League 2 promotion-relegation and a
+top-3 Champions Run-In finale. It lives in a single well-known room (slug
+`club-league`) under `RoomState.clubLeague`; UI in `apps/web/src/features/clubleague`.
+
 There is also a standalone **World Cup 2026 predictions** board at `/world-cup`
 (no login): friends predict every match scoreline and earn points by how close
 they are; the knockout bracket auto-populates from group results. It lives in a

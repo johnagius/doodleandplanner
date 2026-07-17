@@ -1,5 +1,4 @@
 import {
-  CLUB_POINTS,
   findCompetition,
   findPrediction,
   isFixtureLocked,
@@ -17,20 +16,13 @@ import { formatKickoff } from './clubFormat.js';
 import { TeamChip } from './TeamChip.js';
 
 /** One fixture: the markets to predict, the reveal after kick-off, the result and
- * everyone's points. Organisers get result-entry + edit controls. */
-export function FixtureCard({
-  club,
-  fixture,
-  onEdit,
-}: {
-  club: ClubLeagueState;
-  fixture: ClubFixture;
-  onEdit?: (fixtureId: string) => void;
-}) {
+ * everyone's points. Organisers get a result-override for edge cases only. */
+export function FixtureCard({ club, fixture }: { club: ClubLeagueState; fixture: ClubFixture }) {
   const meId = useClubLeagueStore((s) => s.meId);
   const admin = useClubLeagueStore((s) => s.admin);
   const now = new Date();
   const locked = isFixtureLocked(fixture, now);
+  const live = fixture.status === 'live' && !fixture.result;
   const comp = findCompetition(club, fixture.competitionId);
   const mine = meId ? findPrediction(club, fixture.id, meId) : undefined;
   const settled = fixture.result ? marketsForResult(fixture.result) : null;
@@ -42,13 +34,14 @@ export function FixtureCard({
           <span aria-hidden>{comp?.emoji}</span> {comp?.short ?? 'Match'}
         </span>
         <span className="muted small">
-          {formatKickoff(fixture.kickoff)} 🇲🇹
-          {fixture.note ? ` · ${fixture.note}` : ''}
+          {formatKickoff(fixture.kickoff)} 🇲🇹{fixture.note ? ` · ${fixture.note}` : ''}
         </span>
         {fixture.result ? (
           <span className="club-result-badge">
             {fixture.result.home}–{fixture.result.away} FT
           </span>
+        ) : live ? (
+          <span className="badge club-live-badge">🔴 Live</span>
         ) : locked ? (
           <span className="badge">🔒 Locked</span>
         ) : (
@@ -74,7 +67,7 @@ export function FixtureCard({
 
       {mine && <MyTicket club={club} fixture={fixture} />}
 
-      {admin && <ResultEditor fixture={fixture} onEdit={onEdit} />}
+      {admin && <ResultEditor fixture={fixture} />}
     </div>
   );
 }
@@ -88,7 +81,6 @@ const OUTCOMES: { key: ClubOutcome; label: string }[] = [
 function MarketPicker({ club, fixture }: { club: ClubLeagueState; fixture: ClubFixture }) {
   const meId = useClubLeagueStore((s) => s.meId)!;
   const predictMarket = useClubLeagueStore((s) => s.predictMarket);
-  const toggleBanker = useClubLeagueStore((s) => s.toggleBanker);
   const mine = findPrediction(club, fixture.id, meId);
 
   return (
@@ -132,14 +124,6 @@ function MarketPicker({ club, fixture }: { club: ClubLeagueState; fixture: ClubF
           No
         </MarketBtn>
       </Market>
-      <button
-        type="button"
-        className={`club-banker-btn ${mine?.banker ? 'is-on' : ''}`}
-        onClick={() => void toggleBanker(fixture.id, !mine?.banker)}
-        title="Your Banker doubles everything you earn on this fixture (one per period)."
-      >
-        {mine?.banker ? '⭐ Banker ×2' : '☆ Make Banker'}
-      </button>
     </div>
   );
 }
@@ -187,7 +171,6 @@ function MyTicket({ club, fixture }: { club: ClubLeagueState; fixture: ClubFixtu
     <div className="club-myticket">
       <span className="muted small">Your pick:</span>
       <TicketPills pred={mine} settled={fixture.result ? marketsForResult(fixture.result) : null} />
-      {mine.banker && <span className="club-banker-tag">⭐×2</span>}
       {score != null && (
         <span className={`club-ticket-pts ${score.points > 0 ? 'is-hit' : 'is-miss'}`}>
           +{score.points}
@@ -269,10 +252,7 @@ function RevealTable({
           const score = fixture.result && pred ? scoreClubPrediction(pred, fixture.result) : null;
           return (
             <li key={p.id} className={p.id === meId ? 'is-me' : ''}>
-              <span className="club-reveal-name">
-                {p.name}
-                {pred?.banker && <span className="club-banker-tag">⭐×2</span>}
-              </span>
+              <span className="club-reveal-name">{p.name}</span>
               <TicketPills pred={pred!} settled={settled} />
               {score != null && (
                 <span className={`club-ticket-pts ${score.points > 0 ? 'is-hit' : 'is-miss'}`}>
@@ -287,16 +267,15 @@ function RevealTable({
   );
 }
 
-/** Organiser controls: enter/clear the full-time result, or open the editor. */
-function ResultEditor({
-  fixture,
-  onEdit,
-}: {
-  fixture: ClubFixture;
-  onEdit?: (fixtureId: string) => void;
-}) {
+/**
+ * Organiser controls — a rarely-needed safety net. Results auto-fill from the
+ * feed; this is for the odd correction (e.g. a cup tie that went to extra time,
+ * where the 90-minute markets should settle on the regulation score) and clean-up.
+ */
+function ResultEditor({ fixture }: { fixture: ClubFixture }) {
   const enterResult = useClubLeagueStore((s) => s.enterResult);
   const clearResult = useClubLeagueStore((s) => s.clearResult);
+  const deleteFixture = useClubLeagueStore((s) => s.deleteFixture);
   const [home, setHome] = useState(fixture.result ? String(fixture.result.home) : '');
   const [away, setAway] = useState(fixture.result ? String(fixture.result.away) : '');
 
@@ -309,7 +288,12 @@ function ResultEditor({
 
   return (
     <div className="club-admin-row">
-      <span className="club-admin-tag">🔧 Organiser</span>
+      <span
+        className="club-admin-tag"
+        title="Results auto-fill from the feed — override only if needed"
+      >
+        🔧 Correct result
+      </span>
       <input
         className="input club-score-input"
         inputMode="numeric"
@@ -326,7 +310,7 @@ function ResultEditor({
         onChange={(e) => setAway(e.target.value.replace(/[^0-9]/g, ''))}
       />
       <button type="button" className="btn btn-sm btn-primary" onClick={submit}>
-        {fixture.result ? 'Update' : 'Enter'} result
+        {fixture.result ? 'Update' : 'Set'}
       </button>
       {fixture.result && (
         <button
@@ -337,14 +321,18 @@ function ResultEditor({
           Clear
         </button>
       )}
-      {onEdit && (
-        <button type="button" className="btn btn-sm" onClick={() => onEdit(fixture.id)}>
-          ✏️ Edit fixture
-        </button>
-      )}
+      <button
+        type="button"
+        className="btn btn-sm btn-ghost"
+        title="Remove this fixture"
+        onClick={() => {
+          if (window.confirm('Remove this fixture and its predictions?')) {
+            void deleteFixture(fixture.id);
+          }
+        }}
+      >
+        🗑
+      </button>
     </div>
   );
 }
-
-/** Small legend of the per-market points, reused by the rules + fixtures header. */
-export const CLUB_MARKET_POINTS = CLUB_POINTS;

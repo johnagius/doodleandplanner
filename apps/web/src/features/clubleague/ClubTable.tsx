@@ -37,8 +37,7 @@ export function ClubTable({ club }: { club: ClubLeagueState }) {
             <span className="club-rank">{MEDALS[i] ?? i + 1}</span>
             <span className="club-row-name">{r.name}</span>
             <span className="club-row-stats muted small">
-              {r.resultsRight} results · {r.marketsRight} markets
-              {r.bankersHit > 0 && ` · ⭐${r.bankersHit}`}
+              {r.resultsRight} results · {r.marketsRight} markets right
             </span>
             <span className="club-row-bar" aria-hidden>
               <span style={{ width: `${top ? (r.points / top) * 100 : 0}%` }} />

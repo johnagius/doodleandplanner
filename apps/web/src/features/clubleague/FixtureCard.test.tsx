@@ -3,6 +3,8 @@ import {
   seedClubLeague,
   setClubPrediction,
   setFixtureResult,
+  syncClubFeed,
+  type ClubFeedFixture,
   type ClubLeagueState,
 } from '@dap/shared';
 import { render } from '@testing-library/react';
@@ -14,14 +16,25 @@ import { FixtureCard } from './FixtureCard.js';
 
 afterEach(() => useClubLeagueStore.setState({ meId: null, admin: false }));
 
-function seed(): ClubLeagueState {
-  return seedClubLeague(() => new Date('2026-08-01T00:00:00.000Z'));
+const FIXED = () => new Date('2026-08-01T00:00:00.000Z');
+
+const MUN_ARS: ClubFeedFixture = {
+  externalId: 'espn:1',
+  competitionId: 'epl',
+  kickoff: '2026-08-15T16:30:00.000Z',
+  home: { name: 'MUN', short: 'MUN', teamId: 'MUN' },
+  away: { name: 'ARS', short: 'ARS', teamId: 'ARS' },
+  status: 'scheduled',
+};
+
+function board(): ClubLeagueState {
+  return syncClubFeed(seedClubLeague(FIXED), [MUN_ARS], { now: FIXED });
 }
 
 describe('FixtureCard', () => {
-  it('shows the competition, both teams and an Open state before kick-off', () => {
-    const club = seed();
-    const fixture = club.fixtures.find((f) => f.home.teamId === 'MUN')!;
+  it('shows the competition, both teams (enriched) and an Open state before kick-off', () => {
+    const club = board();
+    const fixture = orderedFixtures(club)[0]!;
     const { getByText } = render(<FixtureCard club={club} fixture={fixture} />);
     expect(getByText('Manchester United')).toBeTruthy();
     expect(getByText('Arsenal')).toBeTruthy();
@@ -29,7 +42,7 @@ describe('FixtureCard', () => {
   });
 
   it('reveals a settled result with per-market points once played', () => {
-    let club = seed();
+    let club = board();
     const fixture = orderedFixtures(club)[0]!;
     const me = club.predictors[0]!.id;
     club = setClubPrediction(
@@ -47,12 +60,11 @@ describe('FixtureCard', () => {
 
 describe('ClubTable', () => {
   it('renders standings after a result and an empty state before any', () => {
-    const empty = seed();
-    const { getByText, unmount } = render(<ClubTable club={empty} />);
+    const { getByText, unmount } = render(<ClubTable club={board()} />);
     expect(getByText('No results yet')).toBeTruthy();
     unmount();
 
-    let club = seed();
+    let club = board();
     const fixture = orderedFixtures(club)[0]!;
     const me = club.predictors[0]!;
     club = setClubPrediction(

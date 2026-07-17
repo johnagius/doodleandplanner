@@ -1,26 +1,24 @@
 import {
   addClubPredictor,
-  addFixture,
   clearClubPrediction,
   clearFixtureResult,
   removeClubPredictor,
   removeFixture,
   renameClubPredictor,
-  setBanker,
   setClubPrediction,
   setFixtureResult,
-  updateFixture,
+  syncClubFeed,
+  type ClubBtts,
   type ClubLeagueState,
   type ClubOutcome,
-  type ClubBtts,
   type ClubTotals,
-  type FixtureDraft,
   type RoomState,
 } from '@dap/shared';
 import { create } from 'zustand';
 import { LocalStorageRepository, getRepository, type Repository } from '../lib/storage/index.js';
 import { SaveConflictError } from '../lib/storage/httpRepository.js';
 import { CLUB_LEAGUE_SLUG, loadOrCreateClubLeague } from '../features/clubleague/clubLeagueRoom.js';
+import { fetchClubFixtures } from '../features/clubleague/clubFeed.js';
 
 const PREDICTOR_KEY = 'dap:club:predictor';
 const ADMIN_KEY = 'dap:club:admin';
@@ -59,7 +57,7 @@ interface ClubLeagueStore {
   offline: boolean;
   /** The predictor "I" am, persisted on this device. */
   meId: string | null;
-  /** Organiser mode reveals fixture + result controls (local toggle, no auth). */
+  /** Organiser mode reveals result-override controls (local toggle, no auth). */
   admin: boolean;
   unsubscribe: (() => void) | null;
 
@@ -73,13 +71,13 @@ interface ClubLeagueStore {
     market: { outcome?: ClubOutcome; totals?: ClubTotals; btts?: ClubBtts },
   ) => Promise<void>;
   clearMyPrediction: (fixtureId: string) => Promise<void>;
-  toggleBanker: (fixtureId: string, on: boolean) => Promise<void>;
 
-  // Organiser
+  /** Pull the automatic fixture feed and reconcile it into the board. */
+  syncFixtures: () => Promise<void>;
+
+  // Organiser (edge-case overrides only)
   enterResult: (fixtureId: string, home: number, away: number) => Promise<void>;
   clearResult: (fixtureId: string) => Promise<void>;
-  addFixture: (draft: FixtureDraft) => Promise<void>;
-  editFixture: (fixtureId: string, patch: Parameters<typeof updateFixture>[2]) => Promise<void>;
   deleteFixture: (fixtureId: string) => Promise<void>;
 
   addName: (name: string) => Promise<void>;
@@ -236,25 +234,35 @@ export const useClubLeagueStore = create<ClubLeagueStore>((set, get) => {
       await apply((s) => withClub(s, (c) => clearClubPrediction(c, fixtureId, me)));
     },
 
-    async toggleBanker(fixtureId, on) {
-      const me = requireMe();
-      await apply((s) => withClub(s, (c) => setBanker(c, fixtureId, me, on)));
+    async syncFixtures() {
+      const club = get().state?.clubLeague;
+      if (!club) return;
+      const { fixtures, window } = await fetchClubFixtures();
+      if (fixtures.length === 0) return; // nothing fresh — leave the board as-is
+      // Only write when the reconcile actually changes the board, so we don't spam
+      // the shared room on every poll.
+      const next = syncClubFeed(club, fixtures, window ? { window } : undefined);
+      if (JSON.stringify(next.fixtures) === JSON.stringify(club.fixtures)) return;
+      await apply((s) =>
+        s.clubLeague
+          ? {
+              ...s,
+              clubLeague: syncClubFeed(s.clubLeague, fixtures, window ? { window } : undefined),
+            }
+          : s,
+      );
     },
 
     async enterResult(fixtureId, home, away) {
-      await apply((s) => withClub(s, (c) => setFixtureResult(c, fixtureId, { home, away })));
+      // Organiser results are manual (e.g. an extra-time correction) so the feed
+      // never overwrites them.
+      await apply((s) =>
+        withClub(s, (c) => setFixtureResult(c, fixtureId, { home, away }, { manual: true })),
+      );
     },
 
     async clearResult(fixtureId) {
       await apply((s) => withClub(s, (c) => clearFixtureResult(c, fixtureId)));
-    },
-
-    async addFixture(draft) {
-      await apply((s) => withClub(s, (c) => addFixture(c, draft)));
-    },
-
-    async editFixture(fixtureId, patch) {
-      await apply((s) => withClub(s, (c) => updateFixture(c, fixtureId, patch)));
     },
 
     async deleteFixture(fixtureId) {

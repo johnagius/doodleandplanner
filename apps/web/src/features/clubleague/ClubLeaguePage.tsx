@@ -10,7 +10,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { isRealtimeBackend } from '../../lib/storage/index.js';
 import { useClubLeagueStore } from '../../state/clubLeagueStore.js';
-import { AdminFixtureForm } from './AdminFixtureForm.js';
 import { ClubRules } from './ClubRules.js';
 import { ClubTable } from './ClubTable.js';
 import { DivisionsView } from './DivisionsView.js';
@@ -36,7 +35,6 @@ export function ClubLeaguePage() {
   const admin = useClubLeagueStore((s) => s.admin);
   const meId = useClubLeagueStore((s) => s.meId);
   const [tab, setTab] = useState<Tab>('fixtures');
-  const [editingId, setEditingId] = useState<string | null>(null);
 
   useEffect(() => {
     void load();
@@ -44,6 +42,17 @@ export function ClubLeaguePage() {
   }, [load, leave]);
 
   const club = state?.clubLeague ?? null;
+  const boardReady = !!club;
+
+  // Pull the automatic fixture feed once the board is open, then poll it. The
+  // Worker caches the merged feed (~3 min) so many devices share one upstream hit.
+  useEffect(() => {
+    if (!isRealtimeBackend() || !boardReady) return;
+    const tick = () => void useClubLeagueStore.getState().syncFixtures();
+    tick();
+    const id = setInterval(tick, 3 * 60_000);
+    return () => clearInterval(id);
+  }, [boardReady]);
 
   if (loading && !club) {
     return (
@@ -84,7 +93,8 @@ export function ClubLeaguePage() {
           <div style={{ minWidth: 0 }}>
             <h1 className="club-hero-title">⚽ Club Football Predictions</h1>
             <p className="muted" style={{ margin: '0.25rem 0 0' }}>
-              {club.season} · three markets a game, brave Bankers, promotion &amp; relegation.
+              {club.season} · every game our clubs play, three markets each, promotion &amp;
+              relegation.
             </p>
           </div>
           <div className="row row-wrap" style={{ gap: '0.4rem' }}>
@@ -103,15 +113,15 @@ export function ClubLeaguePage() {
                 }
                 if (
                   window.confirm(
-                    'Turn on organiser mode? Only the organiser should use this — it lets you add ' +
-                      'and reschedule fixtures and enter official results that score everyone.',
+                    'Turn on organiser mode? Fixtures and results are automatic — this is only for ' +
+                      'the rare correction, e.g. an extra-time cup tie, and it scores everyone.',
                   )
                 ) {
                   setAdmin(true);
                 }
               }}
               aria-pressed={admin}
-              title="Organiser only: manage fixtures & enter results"
+              title="Organiser only: correct a result in an edge case"
             >
               🔧 Organiser {admin ? 'on' : 'off'}
             </button>
@@ -160,32 +170,19 @@ export function ClubLeaguePage() {
       </nav>
 
       <div role="tabpanel">
-        {tab === 'fixtures' && (
-          <FixturesView club={club} admin={admin} onEdit={(id) => setEditingId(id)} />
-        )}
+        {tab === 'fixtures' && <FixturesView club={club} />}
         {tab === 'table' && <ClubTable club={club} />}
         {tab === 'divisions' && <DivisionsView club={club} />}
         {tab === 'rules' && <ClubRules club={club} />}
       </div>
-
-      {admin && (
-        <AdminFixtureForm club={club} editingId={editingId} onClose={() => setEditingId(null)} />
-      )}
 
       <BuildStamp />
     </div>
   );
 }
 
-function FixturesView({
-  club,
-  admin,
-  onEdit,
-}: {
-  club: ClubLeagueState;
-  admin: boolean;
-  onEdit: (id: string) => void;
-}) {
+function FixturesView({ club }: { club: ClubLeagueState }) {
+  const offline = useClubLeagueStore((s) => s.offline);
   const [compFilter, setCompFilter] = useState<string>('all');
   const [showPlayed, setShowPlayed] = useState(true);
 
@@ -197,6 +194,7 @@ function FixturesView({
   }, [club, compFilter, showPlayed]);
 
   const grouped = useMemo(() => groupByDay(fixtures), [fixtures]);
+  const feedOn = isRealtimeBackend() && !offline;
 
   return (
     <div className="stack">
@@ -222,21 +220,21 @@ function FixturesView({
           />
           <span className="small">Show played</span>
         </label>
-        {admin && (
-          <button type="button" className="btn btn-sm btn-primary" onClick={() => onEdit('')}>
-            + Add fixture
-          </button>
-        )}
+        <span className="muted small club-feed-note">🔄 Fixtures update automatically</span>
       </div>
 
       {grouped.length === 0 ? (
-        <div className="empty">No fixtures here yet.</div>
+        <div className="empty">
+          {feedOn
+            ? 'Loading the upcoming fixtures for our clubs…'
+            : 'Fixtures sync automatically when the live backend is connected.'}
+        </div>
       ) : (
         grouped.map(({ day, items }) => (
           <div key={day} className="stack" style={{ gap: '0.5rem' }}>
             <h3 className="club-day-head">{formatFixtureDayLong(items[0]!.kickoff)}</h3>
             {items.map((f) => (
-              <FixtureCard key={f.id} club={club} fixture={f} onEdit={admin ? onEdit : undefined} />
+              <FixtureCard key={f.id} club={club} fixture={f} />
             ))}
           </div>
         ))

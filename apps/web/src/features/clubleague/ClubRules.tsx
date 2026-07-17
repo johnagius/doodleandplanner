@@ -118,6 +118,36 @@ export function ClubRules({ club }: { club: ClubLeagueState }) {
           the divisions just decide which table you’re racing in, so even if a leader runs away with
           the overall total, there’s always a live battle in your own league.
         </p>
+        <p className="small" style={{ margin: '0 0 0.35rem', fontWeight: 700 }}>
+          📅 The {club.season} season dates:
+        </p>
+        <ol className="club-periods-cal">
+          {[...club.periods]
+            .sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt))
+            .map((p, i) => (
+              <li key={p.id} className={p.runIn ? 'is-runin' : ''}>
+                <span className="club-period-cal-name">
+                  {p.runIn ? '🏁 ' : ''}
+                  {p.name}
+                </span>
+                <span className="club-period-cal-dates">
+                  {fmtDay(p.startsAt)} – {fmtDay(endInclusive(p.endsAt))}
+                </span>
+                <span className="muted small club-period-cal-note">
+                  {i === 0
+                    ? 'one combined table → first split on ' + fmtDay(p.endsAt)
+                    : p.runIn
+                      ? 'finale — reset to 0, trophies decided'
+                      : 'promotion / relegation applies from ' + fmtDay(p.startsAt)}
+                </span>
+              </li>
+            ))}
+        </ol>
+        <p className="muted small" style={{ margin: 0 }}>
+          So the divisions can only change on <strong>{promoDates(club)}</strong>. The leagues
+          finish on {fmtDay(endInclusive(lastPeriodEnd(club)))}, and the Champions League final
+          (which decides the Meister Cup) is played after that.
+        </p>
       </Section>
 
       <Section emoji="🏁" title="5 · The finale — how it plays out">
@@ -231,6 +261,33 @@ function ClubCrest({ team }: { team: ClubTeam }) {
       <span className="club-roster-name">{team.name}</span>
     </div>
   );
+}
+
+/** "1 Aug 2026" for an ISO date (UTC, so the season calendar is stable). */
+function fmtDay(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    timeZone: 'UTC',
+  });
+}
+/** A period's `endsAt` is exclusive; the last day played is the moment before. */
+function endInclusive(endsAtIso: string): string {
+  return new Date(new Date(endsAtIso).getTime() - 1).toISOString();
+}
+function lastPeriodEnd(club: ClubLeagueState): string {
+  const sorted = [...club.periods].sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt));
+  return sorted[sorted.length - 1]?.endsAt ?? club.periods[club.periods.length - 1]!.endsAt;
+}
+/** The dates the divisions actually change: every period start except the first. */
+function promoDates(club: ClubLeagueState): string {
+  const starts = [...club.periods]
+    .sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt))
+    .slice(1)
+    .map((p) => fmtDay(p.startsAt));
+  if (starts.length <= 1) return starts.join('');
+  return `${starts.slice(0, -1).join(', ')} and ${starts[starts.length - 1]}`;
 }
 
 /** How many stay in each division's finale after the last-placed player is cut. */

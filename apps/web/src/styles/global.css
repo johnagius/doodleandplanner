@@ -8109,6 +8109,44 @@ label.field {
   font-weight: 600;
   font-size: 0.92rem;
 }
+.club-periods-cal {
+  list-style: none;
+  margin: 0 0 0.5rem;
+  padding: 0;
+  display: grid;
+  gap: 0.4rem;
+}
+.club-periods-cal > li {
+  display: grid;
+  grid-template-columns: minmax(8rem, auto) auto 1fr;
+  align-items: baseline;
+  gap: 0.4rem 0.9rem;
+  padding: 0.5rem 0.7rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface-2, rgba(127, 127, 127, 0.05));
+}
+.club-periods-cal > li.is-runin {
+  border-color: rgba(212, 175, 55, 0.5);
+  background: rgba(212, 175, 55, 0.08);
+}
+.club-period-cal-name {
+  font-weight: 800;
+}
+.club-period-cal-dates {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.club-period-cal-note {
+  grid-column: 1 / -1;
+}
+@media (min-width: 34rem) {
+  .club-period-cal-note {
+    grid-column: auto;
+    text-align: right;
+  }
+}
 .club-rule-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));

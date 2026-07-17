@@ -78,6 +78,7 @@ describe('parseClubScoreboard', () => {
     expect(out[0]!.externalId).toBe('espn:1');
     expect(out[0]!.competitionId).toBe('epl');
     expect(out[0]!.home.teamId).toBe('MUN');
+    expect(out[0]!.home.crest).toContain('/360.png'); // official crest derived from ESPN id
     expect(out[0]!.away.teamId).toBeUndefined();
     expect(out[0]!.status).toBe('scheduled');
     expect(out[0]!.result).toBeUndefined();

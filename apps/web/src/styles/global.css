@@ -8041,3 +8041,438 @@ label.field {
   color: var(--muted);
   font-weight: 600;
 }
+
+.club-crest {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+}
+.club-team-right .club-crest {
+  order: 2;
+}
+
+/* ==========================================================================
+   Club Football — branded backdrop + animated explainer
+   ========================================================================== */
+
+/* Constellation-sphere hero backdrop */
+.club-hero {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.club-hero > * {
+  position: relative;
+  z-index: 1;
+}
+.club-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.9;
+}
+.club-backdrop svg {
+  position: absolute;
+  right: -6%;
+  top: 50%;
+  transform: translateY(-50%);
+  width: min(460px, 62%);
+  height: 150%;
+}
+.club-sphere {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: cxSpin 48s linear infinite;
+}
+.cx-ring {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.cx-ring-a {
+  transform: rotate(0deg) scaleY(0.4);
+}
+.cx-ring-b {
+  transform: rotate(60deg) scaleY(0.4);
+}
+.cx-ring-c {
+  transform: rotate(120deg) scaleY(0.4);
+}
+.cx-core {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: cxPulse 3.2s ease-in-out infinite;
+}
+@keyframes cxSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes cxPulse {
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.5);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .club-sphere,
+  .cx-core {
+    animation: none;
+  }
+}
+
+/* Explainer shell */
+.club-explainer {
+  overflow: hidden;
+}
+.club-stage {
+  position: relative;
+  min-height: 240px;
+  display: grid;
+  place-items: center;
+  padding: 1.2rem 1rem;
+  border-radius: var(--radius);
+  background:
+    radial-gradient(
+      120% 90% at 50% 0%,
+      color-mix(in srgb, var(--primary) 12%, transparent),
+      transparent 70%
+    ),
+    var(--surface-2);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  animation: cxFade 0.5s ease both;
+}
+@keyframes cxFade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.club-stage-caption {
+  text-align: center;
+  font-weight: 600;
+  min-height: 2.6em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.5rem;
+}
+.club-scene-dots {
+  display: flex;
+  gap: 0.4rem;
+  justify-content: center;
+}
+.club-scene-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  border: none;
+  background: var(--border-strong);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.club-scene-dot.active {
+  background: var(--primary);
+  transform: scale(1.35);
+}
+
+/* Shared scene animations */
+.cx-pop {
+  animation: cxPop 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.cx-slide {
+  animation: cxSlide 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@keyframes cxPop {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes cxSlide {
+  from {
+    opacity: 0;
+    transform: translateX(-14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Crest used inside scenes */
+.cx-crest {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  font-weight: 700;
+  font-size: 0.8rem;
+}
+.cx-crest img {
+  object-fit: contain;
+}
+
+/* Intro */
+.cx-intro {
+  text-align: center;
+  display: grid;
+  gap: 0.4rem;
+  place-items: center;
+}
+.cx-ball {
+  font-size: 3rem;
+  animation: cxFloat 3s ease-in-out infinite;
+}
+@keyframes cxFloat {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-6deg);
+  }
+  50% {
+    transform: translateY(-10px) rotate(6deg);
+  }
+}
+.cx-title {
+  font-size: clamp(1.3rem, 4vw, 1.9rem);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+.cx-sub {
+  color: var(--muted);
+}
+
+/* Markets scene */
+.cx-fixture {
+  width: 100%;
+  max-width: 460px;
+  display: grid;
+  gap: 0.8rem;
+}
+.cx-fixture-teams {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.4rem;
+}
+.cx-v {
+  color: var(--muted);
+}
+.cx-markets {
+  display: grid;
+  gap: 0.5rem;
+}
+.cx-market {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.6rem;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+.cx-mk-label {
+  width: 5.5rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+.cx-chip {
+  min-width: 2.2rem;
+  text-align: center;
+  padding: 0.2rem 0.5rem;
+  border-radius: 7px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+.cx-chip.on {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+.cx-pts {
+  margin-left: auto;
+  font-weight: 800;
+  color: var(--success);
+}
+
+/* Scoring scene */
+.cx-scoring {
+  display: grid;
+  gap: 0.9rem;
+  place-items: center;
+}
+.cx-score {
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+}
+.cx-scoreline {
+  font-size: 2rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.cx-pills {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.cx-pill {
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+.cx-pill.hit {
+  background: var(--success-soft);
+  color: var(--success);
+  border-color: color-mix(in srgb, var(--success) 40%, transparent);
+}
+.cx-total {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--success);
+}
+
+/* Divisions scene */
+.cx-divisions {
+  display: grid;
+  gap: 0.7rem;
+  width: 100%;
+  max-width: 460px;
+}
+.cx-league {
+  padding: 0.6rem 0.8rem;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+.cx-league-title {
+  font-weight: 700;
+  margin-bottom: 0.4rem;
+}
+.cx-players {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.cx-player {
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  background: var(--primary-soft);
+  color: var(--primary-darker);
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+/* Promotion/relegation scene */
+.cx-promo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.cx-promo-col {
+  text-align: center;
+  display: grid;
+  gap: 0.4rem;
+}
+.cx-promo-mid {
+  display: grid;
+  place-items: center;
+  gap: 0.3rem;
+}
+.cx-date {
+  font-size: 0.72rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.cx-swap {
+  font-size: 1.6rem;
+  color: var(--primary);
+  animation: cxNudge 1.6s ease-in-out infinite;
+}
+@keyframes cxNudge {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+.cx-demote {
+  background: var(--danger-soft);
+  color: var(--danger);
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  font-weight: 700;
+}
+.cx-promote {
+  background: var(--success-soft);
+  color: var(--success);
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  font-weight: 700;
+}
+
+/* Trophies scene */
+.cx-trophies {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.cx-trophy {
+  width: 190px;
+  text-align: center;
+  padding: 1rem 0.8rem;
+  border-radius: var(--radius);
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, #f59e0b 16%, var(--surface)),
+    var(--surface)
+  );
+  border: 1px solid color-mix(in srgb, #f59e0b 40%, var(--border));
+  display: grid;
+  gap: 0.3rem;
+}
+.cx-trophy-emoji {
+  font-size: 2.4rem;
+}
+.cx-trophy-name {
+  font-weight: 800;
+}
+.cx-trophy-sub {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.club-comp-logo {
+  object-fit: contain;
+  vertical-align: -3px;
+}
+.club-comp-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}

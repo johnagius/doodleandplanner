@@ -9,6 +9,7 @@
  */
 import {
   CLUB_TEAM_BY_ESPN_ID,
+  espnCrestUrl,
   type ClubFeedFixture,
   type ClubFixtureStatus,
   type ClubSide,
@@ -21,6 +22,7 @@ interface EspnTeam {
   name?: string;
   abbreviation?: string;
   color?: string;
+  logo?: string;
 }
 interface EspnCompetitor {
   homeAway?: string;
@@ -63,8 +65,10 @@ function toSide(team: EspnTeam): ClubSide {
   const name = team.displayName ?? team.name ?? team.shortDisplayName ?? team.abbreviation ?? 'TBD';
   const short = (team.abbreviation ?? name.slice(0, 3)).toUpperCase();
   const color = team.color ? `#${team.color.replace(/^#/, '')}` : undefined;
+  // Official crest: the feed's logo, else derived from the ESPN team id.
+  const crest = team.logo ?? (team.id ? espnCrestUrl(team.id) : undefined);
   // A tracked club carries its id so the board re-applies our canonical crest.
-  return teamId ? { name, short, color, teamId } : { name, short, color };
+  return teamId ? { name, short, color, crest, teamId } : { name, short, color, crest };
 }
 
 /**

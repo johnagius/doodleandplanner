@@ -10,6 +10,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { isRealtimeBackend } from '../../lib/storage/index.js';
 import { useClubLeagueStore } from '../../state/clubLeagueStore.js';
+import { ClubBackdrop } from './ClubBackdrop.js';
+import { ClubExplainer } from './ClubExplainer.js';
 import { ClubRules } from './ClubRules.js';
 import { ClubTable } from './ClubTable.js';
 import { DivisionsView } from './DivisionsView.js';
@@ -91,6 +93,7 @@ export function ClubLeaguePage() {
   return (
     <div className="container">
       <section className="club-hero">
+        <ClubBackdrop />
         <div className="row spread row-wrap" style={{ gap: '0.75rem' }}>
           <div style={{ minWidth: 0 }}>
             <h1 className="club-hero-title">⚽ Club Football Predictions</h1>
@@ -175,7 +178,12 @@ export function ClubLeaguePage() {
         {tab === 'fixtures' && <FixturesView club={club} />}
         {tab === 'table' && <ClubTable club={club} />}
         {tab === 'divisions' && <DivisionsView club={club} />}
-        {tab === 'rules' && <ClubRules club={club} />}
+        {tab === 'rules' && (
+          <div className="stack">
+            <ClubExplainer />
+            <ClubRules club={club} />
+          </div>
+        )}
       </div>
 
       <BuildStamp />

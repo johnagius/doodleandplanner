@@ -5,6 +5,7 @@ import {
   marketsForResult,
   scoreClubPrediction,
   type ClubBtts,
+  type ClubCompetition,
   type ClubFixture,
   type ClubLeagueState,
   type ClubOutcome,
@@ -30,9 +31,7 @@ export function FixtureCard({ club, fixture }: { club: ClubLeagueState; fixture:
   return (
     <div className="card club-fixture" id={`club-fx-${fixture.id}`}>
       <div className="club-fixture-head">
-        <span className="club-comp-chip">
-          <span aria-hidden>{comp?.emoji}</span> {comp?.short ?? 'Match'}
-        </span>
+        <CompChip comp={comp} />
         <span className="muted small">
           {formatKickoff(fixture.kickoff)} 🇲🇹{fixture.note ? ` · ${fixture.note}` : ''}
         </span>
@@ -69,6 +68,29 @@ export function FixtureCard({ club, fixture }: { club: ClubLeagueState; fixture:
 
       {admin && <ResultEditor fixture={fixture} />}
     </div>
+  );
+}
+
+/** Competition chip with the official league logo (emoji fallback). */
+function CompChip({ comp }: { comp: ClubCompetition | undefined }) {
+  const [broken, setBroken] = useState(false);
+  return (
+    <span className="club-comp-chip">
+      {comp?.logo && !broken ? (
+        <img
+          className="club-comp-logo"
+          src={comp.logo}
+          alt=""
+          width={16}
+          height={16}
+          loading="lazy"
+          onError={() => setBroken(true)}
+        />
+      ) : (
+        <span aria-hidden>{comp?.emoji}</span>
+      )}{' '}
+      {comp?.short ?? 'Match'}
+    </span>
   );
 }
 

@@ -426,32 +426,45 @@ export interface PeriodDivisions {
   membership: Record<string, Division>;
   /** How each player moved versus the previous period. */
   movement: DivisionMovement[];
-  /** Set on the closing period when the finale is active. */
+  /** Elite finale — the top contenders overall, reset to level, playing for the
+   * top trophy. Set on the closing period when the finale is active. */
   runIn?: RunIn;
+  /** Second-tier finale — the top of League 2, reset to level, playing for the
+   * lesser trophy. Set on the closing period when the finale is active. */
+  runInSecond?: RunIn;
+  /** Anyone in neither run-in, still playing out the closing period. */
+  runInOthers?: ClubLeaderRow[];
 }
 
 export interface RunIn {
-  /** Contenders (top of the season table entering the run-in), reset to level. */
+  /** Which trophy this run-in decides. */
+  trophy: ClubTrophy;
+  /** Contenders, reset to level and ranked purely on their run-in points. */
   contenders: ClubLeaderRow[];
-  /** Everyone else, still playing their normal division within the period. */
-  others: ClubLeaderRow[];
 }
 
-/**
- * Rank players purely on a snapshot table, tie-broken by season standing so
- * membership is deterministic even before any period fixture is played.
- */
-function orderBySnapshot(
-  ids: string[],
-  periodTable: ClubLeaderRow[],
-  seasonRank: Map<string, number>,
-): string[] {
-  const pts = new Map(periodTable.map((r) => [r.predictorId, r.points]));
-  return [...ids].sort(
-    (a, b) =>
-      (pts.get(b) ?? 0) - (pts.get(a) ?? 0) || (seasonRank.get(a) ?? 0) - (seasonRank.get(b) ?? 0),
-  );
+export interface ClubTrophy {
+  /** Name of the run-in competition, e.g. "Champions Run-In". */
+  runInName: string;
+  /** Name of the trophy on the line, e.g. "The Champions' Crown". */
+  name: string;
+  emoji: string;
 }
+
+/** The elite finale for the leaders — the most prestigious prize. */
+export const CLUB_TROPHY_TOP: ClubTrophy = {
+  runInName: 'Champions Run-In',
+  name: "The Champions' Crown",
+  emoji: '👑',
+};
+
+/** The second-tier finale for the top of League 2 — a cool prize of its own,
+ * just a notch below the Crown. */
+export const CLUB_TROPHY_SECOND: ClubTrophy = {
+  runInName: "Challengers' Run-In",
+  name: "The Challengers' Plate",
+  emoji: '🛡️',
+};
 
 /**
  * Compute the division picture for every period, threading promotion/relegation
@@ -468,24 +481,26 @@ function orderBySnapshot(
  */
 export function computeDivisions(state: ClubLeagueState): PeriodDivisions[] {
   const periods = orderedPeriods(state);
-  const seasonRank = new Map(rankedLeaderboard(state).map((r) => [r.predictorId, r.rank]));
-  const rowById = (table: ClubLeaderRow[]) => new Map(table.map((r) => [r.predictorId, r]));
   const out: PeriodDivisions[] = [];
-  let membership: Record<string, Division> | null = null;
+  let prevMembership: Record<string, Division> | null = null;
 
   periods.forEach((period, idx) => {
-    const table = periodPoints(state, period);
-    const byId = rowById(table);
+    const table = periodPoints(state, period); // this period's points, for ranking within a division
+    const byId = new Map(table.map((r) => [r.predictorId, r]));
     const started = resultedFixtureIdsIn(state, period).size > 0;
     const isRunIn = idx === periods.length - 1 && !!period.runIn && state.runInContenders > 0;
 
-    if (idx === 0 || !membership) {
-      // Opening period: one combined table; seed membership from its order.
-      const ordered = table.map((r) => r.predictorId);
-      const nextMembership: Record<string, Division> = {};
-      ordered.forEach((id, i) => {
-        nextMembership[id] = i < state.league1Size ? 'league1' : 'league2';
-      });
+    // Divisions are re-cut from the CUMULATIVE season table as the period opens:
+    // the top `league1Size` sit in League 1, the rest in League 2. This is stable
+    // (a quiet period never scrambles anyone) and reads as promotion/relegation
+    // between periods — you move up or down with where you stand on the table.
+    const beforeIds = new Set(
+      periods.slice(0, idx).flatMap((p) => [...resultedFixtureIdsIn(state, p)]),
+    );
+    const orderBefore = clubLeaderboard(state, { fixtureIds: beforeIds }).map((r) => r.predictorId);
+
+    if (idx === 0) {
+      // Opening period: one combined table, no split yet.
       out.push({
         period,
         started,
@@ -495,64 +510,57 @@ export function computeDivisions(state: ClubLeagueState): PeriodDivisions[] {
         membership: {},
         movement: table.map((r) => ({ predictorId: r.predictorId, change: 'same' as const })),
       });
-      membership = nextMembership;
+      // Seed the first split from the opening period's own standings.
+      const openingOrder = table.map((r) => r.predictorId);
+      prevMembership = Object.fromEntries(
+        openingOrder.map((id, i) => [id, i < state.league1Size ? 'league1' : 'league2']),
+      );
       return;
     }
 
-    const prev = membership;
-    const l1Ids = orderBySnapshot(
-      table.filter((r) => prev[r.predictorId] === 'league1').map((r) => r.predictorId),
-      table,
-      seasonRank,
+    const membership: Record<string, Division> = Object.fromEntries(
+      orderBefore.map((id, i) => [id, i < state.league1Size ? 'league1' : 'league2']),
     );
-    const l2Ids = orderBySnapshot(
-      table.filter((r) => prev[r.predictorId] !== 'league1').map((r) => r.predictorId),
-      table,
-      seasonRank,
-    );
+    const prev = prevMembership;
+    const movement: DivisionMovement[] = table.map((r) => {
+      const now = membership[r.predictorId];
+      const was = prev?.[r.predictorId];
+      const change: DivisionMovement['change'] =
+        !was || was === now ? 'same' : now === 'league1' ? 'promoted' : 'relegated';
+      return { predictorId: r.predictorId, change };
+    });
 
-    const movement: DivisionMovement[] = table.map((r) => ({
-      predictorId: r.predictorId,
-      change: 'same',
-    }));
-    const mark = (id: string, change: DivisionMovement['change']) => {
-      const m = movement.find((x) => x.predictorId === id);
-      if (m) m.change = change;
-    };
-
-    const league1Rows = l1Ids.map((id) => byId.get(id)!).filter(Boolean);
-    const league2Rows = l2Ids.map((id) => byId.get(id)!).filter(Boolean);
+    // Period tables are ranked by this period's points (already sorted), split by
+    // the cumulative-standing membership.
+    const league1Rows = table.filter((r) => membership[r.predictorId] === 'league1');
+    const league2Rows = table.filter((r) => membership[r.predictorId] !== 'league1');
 
     let runIn: RunIn | undefined;
+    let runInSecond: RunIn | undefined;
+    let runInOthers: ClubLeaderRow[] | undefined;
     if (isRunIn) {
-      // Season standing entering the closing period decides the contenders.
-      const beforeIds = new Set(
-        periods.slice(0, idx).flatMap((p) => [...resultedFixtureIdsIn(state, p)]),
-      );
-      const seasonBefore = clubLeaderboard(state, { fixtureIds: beforeIds });
-      const contenderIds = seasonBefore.slice(0, state.runInContenders).map((r) => r.predictorId);
-      const contenderSet = new Set(contenderIds);
+      // Elite: the top of League 1 (= the top contenders overall) play for the Crown.
+      const eliteIds = orderBefore
+        .filter((id) => membership[id] === 'league1')
+        .slice(0, state.runInContenders);
+      // Second tier: the top of League 2 play for the Plate. Disjoint from the elite
+      // because the divisions never overlap.
+      const secondIds = orderBefore
+        .filter((id) => membership[id] === 'league2')
+        .slice(0, state.runInContenders);
+      const inRunIn = new Set([...eliteIds, ...secondIds]);
+      // Reset to level: rank each run-in purely on its run-in (period) points.
       runIn = {
-        // Reset to level: rank the contenders purely on their run-in (period) points.
-        contenders: sortRows(contenderIds.map((id) => byId.get(id)!).filter(Boolean)),
-        others: table.filter((r) => !contenderSet.has(r.predictorId)),
+        trophy: CLUB_TROPHY_TOP,
+        contenders: sortRows(eliteIds.map((id) => byId.get(id)!).filter(Boolean)),
       };
-    }
-
-    // Carry membership forward for the *next* period, applying promotion/relegation
-    // from this period's within-division standings.
-    const nextMembership: Record<string, Division> = { ...prev };
-    if (l1Ids.length > 0 && l2Ids.length > 0) {
-      const relegated = l1Ids[l1Ids.length - 1]!;
-      const promoted = l2Ids[0]!;
-      nextMembership[relegated] = 'league2';
-      nextMembership[promoted] = 'league1';
-    }
-
-    // Movement of *this* period vs the previous membership.
-    for (const id of Object.keys(prev)) {
-      if (prev[id] === 'league2' && l1Ids.includes(id)) mark(id, 'promoted');
-      if (prev[id] === 'league1' && l2Ids.includes(id)) mark(id, 'relegated');
+      if (secondIds.length > 0) {
+        runInSecond = {
+          trophy: CLUB_TROPHY_SECOND,
+          contenders: sortRows(secondIds.map((id) => byId.get(id)!).filter(Boolean)),
+        };
+      }
+      runInOthers = table.filter((r) => !inRunIn.has(r.predictorId));
     }
 
     out.push({
@@ -560,11 +568,13 @@ export function computeDivisions(state: ClubLeagueState): PeriodDivisions[] {
       started,
       league1: league1Rows,
       league2: league2Rows,
-      membership: prev,
+      membership,
       movement,
       runIn,
+      runInSecond,
+      runInOthers,
     });
-    membership = nextMembership;
+    prevMembership = membership;
   });
 
   return out;

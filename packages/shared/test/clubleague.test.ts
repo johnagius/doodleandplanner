@@ -415,10 +415,43 @@ describe('divisions, promotion/relegation, run-in', () => {
     s = scoreInPeriod(s, ids[2]!, '2027-05-10T12:00:00.000Z', 7); // trailing contender surges
     const runInPeriod = computeDivisions(s).find((d) => d.period.id === 'p4')!;
     expect(runInPeriod.runIn).toBeDefined();
+    expect(runInPeriod.runIn!.trophy.name).toContain('Crown');
     expect(new Set(runInPeriod.runIn!.contenders.map((r) => r.predictorId))).toEqual(
       new Set([ids[0], ids[1], ids[2]]),
     );
     expect(runInPeriod.runIn!.contenders[0]!.predictorId).toBe(ids[2]);
+  });
+
+  it('also runs a second-tier run-in for the top of League 2, with a lesser trophy', () => {
+    let s = seed();
+    const ids = s.predictors.map((p) => p.id);
+    // Opening period spreads everyone out so there's a clear L1 (top 4) / L2 split.
+    ids.forEach((id, i) => {
+      s = scoreInPeriod(s, id!, `2026-08-${String(10 + i).padStart(2, '0')}T12:00:00.000Z`, 7 - i);
+    });
+    // Some run-in scoring so the tables populate.
+    s = scoreInPeriod(s, ids[5]!, '2027-05-10T12:00:00.000Z', 7);
+    const p = computeDivisions(s).find((d) => d.period.id === 'p4')!;
+
+    expect(p.runIn!.trophy.name).toContain('Crown');
+    expect(p.runInSecond).toBeDefined();
+    expect(p.runInSecond!.trophy.name).toContain('Plate');
+
+    const elite = new Set(p.runIn!.contenders.map((r) => r.predictorId));
+    const second = new Set(p.runInSecond!.contenders.map((r) => r.predictorId));
+    const others = new Set((p.runInOthers ?? []).map((r) => r.predictorId));
+
+    // The two run-ins never share a player.
+    expect([...elite].some((id) => second.has(id))).toBe(false);
+    // The second-tier contenders are all from League 2 entering the final period.
+    const l2 = new Set(
+      Object.entries(p.membership)
+        .filter(([, d]) => d === 'league2')
+        .map(([id]) => id),
+    );
+    expect([...second].every((id) => l2.has(id))).toBe(true);
+    // Everyone is accounted for exactly once.
+    expect(elite.size + second.size + others.size).toBe(7);
   });
 });
 

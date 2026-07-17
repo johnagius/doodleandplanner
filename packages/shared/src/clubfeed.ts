@@ -118,9 +118,12 @@ export function clubScoreboardUrl(slug: string, from: string, to: string): strin
   return `https://site.api.espn.com/apis/site/v2/sports/soccer/${slug}/scoreboard?dates=${from}-${to}`;
 }
 
-/** A rolling upcoming window: a couple of days back (to catch just-finished
- * results) through ~two weeks ahead. Returns both the ESPN `YYYYMMDD` strings and
- * the ISO bounds the board uses to scope pruning. */
+/** A rolling window: a few days back (to catch just-finished results) through ~6
+ * weeks ahead. The forward reach is wide enough to bridge pre-season and
+ * international breaks — otherwise a quiet fortnight (or the summer gap) would
+ * show an empty board even though the next round is only three weeks out. Returns
+ * both the ESPN `YYYYMMDD` strings and the ISO bounds the board uses to scope
+ * pruning. */
 export function clubFeedWindow(now: Date): {
   fromYmd: string;
   toYmd: string;
@@ -128,8 +131,8 @@ export function clubFeedWindow(now: Date): {
   toIso: string;
 } {
   const day = 86_400_000;
-  const from = new Date(now.getTime() - 2 * day);
-  const to = new Date(now.getTime() + 16 * day);
+  const from = new Date(now.getTime() - 3 * day);
+  const to = new Date(now.getTime() + 45 * day);
   const ymd = (d: Date): string =>
     `${d.getUTCFullYear()}${String(d.getUTCMonth() + 1).padStart(2, '0')}${String(
       d.getUTCDate(),

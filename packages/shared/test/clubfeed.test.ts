@@ -180,11 +180,11 @@ describe('mergeClubFeeds', () => {
 describe('clubFeedWindow + url', () => {
   it('builds a rolling window and a scoreboard url', () => {
     const win = clubFeedWindow(new Date('2026-08-15T12:00:00.000Z'));
-    expect(win.fromYmd).toBe('20260813');
-    expect(win.toYmd).toBe('20260831');
+    expect(win.fromYmd).toBe('20260812'); // 3 days back
+    expect(win.toYmd).toBe('20260929'); // 45 days ahead
     expect(Date.parse(win.fromIso)).toBeLessThan(Date.parse(win.toIso));
     expect(clubScoreboardUrl('eng.1', win.fromYmd, win.toYmd)).toContain(
-      'soccer/eng.1/scoreboard?dates=20260813-20260831',
+      'soccer/eng.1/scoreboard?dates=20260812-20260929',
     );
   });
 });

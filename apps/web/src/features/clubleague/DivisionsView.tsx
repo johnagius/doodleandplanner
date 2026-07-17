@@ -72,20 +72,30 @@ function PeriodPanel({ panel }: { panel: PeriodDivisions }) {
     return (
       <div className="stack">
         <div className="banner club-runin-banner">
-          🏁 <strong>Champions Run-In</strong> — the top {panel.runIn.contenders.length} reset to
-          level and fight for the title over this period’s fixtures.
+          🏁 <strong>The finale.</strong> Contenders <strong>reset to level</strong> and fight it
+          out over this period’s fixtures — the leaders for the {panel.runIn.trophy.name}, the top
+          of League 2 for {panel.runInSecond?.trophy.name ?? 'their own trophy'}.
         </div>
         <DivisionTable
-          title="🏆 Title decider"
+          title={`${panel.runIn.trophy.emoji} ${panel.runIn.trophy.runInName} — ${panel.runIn.trophy.name}`}
           rows={panel.runIn.contenders}
           meId={meId}
           moveOf={moveOf}
           highlightTop
         />
-        {panel.runIn.others.length > 0 && (
+        {panel.runInSecond && (
           <DivisionTable
-            title="Everyone else"
-            rows={panel.runIn.others}
+            title={`${panel.runInSecond.trophy.emoji} ${panel.runInSecond.trophy.runInName} — ${panel.runInSecond.trophy.name}`}
+            rows={panel.runInSecond.contenders}
+            meId={meId}
+            moveOf={moveOf}
+            highlightTop
+          />
+        )}
+        {panel.runInOthers && panel.runInOthers.length > 0 && (
+          <DivisionTable
+            title="Also playing"
+            rows={panel.runInOthers}
             meId={meId}
             moveOf={moveOf}
           />
@@ -123,10 +133,22 @@ function PeriodPanel({ panel }: { panel: PeriodDivisions }) {
         markPromotionFirst
       />
       <p className="muted small" style={{ margin: 0 }}>
-        Between periods the bottom of League 1 swaps with the top of League 2.
+        🔁 Promotion &amp; relegation apply <strong>only when this period ends</strong> (
+        {periodEnd(panel.period.endsAt)}) — the bottom of League 1 swaps with the top of League 2.
+        Nothing changes mid-period.
       </p>
     </div>
   );
+}
+
+/** "31 October 2026" — a period's closing date, when promotion/relegation bites. */
+function periodEnd(endsAtIso: string): string {
+  return new Date(new Date(endsAtIso).getTime() - 1).toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  });
 }
 
 function MovementTag({ change }: { change: DivisionMovement['change'] }) {

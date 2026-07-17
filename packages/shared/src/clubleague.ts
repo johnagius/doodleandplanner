@@ -51,8 +51,10 @@ export interface ClubCompetition {
   name: string;
   /** Short label for chips, e.g. "PL", "UCL". */
   short: string;
-  /** Emoji shown alongside the competition. */
+  /** Emoji fallback shown when the official logo can't load. */
   emoji: string;
+  /** Official competition logo URL. */
+  logo?: string;
 }
 
 /**
@@ -64,8 +66,15 @@ export interface ClubSide {
   name: string;
   short: string;
   color?: string;
+  /** Official club crest URL (from the feed, or derived for a tracked club). */
+  crest?: string;
   /** Set when this side is one of the tracked clubs. */
   teamId?: string;
+}
+
+/** The official ESPN crest URL for a given ESPN team id. */
+export function espnCrestUrl(espnId: string): string {
+  return `https://a.espncdn.com/i/teamlogos/soccer/500/${espnId}.png`;
 }
 
 /** The real-world full-time result of a fixture. */
@@ -155,7 +164,7 @@ export interface ClubLeagueState {
 }
 
 /** Bump when the seeded teams/competitions/periods change; older boards re-seed. */
-export const CLUB_SEED_VERSION = 2;
+export const CLUB_SEED_VERSION = 3;
 
 // --- Scoring ---------------------------------------------------------------
 
@@ -739,7 +748,11 @@ export interface ClubFeedFixture {
 function enrichSide(state: ClubLeagueState, side: ClubSide): ClubSide {
   const team = side.teamId ? findClubTeam(state, side.teamId) : undefined;
   if (!team) return side;
-  return { name: team.name, short: team.short, color: team.color, teamId: team.id };
+  // Keep our canonical name/short/colour; keep the feed crest, or derive the
+  // official one from the tracked club's ESPN id.
+  const espnId = CLUB_ESPN_TEAM_IDS[team.id];
+  const crest = side.crest ?? (espnId ? espnCrestUrl(espnId) : undefined);
+  return { name: team.name, short: team.short, color: team.color, crest, teamId: team.id };
 }
 
 /**
@@ -902,16 +915,19 @@ const TEAMS: ClubTeam[] = [
   { id: 'MIL', name: 'AC Milan', short: 'MIL', color: '#FB090B', country: '🇮🇹' },
 ];
 
+const LEAGUE_LOGO = (id: string): string =>
+  `https://a.espncdn.com/i/leaguelogos/soccer/500/${id}.png`;
+
 const COMPETITIONS: ClubCompetition[] = [
-  { id: 'epl', name: 'Premier League', short: 'PL', emoji: '🏴' },
-  { id: 'laliga', name: 'La Liga', short: 'LaLiga', emoji: '🇪🇸' },
-  { id: 'seriea', name: 'Serie A', short: 'Serie A', emoji: '🇮🇹' },
-  { id: 'ucl', name: 'Champions League', short: 'UCL', emoji: '🏆' },
-  { id: 'uel', name: 'Europa League', short: 'UEL', emoji: '🥈' },
-  { id: 'facup', name: 'FA Cup', short: 'FA Cup', emoji: '🏴' },
-  { id: 'efl', name: 'EFL Cup', short: 'EFL Cup', emoji: '🏴' },
-  { id: 'copa', name: 'Copa del Rey', short: 'Copa', emoji: '🇪🇸' },
-  { id: 'coppa', name: 'Coppa Italia', short: 'Coppa', emoji: '🇮🇹' },
+  { id: 'epl', name: 'Premier League', short: 'PL', emoji: '🏴', logo: LEAGUE_LOGO('23') },
+  { id: 'laliga', name: 'La Liga', short: 'LaLiga', emoji: '🇪🇸', logo: LEAGUE_LOGO('15') },
+  { id: 'seriea', name: 'Serie A', short: 'Serie A', emoji: '🇮🇹', logo: LEAGUE_LOGO('12') },
+  { id: 'ucl', name: 'Champions League', short: 'UCL', emoji: '🏆', logo: LEAGUE_LOGO('2') },
+  { id: 'uel', name: 'Europa League', short: 'UEL', emoji: '🥈', logo: LEAGUE_LOGO('2310') },
+  { id: 'facup', name: 'FA Cup', short: 'FA Cup', emoji: '🏴', logo: LEAGUE_LOGO('40') },
+  { id: 'efl', name: 'EFL Cup', short: 'EFL Cup', emoji: '🏴', logo: LEAGUE_LOGO('41') },
+  { id: 'copa', name: 'Copa del Rey', short: 'Copa', emoji: '🇪🇸', logo: LEAGUE_LOGO('80') },
+  { id: 'coppa', name: 'Coppa Italia', short: 'Coppa', emoji: '🇮🇹', logo: LEAGUE_LOGO('2192') },
   { id: 'other', name: 'Other', short: 'Other', emoji: '⚽' },
 ];
 

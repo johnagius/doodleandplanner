@@ -1,4 +1,12 @@
-import type { ClubFeedFixture, ISODateTime } from '@dap/shared';
+import {
+  CLUB_ESPN_LEAGUES,
+  clubFeedWindow,
+  clubScoreboardUrl,
+  mergeClubFeeds,
+  parseClubScoreboard,
+  type ClubFeedFixture,
+  type ISODateTime,
+} from '@dap/shared';
 
 export interface ClubFeedResult {
   fixtures: ClubFeedFixture[];
@@ -8,29 +16,34 @@ export interface ClubFeedResult {
 }
 
 /**
- * Fetch the automatic club fixtures from our Worker proxy, which pulls every
- * tracked competition's ESPN scoreboard for a rolling upcoming window and caches
- * the merged result (~3 min) so many devices polling never hammer the upstream.
- * Returns empty when no backend is configured or the feed is unavailable —
- * callers treat that as "nothing to apply".
+ * Pull every tracked competition's fixtures for a rolling upcoming window,
+ * straight from ESPN's public scoreboard. ESPN serves permissive CORS, so this
+ * runs directly in the browser — no backend of our own is required for fixtures
+ * to appear. Each league is fetched in parallel and per-league failures are
+ * tolerated; we only return what we actually got.
  */
-export async function fetchClubFixtures(): Promise<ClubFeedResult> {
-  const base = import.meta.env.VITE_API_BASE?.trim();
-  if (!base) return { fixtures: [], window: null, fetchedAt: null };
-  try {
-    const res = await fetch(`${base.replace(/\/$/, '')}/api/football/club-fixtures`);
-    if (!res.ok) return { fixtures: [], window: null, fetchedAt: null };
-    const data = (await res.json()) as {
-      fixtures?: ClubFeedFixture[];
-      window?: { from: string; to: string } | null;
-      fetchedAt?: string | null;
-    };
-    return {
-      fixtures: Array.isArray(data.fixtures) ? data.fixtures : [],
-      window: data.window ?? null,
-      fetchedAt: data.fetchedAt ?? null,
-    };
-  } catch {
+export async function fetchClubFixtures(now: Date = new Date()): Promise<ClubFeedResult> {
+  const win = clubFeedWindow(now);
+  const lists = await Promise.all(
+    CLUB_ESPN_LEAGUES.map(async (league) => {
+      try {
+        const res = await fetch(clubScoreboardUrl(league.slug, win.fromYmd, win.toYmd));
+        if (!res.ok) return [];
+        return parseClubScoreboard(await res.json(), league.competitionId);
+      } catch {
+        return [];
+      }
+    }),
+  );
+  const fixtures = mergeClubFeeds(lists);
+  // If every league failed there's nothing to apply — signal "no data" so callers
+  // leave the board untouched rather than pruning everything.
+  if (fixtures.length === 0 && lists.every((l) => l.length === 0)) {
     return { fixtures: [], window: null, fetchedAt: null };
   }
+  return {
+    fixtures,
+    window: { from: win.fromIso, to: win.toIso },
+    fetchedAt: now.toISOString(),
+  };
 }

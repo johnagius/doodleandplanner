@@ -44,10 +44,12 @@ export function ClubLeaguePage() {
   const club = state?.clubLeague ?? null;
   const boardReady = !!club;
 
-  // Pull the automatic fixture feed once the board is open, then poll it. The
-  // Worker caches the merged feed (~3 min) so many devices share one upstream hit.
+  // Pull the automatic fixture feed once the board is open, then poll it. Fixtures
+  // come straight from ESPN's public scoreboard (CORS-open), so this works without
+  // any backend of our own; when the realtime backend is on, the reconcile is
+  // shared to everyone.
   useEffect(() => {
-    if (!isRealtimeBackend() || !boardReady) return;
+    if (!boardReady) return;
     const tick = () => void useClubLeagueStore.getState().syncFixtures();
     tick();
     const id = setInterval(tick, 3 * 60_000);
@@ -182,7 +184,6 @@ export function ClubLeaguePage() {
 }
 
 function FixturesView({ club }: { club: ClubLeagueState }) {
-  const offline = useClubLeagueStore((s) => s.offline);
   const [compFilter, setCompFilter] = useState<string>('all');
   const [showPlayed, setShowPlayed] = useState(true);
 
@@ -194,7 +195,6 @@ function FixturesView({ club }: { club: ClubLeagueState }) {
   }, [club, compFilter, showPlayed]);
 
   const grouped = useMemo(() => groupByDay(fixtures), [fixtures]);
-  const feedOn = isRealtimeBackend() && !offline;
 
   return (
     <div className="stack">
@@ -224,11 +224,7 @@ function FixturesView({ club }: { club: ClubLeagueState }) {
       </div>
 
       {grouped.length === 0 ? (
-        <div className="empty">
-          {feedOn
-            ? 'Loading the upcoming fixtures for our clubs…'
-            : 'Fixtures sync automatically when the live backend is connected.'}
-        </div>
+        <div className="empty">Loading the upcoming fixtures for our clubs…</div>
       ) : (
         grouped.map(({ day, items }) => (
           <div key={day} className="stack" style={{ gap: '0.5rem' }}>

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   authorizeClubWrite,
   changedClubPredictorIds,
+  lockedFixtureEdit,
   seedClubLeague,
   setClubPrediction,
   stampClaimedClub,
@@ -81,6 +82,44 @@ describe('authorizeClubWrite', () => {
     );
     const cleared = { ...withPick, predictions: [] }; // fixture kept, pick stripped
     expect(authorizeClubWrite(withPick, cleared, new Set([me]), null).ok).toBe(false);
+  });
+});
+
+describe('lockedFixtureEdit (kick-off anti-cheat)', () => {
+  it('allows edits before kick-off and blocks add/change after it', () => {
+    const { state, fixtureId } = boardWithFixture(); // kickoff far in the future
+    const me = state.predictors[0]!.id;
+    const picked = setClubPrediction(
+      state,
+      { fixtureId, predictorId: me, outcome: '1' },
+      { now: NOW },
+    );
+    const beforeKick = new Date('2026-08-10T00:00:00.000Z').getTime();
+    expect(lockedFixtureEdit(state, picked, beforeKick)).toBeNull();
+
+    // Bring the fixture into the past, then try to change the pick "live".
+    const started: ClubLeagueState = {
+      ...picked,
+      fixtures: picked.fixtures.map((f) => ({ ...f, kickoff: '2026-08-01T00:00:00.000Z' })),
+    };
+    const cheated = {
+      ...started,
+      predictions: started.predictions.map((p) => ({ ...p, outcome: '2' as const })),
+    };
+    const nowMs = new Date('2026-08-01T12:00:00.000Z').getTime();
+    expect(lockedFixtureEdit(started, cheated, nowMs)).toBe(fixtureId);
+  });
+
+  it('ignores a prediction removed with its (pruned) fixture', () => {
+    const { state, fixtureId } = boardWithFixture();
+    const me = state.predictors[0]!.id;
+    const picked = setClubPrediction(
+      state,
+      { fixtureId, predictorId: me, outcome: '1' },
+      { now: NOW },
+    );
+    const pruned = removeFixture(picked, fixtureId);
+    expect(lockedFixtureEdit(picked, pruned, Date.now())).toBeNull();
   });
 });
 

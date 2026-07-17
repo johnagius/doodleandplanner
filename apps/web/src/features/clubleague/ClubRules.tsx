@@ -5,6 +5,7 @@ import {
   CLUB_TROPHY_TOP,
   type ClubLeagueState,
 } from '@dap/shared';
+import { ShieldIcon, TrophyIcon } from './TrophyIcons.js';
 
 /**
  * The in-app rulebook. World Cup players struggled to understand how points were
@@ -107,15 +108,20 @@ export function ClubRules({ club }: { club: ClubLeagueState }) {
           the closing fixtures:
         </p>
         <ul>
-          <li>
-            {CLUB_TROPHY_TOP.emoji} <strong>{CLUB_TROPHY_TOP.runInName}</strong> — the top{' '}
-            {club.runInContenders} players overall battle for{' '}
-            <strong>{CLUB_TROPHY_TOP.name}</strong>, the big one.
+          <li className="club-rule-trophy">
+            <TrophyIcon size={26} />
+            <span>
+              <strong>{CLUB_TROPHY_TOP.runInName}</strong> — the top {club.runInContenders} players
+              overall battle for <strong>{CLUB_TROPHY_TOP.name}</strong>, the big one.
+            </span>
           </li>
-          <li>
-            {CLUB_TROPHY_SECOND.emoji} <strong>{CLUB_TROPHY_SECOND.runInName}</strong> — the top{' '}
-            {club.runInContenders} of League 2 play for <strong>{CLUB_TROPHY_SECOND.name}</strong> —
-            a cool prize of its own, a notch below the Crown.
+          <li className="club-rule-trophy">
+            <ShieldIcon size={26} />
+            <span>
+              <strong>{CLUB_TROPHY_SECOND.runInName}</strong> — the top {club.runInContenders} of
+              League 2 play for <strong>{CLUB_TROPHY_SECOND.name}</strong> — a cool prize of its
+              own, a notch below the Crown.
+            </span>
           </li>
         </ul>
         <p>

@@ -5,9 +5,10 @@ import {
   type DivisionMovement,
   type PeriodDivisions,
 } from '@dap/shared';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { EmptyState } from '../../components/EmptyState.js';
 import { useClubLeagueStore } from '../../state/clubLeagueStore.js';
+import { ShieldIcon, TrophyIcon } from './TrophyIcons.js';
 
 /** Periods, divisions, promotion/relegation and the Champions Run-In finale. */
 export function DivisionsView({ club }: { club: ClubLeagueState }) {
@@ -77,7 +78,8 @@ function PeriodPanel({ panel }: { panel: PeriodDivisions }) {
           of League 2 for {panel.runInSecond?.trophy.name ?? 'their own trophy'}.
         </div>
         <DivisionTable
-          title={`${panel.runIn.trophy.emoji} ${panel.runIn.trophy.runInName} — ${panel.runIn.trophy.name}`}
+          title={`${panel.runIn.trophy.runInName} — ${panel.runIn.trophy.name}`}
+          icon={<TrophyIcon size={22} />}
           rows={panel.runIn.contenders}
           meId={meId}
           moveOf={moveOf}
@@ -85,7 +87,8 @@ function PeriodPanel({ panel }: { panel: PeriodDivisions }) {
         />
         {panel.runInSecond && (
           <DivisionTable
-            title={`${panel.runInSecond.trophy.emoji} ${panel.runInSecond.trophy.runInName} — ${panel.runInSecond.trophy.name}`}
+            title={`${panel.runInSecond.trophy.runInName} — ${panel.runInSecond.trophy.name}`}
+            icon={<ShieldIcon size={22} />}
             rows={panel.runInSecond.contenders}
             meId={meId}
             moveOf={moveOf}
@@ -169,6 +172,7 @@ function MovementTag({ change }: { change: DivisionMovement['change'] }) {
 
 function DivisionTable({
   title,
+  icon,
   rows,
   meId,
   moveOf,
@@ -177,6 +181,7 @@ function DivisionTable({
   highlightTop,
 }: {
   title: string;
+  icon?: ReactNode;
   rows: ClubLeaderRow[];
   meId: string | null;
   moveOf: Map<string, DivisionMovement>;
@@ -186,7 +191,10 @@ function DivisionTable({
 }) {
   return (
     <div className="card stack club-division">
-      <h3 style={{ margin: 0 }}>{title}</h3>
+      <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+        {icon}
+        {title}
+      </h3>
       {rows.length === 0 ? (
         <p className="muted small" style={{ margin: 0 }}>
           No players in this division yet.

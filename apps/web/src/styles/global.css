@@ -8456,8 +8456,10 @@ label.field {
   display: grid;
   gap: 0.3rem;
 }
-.cx-trophy-emoji {
-  font-size: 2.4rem;
+.cx-trophy-icon {
+  display: grid;
+  place-items: center;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.18));
 }
 .cx-trophy-name {
   font-weight: 800;
@@ -8638,4 +8640,31 @@ label.field {
   .cx-beam {
     animation: none;
   }
+}
+
+.club-rule-trophy {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  list-style: none;
+  margin-left: -1.2rem;
+}
+
+/* Fixtures day flipper */
+.club-day-flipper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.5rem 0.7rem;
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+.club-day-flip-label {
+  text-align: center;
+  min-width: 0;
+}
+.club-day-flip-date {
+  font-weight: 700;
 }

@@ -7,6 +7,7 @@ import {
   authorizeWcWrite,
   bumpRev,
   isStaleSave,
+  lockedFixtureEdit,
   readSessionToken,
   stampClaimed,
   stampClaimedClub,
@@ -149,6 +150,15 @@ export class RoomDurableObject {
       }
       const stampedWc = stampClaimed(body.worldCup, claimed);
       if (stampedWc !== body.worldCup) toSave = { ...body, worldCup: stampedWc };
+    }
+    // Anti-cheat: predictions lock at kick-off. Reject any save that adds or
+    // changes a pick on a fixture that has already started or been resulted, so
+    // the lock can't be bypassed by a crafted request (feed prunes are ignored).
+    if (body.clubLeague && prev?.clubLeague) {
+      const locked = lockedFixtureEdit(prev.clubLeague, body.clubLeague, Date.now());
+      if (locked) {
+        return json({ error: 'fixture-locked', fixtureId: locked }, { status: 403 }, cors);
+      }
     }
     // Same per-name lock for the Club Football board (a different singleton room,
     // so its own predictor ids are claimed independently).

@@ -19,7 +19,7 @@ import { ClubTable } from './ClubTable.js';
 import { DivisionsView } from './DivisionsView.js';
 import { FixtureCard } from './FixtureCard.js';
 import { IdentityBar } from './IdentityBar.js';
-import { formatFixtureDayLong } from './clubFormat.js';
+import { formatFixtureDayLong, maltaDayKey } from './clubFormat.js';
 
 type Tab = 'fixtures' | 'table' | 'divisions' | 'rules';
 
@@ -209,24 +209,46 @@ export function ClubLeaguePage() {
 
 function FixturesView({ club }: { club: ClubLeagueState }) {
   const [compFilter, setCompFilter] = useState<string>('all');
-  const [showPlayed, setShowPlayed] = useState(true);
 
-  const fixtures = useMemo(() => {
-    let list = orderedFixtures(club);
-    if (compFilter !== 'all') list = list.filter((f) => f.competitionId === compFilter);
-    if (!showPlayed) list = list.filter((f) => !f.result);
-    return list;
-  }, [club, compFilter, showPlayed]);
+  // Group fixtures into match-days (Malta calendar days), already time-ordered.
+  const days = useMemo(() => {
+    const list =
+      compFilter === 'all'
+        ? orderedFixtures(club)
+        : orderedFixtures(club).filter((f) => f.competitionId === compFilter);
+    const map = new Map<string, ClubFixture[]>();
+    for (const f of list) {
+      const key = maltaDayKey(f.kickoff);
+      (map.get(key) ?? map.set(key, []).get(key)!).push(f);
+    }
+    return [...map.entries()].map(([key, items]) => ({ key, items }));
+  }, [club, compFilter]);
 
-  const grouped = useMemo(() => groupByDay(fixtures), [fixtures]);
+  // Land on the next match-day that still has an unplayed game, else the last.
+  const defaultIdx = useMemo(() => {
+    const now = Date.now();
+    const i = days.findIndex((d) =>
+      d.items.some((f) => !f.result && new Date(f.kickoff).getTime() >= now),
+    );
+    return i >= 0 ? i : Math.max(0, days.length - 1);
+  }, [days]);
+
+  const [dayIdx, setDayIdx] = useState(defaultIdx);
+  // Clamp when the day list changes (feed refresh / filter switch).
+  const idx = Math.min(dayIdx, Math.max(0, days.length - 1));
+  const current = days[idx];
 
   return (
     <div className="stack">
-      <div className="club-fixtures-toolbar row row-wrap" style={{ gap: '0.5rem' }}>
+      <div className="row row-wrap" style={{ gap: '0.5rem', alignItems: 'center' }}>
         <select
           className="select"
+          style={{ maxWidth: '13rem' }}
           value={compFilter}
-          onChange={(e) => setCompFilter(e.target.value)}
+          onChange={(e) => {
+            setCompFilter(e.target.value);
+            setDayIdx(0);
+          }}
           aria-label="Filter by competition"
         >
           <option value="all">All competitions</option>
@@ -236,43 +258,88 @@ function FixturesView({ club }: { club: ClubLeagueState }) {
             </option>
           ))}
         </select>
-        <label className="row" style={{ gap: '0.3rem', alignItems: 'center' }}>
-          <input
-            type="checkbox"
-            checked={showPlayed}
-            onChange={(e) => setShowPlayed(e.target.checked)}
-          />
-          <span className="small">Show played</span>
-        </label>
-        <span className="muted small club-feed-note">🔄 Fixtures update automatically</span>
+        <button
+          type="button"
+          className="btn btn-sm btn-ghost"
+          onClick={() => setDayIdx(defaultIdx)}
+          title="Jump to the next matches"
+        >
+          ⏭ Next matches
+        </button>
+        <span className="muted small club-feed-note">🔄 Auto-updated</span>
       </div>
 
-      {grouped.length === 0 ? (
+      {!current ? (
         <div className="empty">Loading the upcoming fixtures for our clubs…</div>
       ) : (
-        grouped.map(({ day, items }) => (
-          <div key={day} className="stack" style={{ gap: '0.5rem' }}>
-            <h3 className="club-day-head">{formatFixtureDayLong(items[0]!.kickoff)}</h3>
-            {items.map((f) => (
+        <>
+          <DayFlipper
+            label={formatFixtureDayLong(current.items[0]!.kickoff)}
+            count={current.items.length}
+            index={idx}
+            total={days.length}
+            onGo={(delta) => setDayIdx(idx + delta)}
+          />
+          <div className="stack" style={{ gap: '0.5rem' }}>
+            {current.items.map((f) => (
               <FixtureCard key={f.id} club={club} fixture={f} />
             ))}
           </div>
-        ))
+          <DayFlipper
+            label={formatFixtureDayLong(current.items[0]!.kickoff)}
+            count={current.items.length}
+            index={idx}
+            total={days.length}
+            onGo={(delta) => setDayIdx(idx + delta)}
+          />
+        </>
       )}
     </div>
   );
 }
 
-function groupByDay(fixtures: ClubFixture[]): { day: string; items: ClubFixture[] }[] {
-  const map = new Map<string, ClubFixture[]>();
-  for (const f of fixtures) {
-    // Group by the calendar date portion of the ISO kickoff (already ordered).
-    const day = f.kickoff.slice(0, 10);
-    const list = map.get(day) ?? [];
-    list.push(f);
-    map.set(day, list);
-  }
-  return [...map.entries()].map(([day, items]) => ({ day, items }));
+/** ‹ Prev · date + count · Next › day navigator. */
+function DayFlipper({
+  label,
+  count,
+  index,
+  total,
+  onGo,
+}: {
+  label: string;
+  count: number;
+  index: number;
+  total: number;
+  onGo: (delta: number) => void;
+}) {
+  return (
+    <div className="club-day-flipper">
+      <button
+        type="button"
+        className="btn btn-sm"
+        onClick={() => onGo(-1)}
+        disabled={index <= 0}
+        aria-label="Previous match-day"
+      >
+        ‹ Prev
+      </button>
+      <div className="club-day-flip-label">
+        <div className="club-day-flip-date">{label}</div>
+        <div className="muted small">
+          Match-day {index + 1} of {total} · {count} game{count === 1 ? '' : 's'} · 🇲🇹
+        </div>
+      </div>
+      <button
+        type="button"
+        className="btn btn-sm"
+        onClick={() => onGo(1)}
+        disabled={index >= total - 1}
+        aria-label="Next match-day"
+      >
+        Next ›
+      </button>
+    </div>
+  );
 }
 
 /** Build stamp — which commit is live (baked in at build time). */

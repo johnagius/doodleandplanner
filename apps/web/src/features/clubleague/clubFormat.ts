@@ -15,6 +15,11 @@ export function formatFixtureDayLong(iso: string): string {
   });
 }
 
+/** Malta-local calendar day key ("YYYY-MM-DD") for grouping fixtures by day. */
+export function maltaDayKey(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-CA', { timeZone: CLUB_TIMEZONE });
+}
+
 /** "16:30" kick-off time in Malta time. */
 export function formatKickoff(iso: string): string {
   return new Date(iso).toLocaleTimeString(LOCALE, {

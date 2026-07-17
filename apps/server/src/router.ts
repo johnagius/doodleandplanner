@@ -21,6 +21,7 @@ export type ApiRoute =
   | { kind: 'wc-news' }
   | { kind: 'wc-values' }
   | { kind: 'wc-h2h' }
+  | { kind: 'club-fixtures' }
   | { kind: 'get'; slug: string }
   | { kind: 'save'; slug: string }
   | { kind: 'ws'; slug: string }
@@ -62,6 +63,9 @@ export function route(method: string, pathname: string): ApiRoute {
   }
   if (parts[1] === 'football' && parts[2] === 'h2h' && parts.length === 3) {
     return m === 'GET' ? { kind: 'wc-h2h' } : { kind: 'not-found' };
+  }
+  if (parts[1] === 'football' && parts[2] === 'club-fixtures' && parts.length === 3) {
+    return m === 'GET' ? { kind: 'club-fixtures' } : { kind: 'not-found' };
   }
   if (parts[1] !== 'rooms') return { kind: 'not-found' };
 

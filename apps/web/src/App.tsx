@@ -5,6 +5,7 @@ import { WelcomeModal } from './components/WelcomeModal.js';
 import { HomePage } from './features/home/HomePage.js';
 import { RoomPage } from './features/room/RoomPage.js';
 import { WorldCupPage } from './features/worldcup/WorldCupPage.js';
+import { ClubLeaguePage } from './features/clubleague/ClubLeaguePage.js';
 import { NotFoundPage } from './features/home/NotFoundPage.js';
 
 export function App() {
@@ -23,6 +24,9 @@ export function App() {
             <Link className="btn btn-sm btn-ghost" to="/world-cup">
               ⚽ World Cup
             </Link>
+            <Link className="btn btn-sm btn-ghost" to="/club">
+              🏆 Club Footy
+            </Link>
             <ThemeToggle />
             <a
               className="btn btn-sm btn-ghost"
@@ -39,6 +43,7 @@ export function App() {
             <Route path="/" element={<HomePage />} />
             <Route path="/r/:slug" element={<RoomPage />} />
             <Route path="/world-cup" element={<WorldCupPage />} />
+            <Route path="/club" element={<ClubLeaguePage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </main>

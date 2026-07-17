@@ -58,6 +58,28 @@ export function HomePage() {
         </button>
       </Reveal>
 
+      <Reveal>
+        <button
+          className="card wc-home-card"
+          onClick={() => navigate('/club')}
+          aria-label="Open Club Football predictions"
+        >
+          <span className="wc-home-emoji" aria-hidden>
+            🏆
+          </span>
+          <span className="wc-home-text">
+            <span className="card-title">Club Football Predictions</span>
+            <span className="muted small">
+              Every game our clubs play — pick 1/X/2, goals & both-teams-to-score, back a Banker,
+              and climb the leagues.
+            </span>
+          </span>
+          <span className="wc-home-arrow" aria-hidden>
+            →
+          </span>
+        </button>
+      </Reveal>
+
       <Reveal className="grid grid-2">
         <CreateRoomCard onCreated={(slug) => navigate(`/r/${slug}`)} />
         <JoinRoomCard onJoin={(code) => navigate(`/r/${code.trim()}`)} onImport={importRoom} />

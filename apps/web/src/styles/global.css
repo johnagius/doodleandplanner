@@ -7542,3 +7542,471 @@ label.field {
     transform: scale(0.82);
   }
 }
+
+/* ==========================================================================
+   Club Football Predictions
+   ========================================================================== */
+
+.club-hero {
+  margin-top: 1rem;
+  padding: 1.1rem 1.2rem;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--primary) 16%, var(--surface)),
+    var(--surface)
+  );
+  border: 1px solid var(--border);
+}
+.club-hero-title {
+  margin: 0;
+  font-size: clamp(1.4rem, 4vw, 2rem);
+}
+.club-identity {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.9rem;
+}
+.club-identity-select {
+  max-width: 14rem;
+}
+
+.club-tabs {
+  margin-top: 1rem;
+}
+
+/* --- Fixtures ------------------------------------------------------------- */
+.club-fixtures-toolbar {
+  align-items: center;
+}
+.club-day-head {
+  margin: 0.75rem 0 0;
+  font-size: 0.95rem;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.3rem;
+}
+.club-fixture {
+  gap: 0.6rem;
+}
+.club-fixture-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.club-comp-chip {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+.club-result-badge {
+  margin-left: auto;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  background: var(--primary-soft);
+  color: var(--primary-darker);
+}
+.club-fixture-head .badge:last-child,
+.club-fixture-head .club-result-badge {
+  margin-left: auto;
+}
+
+.club-fixture-teams {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 0.5rem;
+}
+.club-vs {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.club-team {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+.club-team-right {
+  flex-direction: row-reverse;
+  text-align: right;
+}
+.club-badge {
+  flex: 0 0 auto;
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+.club-team-name {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* --- Market pickers ------------------------------------------------------- */
+.club-markets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem 1rem;
+  align-items: flex-end;
+}
+.club-market {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+.club-market-label {
+  font-weight: 600;
+}
+.club-market-btns {
+  display: flex;
+  gap: 0.25rem;
+}
+.club-mbtn {
+  min-width: 2.6rem;
+  padding: 0.35rem 0.6rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+.club-mbtn:hover {
+  border-color: var(--primary);
+}
+.club-mbtn.is-active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+.club-banker-btn {
+  margin-left: auto;
+  padding: 0.4rem 0.7rem;
+  border-radius: var(--radius-sm);
+  border: 1px dashed var(--border-strong);
+  background: var(--surface);
+  color: var(--muted);
+  font-weight: 700;
+  cursor: pointer;
+}
+.club-banker-btn.is-on {
+  border-style: solid;
+  border-color: #d97706;
+  background: color-mix(in srgb, #f59e0b 20%, var(--surface));
+  color: #b45309;
+}
+
+/* --- Tickets & reveal ----------------------------------------------------- */
+.club-myticket,
+.club-reveal-list > li {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.club-myticket {
+  padding-top: 0.4rem;
+  border-top: 1px dashed var(--border);
+}
+.club-pills {
+  display: inline-flex;
+  gap: 0.25rem;
+}
+.club-pill {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.1rem 0.4rem;
+  border-radius: 6px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+.club-pill.is-hit {
+  background: var(--success-soft);
+  border-color: color-mix(in srgb, var(--success) 40%, transparent);
+  color: var(--success);
+}
+.club-pill.is-miss {
+  opacity: 0.55;
+}
+.club-banker-tag {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: #b45309;
+}
+.club-ticket-pts {
+  margin-left: auto;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.club-ticket-pts.is-hit {
+  color: var(--success);
+}
+.club-ticket-pts.is-miss {
+  color: var(--muted);
+}
+.club-reveal {
+  padding-top: 0.4rem;
+  border-top: 1px dashed var(--border);
+}
+.club-reveal-key {
+  margin-bottom: 0.3rem;
+}
+.club-reveal-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.club-reveal-list > li.is-me {
+  background: var(--primary-soft);
+  border-radius: 8px;
+  padding: 0.2rem 0.4rem;
+}
+.club-reveal-name {
+  font-weight: 600;
+  min-width: 6rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+/* --- Organiser row -------------------------------------------------------- */
+.club-admin-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding-top: 0.5rem;
+  border-top: 1px dashed var(--border);
+}
+.club-admin-tag {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+.club-score-input {
+  width: 3rem;
+  text-align: center;
+}
+.club-short-input {
+  width: 4.5rem;
+  text-transform: uppercase;
+}
+
+/* --- Season table -------------------------------------------------------- */
+.club-table {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.club-row {
+  display: grid;
+  grid-template-columns: 2rem 1fr auto;
+  grid-template-areas: 'rank name pts' 'rank stats pts' 'bar bar bar';
+  align-items: center;
+  gap: 0.2rem 0.6rem;
+  padding: 0.5rem 0.7rem;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+.club-row.is-me {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+.club-row.is-leader {
+  border-color: color-mix(in srgb, #f59e0b 55%, var(--border));
+}
+.club-rank {
+  grid-area: rank;
+  font-size: 1.1rem;
+  font-weight: 800;
+  text-align: center;
+}
+.club-row-name {
+  grid-area: name;
+  font-weight: 700;
+}
+.club-row-stats {
+  grid-area: stats;
+}
+.club-row-pts {
+  grid-area: pts;
+  font-size: 1.25rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.club-row-bar {
+  grid-area: bar;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  overflow: hidden;
+}
+.club-row-bar > span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary), var(--accent));
+}
+
+/* --- Divisions ----------------------------------------------------------- */
+.club-period-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.club-period-tab {
+  padding: 0.35rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  font-weight: 700;
+  cursor: pointer;
+}
+.club-period-tab.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+.club-period-tab.is-future {
+  opacity: 0.6;
+}
+.club-runin-banner {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, #f59e0b 22%, var(--surface)),
+    var(--surface)
+  );
+  border-color: color-mix(in srgb, #f59e0b 45%, var(--border));
+}
+.club-division-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.club-division-list > li {
+  display: grid;
+  grid-template-columns: 1.6rem 1fr auto;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: 8px;
+  border: 1px solid transparent;
+}
+.club-division-list > li.is-me {
+  background: var(--primary-soft);
+}
+.club-division-list > li.is-leader {
+  border-color: color-mix(in srgb, #f59e0b 55%, var(--border));
+}
+.club-division-list > li.is-promo {
+  background: color-mix(in srgb, var(--success) 12%, transparent);
+}
+.club-division-list > li.is-releg {
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
+}
+.club-division-rank {
+  text-align: center;
+  font-weight: 700;
+  color: var(--muted);
+}
+.club-division-name {
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+.club-division-pts {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.club-move.up {
+  color: var(--success);
+}
+.club-move.down {
+  color: var(--danger);
+}
+.club-zone {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0.05rem 0.35rem;
+  border-radius: 999px;
+}
+.club-zone.up {
+  color: var(--success);
+  background: var(--success-soft);
+}
+.club-zone.down {
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+
+/* --- Rules ---------------------------------------------------------------- */
+.club-rule-section h3 {
+  font-size: 1.05rem;
+}
+.club-rule-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 0.6rem;
+}
+.club-rule-card {
+  display: flex;
+  gap: 0.6rem;
+  padding: 0.6rem 0.7rem;
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+.club-rule-pts {
+  flex: 0 0 auto;
+  font-weight: 800;
+  color: var(--primary-darker);
+  background: var(--primary-soft);
+  border-radius: 8px;
+  padding: 0.25rem 0.5rem;
+  height: fit-content;
+}
+.club-rule-label {
+  font-weight: 700;
+}
+.club-rule-example {
+  margin-top: 0.2rem;
+  color: var(--primary-dark);
+}
+
+.club-live-badge {
+  background: var(--danger-soft);
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 40%, transparent);
+}
+.club-feed-note {
+  margin-left: auto;
+}

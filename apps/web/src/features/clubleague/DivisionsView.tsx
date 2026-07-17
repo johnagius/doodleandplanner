@@ -1,0 +1,199 @@
+import {
+  computeDivisions,
+  type ClubLeaderRow,
+  type ClubLeagueState,
+  type DivisionMovement,
+  type PeriodDivisions,
+} from '@dap/shared';
+import { useMemo, useState } from 'react';
+import { EmptyState } from '../../components/EmptyState.js';
+import { useClubLeagueStore } from '../../state/clubLeagueStore.js';
+
+/** Periods, divisions, promotion/relegation and the Champions Run-In finale. */
+export function DivisionsView({ club }: { club: ClubLeagueState }) {
+  const divisions = useMemo(() => computeDivisions(club), [club]);
+  // Land on the latest period that has started, else the first.
+  const initial = useMemo(() => {
+    const started = divisions.filter((d) => d.started);
+    return (started[started.length - 1] ?? divisions[0])?.period.id ?? '';
+  }, [divisions]);
+  const [periodId, setPeriodId] = useState(initial);
+  const current = divisions.find((d) => d.period.id === periodId) ?? divisions[0];
+
+  if (!current) {
+    return (
+      <EmptyState icon="🗂️" title="No periods set up" hint="Add periods to split the season." />
+    );
+  }
+
+  return (
+    <div className="stack">
+      <div className="club-period-tabs" role="tablist" aria-label="Season periods">
+        {divisions.map((d) => (
+          <button
+            key={d.period.id}
+            role="tab"
+            aria-selected={d.period.id === current.period.id}
+            className={`club-period-tab ${d.period.id === current.period.id ? 'active' : ''} ${
+              d.started ? '' : 'is-future'
+            }`}
+            onClick={() => setPeriodId(d.period.id)}
+          >
+            {d.period.runIn ? '🏁 ' : ''}
+            {d.period.name}
+          </button>
+        ))}
+      </div>
+
+      <PeriodPanel panel={current} />
+    </div>
+  );
+}
+
+function PeriodPanel({ panel }: { panel: PeriodDivisions }) {
+  const meId = useClubLeagueStore((s) => s.meId);
+  const moveOf = new Map(panel.movement.map((m) => [m.predictorId, m]));
+
+  if (!panel.started) {
+    return (
+      <EmptyState
+        icon="⏳"
+        title={`${panel.period.name} hasn’t started`}
+        hint={
+          panel.period.runIn
+            ? 'The closing run-in fires up once its first fixture is played — the top contenders reset to level.'
+            : 'Standings appear here as soon as this period’s first result lands.'
+        }
+      />
+    );
+  }
+
+  if (panel.runIn) {
+    return (
+      <div className="stack">
+        <div className="banner club-runin-banner">
+          🏁 <strong>Champions Run-In</strong> — the top {panel.runIn.contenders.length} reset to
+          level and fight for the title over this period’s fixtures.
+        </div>
+        <DivisionTable
+          title="🏆 Title decider"
+          rows={panel.runIn.contenders}
+          meId={meId}
+          moveOf={moveOf}
+          highlightTop
+        />
+        {panel.runIn.others.length > 0 && (
+          <DivisionTable
+            title="Everyone else"
+            rows={panel.runIn.others}
+            meId={meId}
+            moveOf={moveOf}
+          />
+        )}
+      </div>
+    );
+  }
+
+  if (panel.combined) {
+    return (
+      <div className="stack">
+        <p className="muted small" style={{ margin: 0 }}>
+          Opening period — one combined table. Its finish seeds the first split into League 1 &
+          League 2.
+        </p>
+        <DivisionTable title="Opening table" rows={panel.combined} meId={meId} moveOf={moveOf} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="stack">
+      <DivisionTable
+        title="🥇 League 1"
+        rows={panel.league1}
+        meId={meId}
+        moveOf={moveOf}
+        markRelegationLast
+      />
+      <DivisionTable
+        title="League 2"
+        rows={panel.league2}
+        meId={meId}
+        moveOf={moveOf}
+        markPromotionFirst
+      />
+      <p className="muted small" style={{ margin: 0 }}>
+        Between periods the bottom of League 1 swaps with the top of League 2.
+      </p>
+    </div>
+  );
+}
+
+function MovementTag({ change }: { change: DivisionMovement['change'] }) {
+  if (change === 'promoted')
+    return (
+      <span className="club-move up" title="Promoted">
+        ▲
+      </span>
+    );
+  if (change === 'relegated')
+    return (
+      <span className="club-move down" title="Relegated">
+        ▼
+      </span>
+    );
+  return null;
+}
+
+function DivisionTable({
+  title,
+  rows,
+  meId,
+  moveOf,
+  markRelegationLast,
+  markPromotionFirst,
+  highlightTop,
+}: {
+  title: string;
+  rows: ClubLeaderRow[];
+  meId: string | null;
+  moveOf: Map<string, DivisionMovement>;
+  markRelegationLast?: boolean;
+  markPromotionFirst?: boolean;
+  highlightTop?: boolean;
+}) {
+  return (
+    <div className="card stack club-division">
+      <h3 style={{ margin: 0 }}>{title}</h3>
+      {rows.length === 0 ? (
+        <p className="muted small" style={{ margin: 0 }}>
+          No players in this division yet.
+        </p>
+      ) : (
+        <ol className="club-division-list">
+          {rows.map((r, i) => {
+            const isReleg = markRelegationLast && i === rows.length - 1;
+            const isPromo = markPromotionFirst && i === 0;
+            return (
+              <li
+                key={r.predictorId}
+                className={`${r.predictorId === meId ? 'is-me' : ''} ${
+                  isReleg ? 'is-releg' : ''
+                } ${isPromo ? 'is-promo' : ''} ${highlightTop && i === 0 ? 'is-leader' : ''}`}
+              >
+                <span className="club-division-rank">{i + 1}</span>
+                <span className="club-division-name">
+                  {r.name}
+                  <MovementTag change={moveOf.get(r.predictorId)?.change ?? 'same'} />
+                  {isPromo && <span className="club-zone up">↑ promotion spot</span>}
+                  {isReleg && <span className="club-zone down">↓ relegation spot</span>}
+                </span>
+                <span className="club-division-pts">{r.points}</span>
+              </li>
+            );
+          })}
+        </ol>
+      )}
+    </div>
+  );
+}

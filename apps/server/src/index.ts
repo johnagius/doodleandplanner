@@ -15,6 +15,13 @@ import {
   type EspnSummaryParsed,
 } from './espn.js';
 import { findWcMatch, mapHeadToHead, mapWorldCupScores } from './football.js';
+import {
+  clubFeedWindow,
+  clubScoreboardUrl,
+  mergeClubFeeds,
+  parseClubScoreboard,
+} from './clubFeed.js';
+import { CLUB_ESPN_LEAGUES, type ClubFeedFixture } from '@dap/shared';
 import { parseTmValueM } from './transfermarkt.js';
 import { RoomDurableObject, type Env } from './roomObject.js';
 import { corsHeaders, json, route } from './router.js';
@@ -361,6 +368,69 @@ async function worldCupValues(namesParam: string, cors: Record<string, string>):
   return json({ values }, {}, cors);
 }
 
+// Club Football fixtures — merged across every tracked competition for a rolling
+// upcoming window. ESPN's per-league scoreboard is shared + cached so many devices
+// polling never hammer the upstream. Refreshed ~every 3 minutes.
+let clubCache: {
+  at: number;
+  fixtures: ClubFeedFixture[];
+  window: { from: string; to: string };
+} | null = null;
+const CLUB_TTL_MS = 3 * 60_000;
+
+async function clubFixtures(cors: Record<string, string>): Promise<Response> {
+  const stamp = (at: number | undefined) => (at ? new Date(at).toISOString() : null);
+  if (clubCache && Date.now() - clubCache.at < CLUB_TTL_MS) {
+    return json(
+      { fixtures: clubCache.fixtures, window: clubCache.window, fetchedAt: stamp(clubCache.at) },
+      {},
+      cors,
+    );
+  }
+
+  const win = clubFeedWindow(new Date());
+  const lists = await Promise.all(
+    CLUB_ESPN_LEAGUES.map(async (league) => {
+      try {
+        const res = await fetch(clubScoreboardUrl(league.slug, win.fromYmd, win.toYmd), {
+          headers: ESPN_UA,
+        });
+        if (!res.ok) return [];
+        return parseClubScoreboard(await res.json(), league.competitionId);
+      } catch {
+        return [];
+      }
+    }),
+  );
+
+  const fixtures = mergeClubFeeds(lists);
+  // If every upstream call failed, don't cache an empty result — serve the last
+  // good snapshot if we have one, else signal unavailable.
+  if (fixtures.length === 0 && lists.every((l) => l.length === 0)) {
+    if (clubCache) {
+      return json(
+        {
+          fixtures: clubCache.fixtures,
+          window: clubCache.window,
+          fetchedAt: stamp(clubCache.at),
+          error: 'unavailable',
+        },
+        {},
+        cors,
+      );
+    }
+    return json(
+      { fixtures: [], window: { from: win.fromIso, to: win.toIso }, fetchedAt: null },
+      {},
+      cors,
+    );
+  }
+
+  const window = { from: win.fromIso, to: win.toIso };
+  clubCache = { at: Date.now(), fixtures, window };
+  return json({ fixtures, window, fetchedAt: stamp(clubCache.at) }, {}, cors);
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
@@ -385,6 +455,7 @@ export default {
         cors,
       );
     }
+    if (r.kind === 'club-fixtures') return clubFixtures(cors);
     if (r.kind === 'wc-news') return worldCupNews(cors);
     if (r.kind === 'wc-values') return worldCupValues(url.searchParams.get('names') ?? '', cors);
     if (r.kind === 'wc-h2h') {

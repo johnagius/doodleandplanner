@@ -7968,6 +7968,110 @@ label.field {
   background: var(--danger-soft);
 }
 
+/* --- Meister Cup ---------------------------------------------------------- */
+.club-meister {
+  border: 1px solid rgba(212, 175, 55, 0.5);
+  background:
+    radial-gradient(120% 140% at 50% -20%, rgba(212, 175, 55, 0.16), transparent 60%),
+    var(--surface);
+  box-shadow: 0 10px 30px rgba(212, 175, 55, 0.1);
+}
+.club-meister-title {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.15rem;
+  letter-spacing: 0.01em;
+}
+.club-meister-vs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+}
+@media (max-width: 30rem) {
+  .club-meister-vs {
+    grid-template-columns: 1fr;
+  }
+}
+.club-meister-seat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.6rem 0.7rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface-2, rgba(127, 127, 127, 0.06));
+  position: relative;
+}
+.club-meister-seat.is-me {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent) inset;
+}
+.club-meister-seat-tag {
+  font-size: 0.66rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  align-self: flex-start;
+}
+.club-meister-seat-tag.master {
+  color: #7a5c00;
+  background: rgba(212, 175, 55, 0.22);
+}
+.club-meister-seat-tag.firstDiv {
+  color: #4a5568;
+  background: rgba(148, 163, 184, 0.24);
+}
+.club-meister-seat-name {
+  font-weight: 800;
+  font-size: 1.05rem;
+}
+.club-meister-seat-pts {
+  position: absolute;
+  top: 0.55rem;
+  right: 0.7rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+}
+.club-meister-final {
+  border: 1px dashed rgba(212, 175, 55, 0.5);
+  border-radius: var(--radius);
+  padding: 0.55rem 0.7rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.club-meister-final-head {
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+.club-meister-score {
+  font-variant-numeric: tabular-nums;
+}
+.club-meister-final-teams {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.club-meister-winner {
+  border: 1px solid rgba(212, 175, 55, 0.6);
+  background: linear-gradient(90deg, rgba(212, 175, 55, 0.16), rgba(212, 175, 55, 0.04));
+}
+.club-meister-badge {
+  background: rgba(212, 175, 55, 0.22);
+  color: #7a5c00;
+  font-weight: 700;
+}
+.club-meister-lock {
+  border-left: 3px solid rgba(212, 175, 55, 0.7);
+  padding-left: 0.55rem;
+}
+
 /* --- Rules ---------------------------------------------------------------- */
 .club-rule-section h3 {
   font-size: 1.05rem;
@@ -8467,6 +8571,56 @@ label.field {
 .cx-trophy-sub {
   font-size: 0.78rem;
   color: var(--muted);
+}
+.cx-meister {
+  display: grid;
+  gap: 1rem;
+  place-items: center;
+}
+.cx-meister-duel {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.cx-meister-side {
+  display: grid;
+  place-items: center;
+  gap: 0.2rem;
+  padding: 0.8rem 1rem;
+  border-radius: var(--radius);
+  background: linear-gradient(160deg, rgba(212, 175, 55, 0.16), var(--surface));
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  min-width: 150px;
+}
+.cx-meister-tag {
+  font-weight: 800;
+  font-size: 0.85rem;
+}
+.cx-meister-who {
+  font-size: 0.72rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.cx-meister-mid {
+  display: grid;
+  place-items: center;
+  gap: 0.2rem;
+}
+.cx-meister-vs {
+  font-weight: 900;
+  font-size: 1.3rem;
+  color: #d4af37;
+}
+.cx-meister-final {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+.cx-meister .cx-trophy-name {
+  font-size: 1.3rem;
+  color: #b8860b;
 }
 
 .club-comp-logo {

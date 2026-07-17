@@ -1,6 +1,7 @@
 import {
   CLUB_POINTS,
   CLUB_TOTALS_LINE,
+  CLUB_TROPHY_MEISTER,
   CLUB_TROPHY_SECOND,
   CLUB_TROPHY_TOP,
   type ClubLeagueState,
@@ -120,7 +121,7 @@ export function ClubRules({ club }: { club: ClubLeagueState }) {
             <span>
               <strong>{CLUB_TROPHY_SECOND.runInName}</strong> — the top {club.runInContenders} of
               League 2 play for <strong>{CLUB_TROPHY_SECOND.name}</strong> — a cool prize of its
-              own, a notch below the Crown.
+              own, a notch below the {CLUB_TROPHY_TOP.name}.
             </span>
           </li>
         </ul>
@@ -130,7 +131,34 @@ export function ClubRules({ club }: { club: ClubLeagueState }) {
         </p>
       </Section>
 
-      <Section emoji="🧮" title="5 · The overall table">
+      <Section emoji="🥇" title="5 · The Meister Cup — the grand finale">
+        <p>
+          One trophy sits above them all. The <strong>{CLUB_TROPHY_TOP.name}</strong> winner and the{' '}
+          <strong>{CLUB_TROPHY_SECOND.name}</strong> winner meet in a one-game showdown: the{' '}
+          <strong>{CLUB_TROPHY_MEISTER.name}</strong>.
+        </p>
+        <ul>
+          <li>
+            It’s decided purely by their bet on the <strong>Champions League final</strong> —
+            whoever scores more across the three markets lifts it.
+          </li>
+          <li>
+            <strong>Only those two may predict the Champions League final.</strong> Everyone else’s
+            season is already done — the leagues deliberately finish before the final is played.
+          </li>
+          <li>
+            <strong>Level on the final?</strong> The tie is broken by the{' '}
+            <strong>highest points across the closing week</strong>. If they’re still dead level,
+            the {CLUB_TROPHY_TOP.name} winner — the more prestigious seat — takes it.
+          </li>
+        </ul>
+        <p className="muted small">
+          So the very last kick of the season can crown the overall champion: win your run-in, then
+          read the Champions League final better than your rival.
+        </p>
+      </Section>
+
+      <Section emoji="🧮" title="6 · The overall table">
         <p>
           Your <strong>season total</strong> is simply every point you’ve earned across all
           fixtures. It drives the overall standings and decides who enters the Champions Run-In.

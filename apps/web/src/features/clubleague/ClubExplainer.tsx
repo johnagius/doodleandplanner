@@ -1,4 +1,4 @@
-import { CLUB_TROPHY_SECOND, CLUB_TROPHY_TOP } from '@dap/shared';
+import { CLUB_TROPHY_MEISTER, CLUB_TROPHY_SECOND, CLUB_TROPHY_TOP } from '@dap/shared';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ShieldIcon, TrophyIcon } from './TrophyIcons.js';
 
@@ -303,6 +303,32 @@ function TrophyVisual() {
   );
 }
 
+function MeisterVisual() {
+  return (
+    <div className="cx-meister">
+      <div className="cx-meister-duel">
+        <div className="cx-meister-side cx-slide">
+          <TrophyIcon size={40} />
+          <span className="cx-meister-tag">{CLUB_TROPHY_TOP.name}</span>
+          <span className="cx-meister-who">winner</span>
+        </div>
+        <div className="cx-meister-mid cx-pop" style={{ animationDelay: '0.5s' }}>
+          <span className="cx-meister-vs">VS</span>
+          <span className="cx-meister-final">UCL final</span>
+        </div>
+        <div className="cx-meister-side cx-slide" style={{ animationDelay: '0.3s' }}>
+          <ShieldIcon size={40} />
+          <span className="cx-meister-tag">{CLUB_TROPHY_SECOND.name}</span>
+          <span className="cx-meister-who">winner</span>
+        </div>
+      </div>
+      <div className="cx-trophy-name cx-pop" style={{ animationDelay: '1.2s' }}>
+        🥇 {CLUB_TROPHY_MEISTER.name}
+      </div>
+    </div>
+  );
+}
+
 const SCENES: Scene[] = [
   {
     id: 'intro',
@@ -340,5 +366,12 @@ const SCENES: Scene[] = [
     caption:
       'The finale: points reset — the Master League Trophy for the leaders, the First Division Shield for League 2’s best.',
     Visual: TrophyVisual,
+  },
+  {
+    id: 'meister',
+    seconds: 9,
+    caption:
+      'The grand finale: the two trophy winners face off on the Champions League final — the sharper bet lifts the Meister Cup.',
+    Visual: MeisterVisual,
   },
 ];

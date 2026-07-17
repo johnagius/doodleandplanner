@@ -8,11 +8,14 @@ import {
   clearClubPrediction,
   clearFixtureResult,
   clubLeaderboard,
+  clFinalFixture,
   clubLockingSoon,
   clubPendingForMe,
   clubPlayedCount,
   computeDivisions,
+  computeMeister,
   findFixture,
+  meisterContenderIds,
   isFixtureLocked,
   marketsForResult,
   orderedFixtures,
@@ -452,6 +455,162 @@ describe('divisions, promotion/relegation, run-in', () => {
     expect([...second].every((id) => l2.has(id))).toBe(true);
     // Everyone is accounted for exactly once.
     expect(elite.size + second.size + others.size).toBe(7);
+  });
+});
+
+describe('Meister Cup', () => {
+  const now = () => new Date('2026-08-10T00:00:00.000Z');
+  let seq = 0;
+
+  // Give a player `points` via a resulted 3-1 fixture in the given competition.
+  function score(
+    s: ClubLeagueState,
+    predictorId: string,
+    kickoff: string,
+    points: number,
+    competitionId = 'epl',
+  ): ClubLeagueState {
+    const ext: ClubFeedFixture = {
+      externalId: `mc:${(seq++).toString()}`,
+      competitionId,
+      kickoff,
+      home: opp('Home'),
+      away: opp('Away'),
+      status: 'scheduled',
+    };
+    s = syncClubFeed(s, [ext], { now });
+    const f = s.fixtures.find((x) => x.externalId === ext.externalId)!;
+    if (points > 0) {
+      s = setClubPrediction(
+        s,
+        {
+          fixtureId: f.id,
+          predictorId,
+          outcome: '1',
+          totals: points >= 5 ? 'over' : 'under',
+          btts: points >= 7 ? 'yes' : 'no',
+        },
+        { now, force: true },
+      );
+    }
+    return setFixtureResult(s, f.id, { home: 3, away: 1 });
+  }
+
+  // Build a season where ids[0] wins the Master League run-in and ids[4] wins the
+  // First Division run-in, then return the two contender ids.
+  function base(): { s: ClubLeagueState; ids: string[] } {
+    let s = seed();
+    const ids = s.predictors.map((p) => p.id);
+    ids.forEach((id, i) => {
+      s = score(s, id, `2026-08-${String(10 + i).padStart(2, '0')}T12:00:00.000Z`, 7 - i);
+    });
+    s = score(s, ids[0]!, '2027-05-10T12:00:00.000Z', 7); // Master League run-in leader
+    s = score(s, ids[4]!, '2027-05-11T12:00:00.000Z', 7); // First Division run-in leader
+    return { s, ids };
+  }
+
+  // Append the Champions League final (after every period) and return its id.
+  function addFinal(
+    s: ClubLeagueState,
+    kickoff = '2027-05-29T19:00:00.000Z',
+  ): {
+    s: ClubLeagueState;
+    finalId: string;
+  } {
+    const ext: ClubFeedFixture = {
+      externalId: 'mc:ucl-final',
+      competitionId: 'ucl',
+      kickoff,
+      home: tracked('MUN'),
+      away: tracked('BAR'),
+      status: 'scheduled',
+    };
+    s = syncClubFeed(s, [ext], { now });
+    return { s, finalId: clFinalFixture(s)!.id };
+  }
+
+  it('names the run-in winners as the two finalists', () => {
+    const { s, ids } = base();
+    const { masterId, firstDivId } = meisterContenderIds(s);
+    expect(masterId).toBe(ids[0]);
+    expect(firstDivId).toBe(ids[4]);
+  });
+
+  it('picks the latest UCL fixture as the Champions League final', () => {
+    const { s } = base();
+    const withFinal = addFinal(s);
+    const f = clFinalFixture(withFinal.s)!;
+    expect(f.competitionId).toBe('ucl');
+    expect(f.id).toBe(withFinal.finalId);
+  });
+
+  it('lets only the two finalists predict the Champions League final', () => {
+    const { s, ids } = base();
+    const { s: s2, finalId } = addFinal(s);
+    // A non-finalist is refused.
+    expect(() =>
+      setClubPrediction(s2, { fixtureId: finalId, predictorId: ids[1]!, outcome: '1' }, { now }),
+    ).toThrow(/Meister Cup finalists/i);
+    // Both finalists are allowed.
+    expect(() =>
+      setClubPrediction(s2, { fixtureId: finalId, predictorId: ids[0]!, outcome: '1' }, { now }),
+    ).not.toThrow();
+    expect(() =>
+      setClubPrediction(s2, { fixtureId: finalId, predictorId: ids[4]!, outcome: '1' }, { now }),
+    ).not.toThrow();
+  });
+
+  it('is decided by the bet on the final', () => {
+    const { s, ids } = base();
+    const added = addFinal(s);
+    const finalId = added.finalId;
+    let s2 = added.s;
+    // Master finalist calls it right, First Division finalist wrong.
+    s2 = setClubPrediction(
+      s2,
+      { fixtureId: finalId, predictorId: ids[0]!, outcome: '1', totals: 'over', btts: 'yes' },
+      { now },
+    );
+    s2 = setClubPrediction(
+      s2,
+      { fixtureId: finalId, predictorId: ids[4]!, outcome: '2', totals: 'under', btts: 'no' },
+      { now },
+    );
+    s2 = setFixtureResult(s2, finalId, { home: 2, away: 1 }); // 1 / over / yes
+    const cup = computeMeister(s2);
+    expect(cup.decided).toBe(true);
+    expect(cup.winnerId).toBe(ids[0]);
+    expect(cup.tiebreak).toBe('final');
+    expect(cup.trophy.name).toBe('Meister Cup');
+  });
+
+  it('breaks a level final on the highest points in the closing week', () => {
+    const { s, ids } = base();
+    // Both finalists rack up form in the final week, but the First Division
+    // finalist scores more there.
+    let s2 = score(s, ids[4]!, '2027-05-26T12:00:00.000Z', 7);
+    s2 = score(s2, ids[0]!, '2027-05-26T14:00:00.000Z', 3);
+    const withFinal = addFinal(s2);
+    let s3 = withFinal.s;
+    const finalId = withFinal.finalId;
+    // Identical bets on the final ⇒ level on the final itself.
+    for (const id of [ids[0]!, ids[4]!]) {
+      s3 = setClubPrediction(s3, { fixtureId: finalId, predictorId: id, outcome: '1' }, { now });
+    }
+    s3 = setFixtureResult(s3, finalId, { home: 2, away: 1 });
+    const cup = computeMeister(s3);
+    expect(cup.decided).toBe(true);
+    expect(cup.tiebreak).toBe('lastWeek');
+    expect(cup.winnerId).toBe(ids[4]);
+  });
+
+  it('is undecided until the final has a score', () => {
+    const { s } = base();
+    const { s: s2 } = addFinal(s);
+    const cup = computeMeister(s2);
+    expect(cup.decided).toBe(false);
+    expect(cup.winnerId).toBeUndefined();
+    expect(cup.contenders.length).toBe(2);
   });
 });
 

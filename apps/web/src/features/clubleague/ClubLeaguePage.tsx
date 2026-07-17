@@ -12,7 +12,9 @@ import { isRealtimeBackend } from '../../lib/storage/index.js';
 import { useClubLeagueStore } from '../../state/clubLeagueStore.js';
 import { ClubBackdrop } from './ClubBackdrop.js';
 import { ClubExplainer } from './ClubExplainer.js';
+import { ClubIdentityModal } from './ClubIdentityModal.js';
 import { ClubRules } from './ClubRules.js';
+import { installWcSaveAuth } from '../worldcup/wcAuthClient.js';
 import { ClubTable } from './ClubTable.js';
 import { DivisionsView } from './DivisionsView.js';
 import { FixtureCard } from './FixtureCard.js';
@@ -37,6 +39,12 @@ export function ClubLeaguePage() {
   const admin = useClubLeagueStore((s) => s.admin);
   const meId = useClubLeagueStore((s) => s.meId);
   const [tab, setTab] = useState<Tab>('fixtures');
+  const [claimId, setClaimId] = useState<string | null>(null);
+
+  // Attach the current name's verified session token to every club-room save.
+  useEffect(() => {
+    installWcSaveAuth(() => useClubLeagueStore.getState().meId);
+  }, []);
 
   useEffect(() => {
     void load();
@@ -94,6 +102,7 @@ export function ClubLeaguePage() {
     <div className="container">
       <section className="club-hero">
         <ClubBackdrop />
+        <div className="club-hero-scrim" aria-hidden />
         <div className="row spread row-wrap" style={{ gap: '0.75rem' }}>
           <div style={{ minWidth: 0 }}>
             <h1 className="club-hero-title">⚽ Club Football Predictions</h1>
@@ -136,8 +145,15 @@ export function ClubLeaguePage() {
           </div>
         </div>
 
-        <IdentityBar club={club} />
+        <IdentityBar club={club} onClaim={(id) => setClaimId(id)} />
       </section>
+
+      <ClubIdentityModal
+        open={claimId !== null}
+        onClose={() => setClaimId(null)}
+        club={club}
+        initialId={claimId}
+      />
 
       {error && <div className="banner banner-danger no-print">{error}</div>}
 

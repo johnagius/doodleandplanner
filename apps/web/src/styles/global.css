@@ -8476,3 +8476,166 @@ label.field {
   align-items: center;
   gap: 0.25rem;
 }
+
+/* Page-wide branded backdrop (premium, licensed feel) */
+.club-page {
+  position: relative;
+  z-index: 0;
+}
+.club-backdrop-page {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  opacity: 0.7;
+}
+.club-backdrop-page svg {
+  position: absolute;
+  right: -8%;
+  top: 50%;
+  transform: translateY(-50%);
+  width: min(780px, 78%);
+  height: 130%;
+}
+@media (max-width: 640px) {
+  .club-backdrop-page svg {
+    right: -30%;
+    width: 150%;
+  }
+}
+
+/* ==========================================================================
+   Club Football — cinematic dark hero + starball (overrides earlier styles)
+   ========================================================================== */
+.club-hero {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  min-height: 196px;
+  background: #0a1120;
+  border: 1px solid #16223f;
+  color: #eaf1ff;
+  box-shadow: 0 18px 50px -24px rgba(8, 16, 40, 0.85);
+}
+.club-hero > *:not(.club-backdrop):not(.club-hero-scrim) {
+  position: relative;
+  z-index: 2;
+}
+.club-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  opacity: 1;
+}
+.club-backdrop svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.club-hero-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(
+    90deg,
+    #070b18 0%,
+    rgba(7, 11, 24, 0.74) 40%,
+    rgba(7, 11, 24, 0.18) 70%,
+    transparent 100%
+  );
+}
+.club-hero-title {
+  color: #fff;
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.55);
+}
+.club-hero .muted {
+  color: #a7bbdb;
+}
+.club-hero .badge {
+  background: rgba(255, 255, 255, 0.1);
+  color: #eaf1ff;
+  border-color: rgba(255, 255, 255, 0.18);
+}
+.club-hero .badge-success {
+  background: rgba(34, 197, 94, 0.22);
+  color: #bbf7d0;
+  border-color: rgba(34, 197, 94, 0.4);
+}
+.club-hero .btn:not(.btn-primary) {
+  border-color: rgba(255, 255, 255, 0.22);
+  color: #eaf1ff;
+  background: rgba(255, 255, 255, 0.07);
+}
+.club-hero .btn-primary {
+  box-shadow: 0 6px 18px -6px rgba(99, 102, 241, 0.8);
+}
+.club-hero .club-name-chip {
+  background: rgba(255, 255, 255, 0.1);
+  color: #eaf1ff;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+.club-hero .club-name-chip.is-me {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+.club-hero .club-name-chip.is-add {
+  color: #a7bbdb;
+  border-style: dashed;
+}
+.club-hero .input,
+.club-hero .select {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.24);
+}
+.club-starball {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: cxFloatBall 9s ease-in-out infinite;
+}
+.cx-halo {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: cxHaloPulse 5s ease-in-out infinite;
+}
+.cx-beam {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: cxBeam 6s ease-in-out infinite;
+}
+@keyframes cxFloatBall {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+@keyframes cxHaloPulse {
+  0%,
+  100% {
+    opacity: 0.8;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@keyframes cxBeam {
+  0%,
+  100% {
+    opacity: 0.75;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .club-starball,
+  .cx-halo,
+  .cx-beam {
+    animation: none;
+  }
+}

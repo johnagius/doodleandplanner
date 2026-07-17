@@ -461,6 +461,9 @@ export interface ClubTrophy {
   runInName: string;
   /** Name of the trophy on the line, e.g. "The Champions' Crown". */
   name: string;
+  /** Which drawn mark represents it. */
+  icon: 'trophy' | 'shield';
+  /** Emoji fallback for compact/plain contexts. */
   emoji: string;
 }
 
@@ -468,14 +471,16 @@ export interface ClubTrophy {
 export const CLUB_TROPHY_TOP: ClubTrophy = {
   runInName: 'Champions Run-In',
   name: "The Champions' Crown",
-  emoji: '👑',
+  icon: 'trophy',
+  emoji: '🏆',
 };
 
 /** The second-tier finale for the top of League 2 — a cool prize of its own,
  * just a notch below the Crown. */
 export const CLUB_TROPHY_SECOND: ClubTrophy = {
   runInName: "Challengers' Run-In",
-  name: "The Challengers' Plate",
+  name: "The Challengers' Shield",
+  icon: 'shield',
   emoji: '🛡️',
 };
 

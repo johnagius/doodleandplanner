@@ -25,6 +25,16 @@ export function speechSupported(): boolean {
   return typeof window !== 'undefined' && 'speechSynthesis' in window;
 }
 
+/** True only when the device actually has a genuinely natural (neural) English
+ * voice. We gate narration on this so the old robotic fallback voices are never
+ * used — captions carry the words on those devices instead. */
+export function hasGoodVoice(): boolean {
+  const v = bestVoice();
+  if (!v) return false;
+  const n = `${v.name} ${v.voiceURI}`.toLowerCase();
+  return /^en/i.test(v.lang) && /natural|neural|premium|enhanced|siri/.test(n);
+}
+
 /** Best available voice, memoised. Voices load async on some browsers, so callers
  * may want to re-query after the `voiceschanged` event. */
 export function bestVoice(): SpeechSynthesisVoice | null {

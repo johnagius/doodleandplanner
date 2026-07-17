@@ -1,6 +1,13 @@
 import { CLUB_TROPHY_SECOND, CLUB_TROPHY_TOP } from '@dap/shared';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { primeVoices, speak, speechSupported, stopSpeaking } from './clubNarration.js';
+import {
+  hasGoodVoice,
+  primeVoices,
+  speak,
+  speechSupported,
+  stopSpeaking,
+} from './clubNarration.js';
+import { ShieldIcon, TrophyIcon } from './TrophyIcons.js';
 
 interface Scene {
   id: string;
@@ -22,11 +29,14 @@ export function ClubExplainer() {
   const [idx, setIdx] = useState(0);
   const [playing, setPlaying] = useState(true);
   const [narrate, setNarrate] = useState(false);
-  const [voiceReady, setVoiceReady] = useState(false);
+  // Only offer narration when the device actually has a high-quality (neural)
+  // voice — otherwise the built-in robotic voice sounds bad, so we simply don't
+  // offer it and let the captions carry the words.
+  const [goodVoice, setGoodVoice] = useState(false);
   const timer = useRef<number | null>(null);
 
   useEffect(() => {
-    if (speechSupported()) primeVoices(() => setVoiceReady(true));
+    if (speechSupported()) primeVoices(() => setGoodVoice(hasGoodVoice()));
   }, []);
 
   const clear = () => {
@@ -81,17 +91,16 @@ export function ClubExplainer() {
       <div className="row spread" style={{ alignItems: 'center' }}>
         <h3 style={{ margin: 0 }}>🎬 The 60-second guide</h3>
         <div className="row" style={{ gap: '0.35rem' }}>
-          {speechSupported() && (
+          {goodVoice && (
             <button
               type="button"
               className={`btn btn-sm ${narrate ? 'btn-primary' : ''}`}
               aria-pressed={narrate}
-              disabled={!voiceReady}
               onClick={() => {
                 setNarrate((n) => !n);
                 if (narrate) stopSpeaking();
               }}
-              title={voiceReady ? 'Toggle narration' : 'Loading voice…'}
+              title="Toggle narration"
             >
               {narrate ? '🔊 Narration on' : '🔈 Narrate'}
             </button>
@@ -280,12 +289,16 @@ function TrophyVisual() {
   return (
     <div className="cx-trophies">
       <div className="cx-trophy cx-pop">
-        <div className="cx-trophy-emoji">{CLUB_TROPHY_TOP.emoji}</div>
+        <div className="cx-trophy-icon">
+          <TrophyIcon size={58} />
+        </div>
         <div className="cx-trophy-name">{CLUB_TROPHY_TOP.name}</div>
-        <div className="cx-trophy-sub">Top {3} overall · reset to 0</div>
+        <div className="cx-trophy-sub">Top 3 overall · reset to 0</div>
       </div>
       <div className="cx-trophy cx-pop" style={{ animationDelay: '0.5s' }}>
-        <div className="cx-trophy-emoji">{CLUB_TROPHY_SECOND.emoji}</div>
+        <div className="cx-trophy-icon">
+          <ShieldIcon size={58} />
+        </div>
         <div className="cx-trophy-name">{CLUB_TROPHY_SECOND.name}</div>
         <div className="cx-trophy-sub">Top of League 2 · reset to 0</div>
       </div>
@@ -338,8 +351,9 @@ const SCENES: Scene[] = [
     id: 'trophies',
     seconds: 9,
     narration:
-      'And the finale is a double decider. Points reset to level: the leaders fight for the Champions Crown, while the top of League Two battle for the Challengers Plate. Two trophies, all to play for.',
-    caption: 'The finale: points reset — the Crown for the leaders, the Plate for League 2’s best.',
+      'And the finale is a double decider. Points reset to level: the leaders fight for the Champions Crown, while the top of League Two battle for the Challengers Shield. Two trophies, all to play for.',
+    caption:
+      'The finale: points reset — the Crown for the leaders, the Shield for League 2’s best.',
     Visual: TrophyVisual,
   },
 ];

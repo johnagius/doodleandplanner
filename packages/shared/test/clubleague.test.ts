@@ -435,7 +435,7 @@ describe('divisions, promotion/relegation, run-in', () => {
 
     expect(p.runIn!.trophy.name).toContain('Crown');
     expect(p.runInSecond).toBeDefined();
-    expect(p.runInSecond!.trophy.name).toContain('Plate');
+    expect(p.runInSecond!.trophy.name).toContain('Shield');
 
     const elite = new Set(p.runIn!.contenders.map((r) => r.predictorId));
     const second = new Set(p.runInSecond!.contenders.map((r) => r.predictorId));

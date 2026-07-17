@@ -68,10 +68,10 @@ export function HomePage() {
             🏆
           </span>
           <span className="wc-home-text">
-            <span className="card-title">Club Football Predictions</span>
+            <span className="card-title">Club Football</span>
             <span className="muted small">
-              Every game our clubs play — pick 1/X/2, goals & both-teams-to-score, back a Banker,
-              and climb the leagues.
+              Every game our clubs play — pick 1/X/2, goals & both-teams-to-score, live scores, and
+              climb the leagues.
             </span>
           </span>
           <span className="wc-home-arrow" aria-hidden>

@@ -415,7 +415,7 @@ describe('divisions, promotion/relegation, run-in', () => {
     s = scoreInPeriod(s, ids[2]!, '2027-05-10T12:00:00.000Z', 7); // trailing contender surges
     const runInPeriod = computeDivisions(s).find((d) => d.period.id === 'p4')!;
     expect(runInPeriod.runIn).toBeDefined();
-    expect(runInPeriod.runIn!.trophy.name).toContain('Crown');
+    expect(runInPeriod.runIn!.trophy.name).toContain('Master League');
     expect(new Set(runInPeriod.runIn!.contenders.map((r) => r.predictorId))).toEqual(
       new Set([ids[0], ids[1], ids[2]]),
     );
@@ -433,7 +433,7 @@ describe('divisions, promotion/relegation, run-in', () => {
     s = scoreInPeriod(s, ids[5]!, '2027-05-10T12:00:00.000Z', 7);
     const p = computeDivisions(s).find((d) => d.period.id === 'p4')!;
 
-    expect(p.runIn!.trophy.name).toContain('Crown');
+    expect(p.runIn!.trophy.name).toContain('Master League');
     expect(p.runInSecond).toBeDefined();
     expect(p.runInSecond!.trophy.name).toContain('Shield');
 

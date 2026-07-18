@@ -8325,6 +8325,15 @@ label.field {
   color: var(--muted);
   font-weight: 600;
 }
+.club-name-chip.is-disabled,
+.club-name-chip:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  filter: grayscale(0.6);
+}
+.club-name-chip.is-disabled:hover {
+  border-color: var(--border-strong);
+}
 
 .club-crest {
   flex: 0 0 auto;

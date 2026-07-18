@@ -22,6 +22,7 @@ import { LocalStorageRepository, getRepository, type Repository } from '../lib/s
 import { SaveConflictError } from '../lib/storage/httpRepository.js';
 import { CLUB_LEAGUE_SLUG, loadOrCreateClubLeague } from '../features/clubleague/clubLeagueRoom.js';
 import { fetchClubFixtures } from '../features/clubleague/clubFeed.js';
+import { clearSessionToken, isSessionPersisted } from '../features/worldcup/wcAuthClient.js';
 
 const PREDICTOR_KEY = 'dap:club:predictor';
 const ADMIN_KEY = 'dap:club:admin';
@@ -71,6 +72,8 @@ interface ClubLeagueStore {
   load: () => Promise<void>;
   leave: () => void;
   selectPredictor: (id: string | null) => void;
+  /** Sign out of the claimed name on this device (forgets the session token). */
+  logout: () => void;
   setAdmin: (on: boolean) => void;
 
   predictMarket: (
@@ -212,8 +215,18 @@ export const useClubLeagueStore = create<ClubLeagueStore>((set, get) => {
 
       const unsub = activeRepo.subscribe(CLUB_LEAGUE_SLUG, onIncoming);
       const meId = get().meId;
-      const stillThere = meId && state.clubLeague?.predictors.some((p) => p.id === meId);
-      set({ state, loading: false, offline, unsubscribe: unsub, meId: stillThere ? meId : null });
+      const predictors = state.clubLeague?.predictors ?? [];
+      let resolvedMe = meId && predictors.some((p) => p.id === meId) ? meId : null;
+      // Stay logged in without re-entering a code: if nothing is selected but this
+      // device holds a verified session for exactly one name, resume as that name.
+      if (!resolvedMe) {
+        const owned = predictors.filter((p) => isSessionPersisted(p.id));
+        if (owned.length === 1) {
+          resolvedMe = owned[0]!.id;
+          writeLocal(PREDICTOR_KEY, resolvedMe);
+        }
+      }
+      set({ state, loading: false, offline, unsubscribe: unsub, meId: resolvedMe });
     },
 
     leave() {
@@ -224,6 +237,13 @@ export const useClubLeagueStore = create<ClubLeagueStore>((set, get) => {
     selectPredictor(id) {
       writeLocal(PREDICTOR_KEY, id);
       set({ meId: id });
+    },
+
+    logout() {
+      const id = get().meId;
+      if (id) clearSessionToken(id);
+      writeLocal(PREDICTOR_KEY, null);
+      set({ meId: null });
     },
 
     setAdmin(on) {

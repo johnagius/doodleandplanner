@@ -1,6 +1,7 @@
 import {
   clubCombinatorsLeft,
   clubLeaderboardWithMovement,
+  clubMatchdayRecap,
   clubPlayedCount,
   clubRivalry,
   computeDivisions,
@@ -40,6 +41,7 @@ export function ClubSidebar({
   return (
     <div className="club-sidebar">
       <Leaderboard club={club} meId={meId} liveScores={liveCount ? liveScores : undefined} />
+      <LastRound club={club} />
       <NextUp club={club} meId={meId} onGoFixtures={onGoFixtures} />
       <SeasonProgress club={club} />
       {meId && (
@@ -193,6 +195,33 @@ function MarketPreview({
         ))}
       </span>
     </div>
+  );
+}
+
+/** "What happened" in the latest match-day: top scorer + biggest climber. */
+function LastRound({ club }: { club: ClubLeagueState }) {
+  const recap = clubMatchdayRecap(club);
+  if (!recap || (!recap.topGain && !recap.topClimb)) return null;
+  return (
+    <Card title="📣 Last round">
+      {recap.topGain && (
+        <div className="small">
+          🔥 <strong>{recap.topGain.name}</strong> top-scored with{' '}
+          <strong>+{recap.topGain.gained}</strong>
+        </div>
+      )}
+      {recap.topClimb && recap.topClimb.predictorId !== recap.topGain?.predictorId && (
+        <div className="small">
+          📈 <strong>{recap.topClimb.name}</strong> climbed {recap.topClimb.delta} place
+          {recap.topClimb.delta === 1 ? '' : 's'}
+        </div>
+      )}
+      {recap.topClimb && recap.topClimb.predictorId === recap.topGain?.predictorId && (
+        <div className="small">
+          📈 …and climbed {recap.topClimb.delta} place{recap.topClimb.delta === 1 ? '' : 's'}
+        </div>
+      )}
+    </Card>
   );
 }
 

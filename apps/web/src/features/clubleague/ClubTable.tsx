@@ -5,8 +5,11 @@ import {
   type ClubLeagueState,
   type ClubResult,
 } from '@dap/shared';
+import { useState } from 'react';
 import { EmptyState } from '../../components/EmptyState.js';
 import { useClubLeagueStore } from '../../state/clubLeagueStore.js';
+import { ClubPlayerModal } from './ClubPlayerModal.js';
+import { ClubTimeline } from './ClubTimeline.js';
 import { liveScoresFromStore } from './liveScores.js';
 
 const MEDALS = ['🥇', '🥈', '🥉'];
@@ -37,6 +40,7 @@ function Movement({ n }: { n: number }) {
  * stands" with movement arrows and a where-you-stand line (who pips who). */
 export function ClubTable({ club }: { club: ClubLeagueState }) {
   const meId = useClubLeagueStore((s) => s.meId);
+  const [openId, setOpenId] = useState<string | null>(null);
   const live = useClubLeagueStore((s) => s.live);
   const liveScores: Record<string, ClubResult> = liveScoresFromStore(club, live);
   const liveCount = Object.keys(liveScores).length;
@@ -89,9 +93,19 @@ export function ClubTable({ club }: { club: ClubLeagueState }) {
         {rows.map((r, i) => (
           <li
             key={r.predictorId}
-            className={`club-row ${r.predictorId === meId ? 'is-me' : ''} ${
+            className={`club-row is-clickable ${r.predictorId === meId ? 'is-me' : ''} ${
               i === 0 && r.points > 0 ? 'is-leader' : ''
             }`}
+            role="button"
+            tabIndex={0}
+            aria-label={`View ${r.name}'s season history`}
+            onClick={() => setOpenId(r.predictorId)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                setOpenId(r.predictorId);
+              }
+            }}
           >
             <span className="club-rank">
               {MEDALS[i] ?? i + 1}
@@ -108,6 +122,16 @@ export function ClubTable({ club }: { club: ClubLeagueState }) {
           </li>
         ))}
       </ol>
+      <p className="muted small" style={{ margin: 0 }}>
+        Tap a player to see their season history.
+      </p>
+
+      <section className="card stack">
+        <h3 style={{ margin: 0, fontSize: '1rem' }}>📈 Rank over time</h3>
+        <ClubTimeline club={club} />
+      </section>
+
+      <ClubPlayerModal club={club} predictorId={openId} onClose={() => setOpenId(null)} />
     </div>
   );
 }

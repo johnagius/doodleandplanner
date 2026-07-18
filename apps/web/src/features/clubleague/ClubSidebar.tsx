@@ -209,7 +209,14 @@ function SeasonProgress({ club }: { club: ClubLeagueState }) {
       <div className="muted small">
         {club.season} · {currentPeriod ? currentPeriod.name : '—'}
       </div>
-      <div className="club-progress" aria-hidden>
+      <div
+        className="club-progress"
+        role="progressbar"
+        aria-valuenow={pct}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label={`Season progress: ${played} of ${total} fixtures played`}
+      >
         <span style={{ width: `${pct}%` }} />
       </div>
       <div className="muted small">

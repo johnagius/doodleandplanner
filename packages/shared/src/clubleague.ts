@@ -666,6 +666,108 @@ export function clubMatchdayRecap(state: ClubLeagueState, dayKey?: string): Club
   return { dayKey: day, fixtureIds: [...dayIds], rows, topGain, topClimb };
 }
 
+export interface ClubWeekParticipationRow {
+  predictorId: string;
+  name: string;
+  /** Fixtures this week with at least one market filled. */
+  picked: number;
+  /** Fixtures this week with all three markets filled. */
+  complete: number;
+}
+
+export interface ClubWeekParticipation {
+  /** Monday (UTC) starting the week shown. */
+  weekKey: string;
+  /** Fixtures kicking off in that week. */
+  total: number;
+  rows: ClubWeekParticipationRow[];
+}
+
+/**
+ * Who's engaged this week: per player, how many of the week's fixtures they've
+ * picked — **counts only, never the picks themselves**, so it stays private
+ * before kick-off. Anchors on the week of the next upcoming fixture (else the
+ * most recent). Null when there are no fixtures.
+ */
+export function clubWeekParticipation(
+  state: ClubLeagueState,
+  now: Date,
+): ClubWeekParticipation | null {
+  if (state.fixtures.length === 0) return null;
+  const nowMs = now.getTime();
+  const upcoming = state.fixtures
+    .filter((f) => toMs(f.kickoff) >= nowMs)
+    .sort((a, b) => toMs(a.kickoff) - toMs(b.kickoff));
+  const anchor =
+    upcoming[0] ?? [...state.fixtures].sort((a, b) => toMs(b.kickoff) - toMs(a.kickoff))[0];
+  if (!anchor) return null;
+  const weekKey = clubWeekKey(anchor.kickoff);
+  const weekFixtures = state.fixtures.filter((f) => clubWeekKey(f.kickoff) === weekKey);
+  const rows: ClubWeekParticipationRow[] = state.predictors.map((p) => {
+    let picked = 0;
+    let complete = 0;
+    for (const f of weekFixtures) {
+      const pred = findPrediction(state, f.id, p.id);
+      if (!pred) continue;
+      if (pred.outcome != null || pred.totals != null || pred.btts != null) picked++;
+      if (pred.outcome != null && pred.totals != null && pred.btts != null) complete++;
+    }
+    return { predictorId: p.id, name: p.name, picked, complete };
+  });
+  return { weekKey, total: weekFixtures.length, rows };
+}
+
+export interface ClubActivityItem {
+  kind: 'pick' | 'result';
+  /** When it happened (ISO): a pick's updatedAt, or a fixture's kick-off. */
+  at: ISODateTime;
+  fixtureId: string;
+  home: string;
+  away: string;
+  /** Present for a pick. */
+  predictorId?: string;
+  name?: string;
+  /** Present for a result. */
+  result?: ClubResult;
+}
+
+/**
+ * A chronological activity feed — every pick as it's made ("clocked" by its
+ * updatedAt, **without revealing the pick's content**) plus full-time results.
+ * Newest first, capped at `limit`. Pure; derived entirely from state.
+ */
+export function clubActivity(state: ClubLeagueState, limit = 20): ClubActivityItem[] {
+  const fx = new Map(state.fixtures.map((f) => [f.id, f]));
+  const nameOf = new Map(state.predictors.map((p) => [p.id, p.name]));
+  const items: ClubActivityItem[] = [];
+  for (const p of state.predictions) {
+    const f = fx.get(p.fixtureId);
+    const name = nameOf.get(p.predictorId);
+    if (!f || !name) continue;
+    items.push({
+      kind: 'pick',
+      at: p.updatedAt,
+      fixtureId: f.id,
+      home: f.home.short,
+      away: f.away.short,
+      predictorId: p.predictorId,
+      name,
+    });
+  }
+  for (const f of state.fixtures) {
+    if (!f.result) continue;
+    items.push({
+      kind: 'result',
+      at: f.kickoff,
+      fixtureId: f.id,
+      home: f.home.short,
+      away: f.away.short,
+      result: f.result,
+    });
+  }
+  return items.sort((a, b) => toMs(b.at) - toMs(a.at)).slice(0, limit);
+}
+
 // --- Periods, divisions, promotion / relegation ----------------------------
 
 /** Ordered periods by start time. */

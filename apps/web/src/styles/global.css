@@ -8328,6 +8328,55 @@ label.field {
   color: var(--primary);
 }
 
+/* --- This week's picks + activity feed ----------------------------------- */
+.club-week-picks,
+.club-activity {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.3rem;
+}
+.club-week-picks > li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.2rem 0.35rem;
+  border-radius: 8px;
+}
+.club-week-picks > li.is-me {
+  background: color-mix(in srgb, var(--primary) 14%, transparent);
+}
+.club-week-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.club-week-count {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.club-week-count.is-none {
+  color: var(--muted);
+}
+.club-activity > li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+  font-size: 0.85rem;
+  padding: 0.15rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.club-activity > li:last-child {
+  border-bottom: none;
+}
+.club-activity-time {
+  flex: none;
+  white-space: nowrap;
+}
+
 /* --- Rank-over-time chart ------------------------------------------------- */
 .club-chart-wrap {
   width: 100%;

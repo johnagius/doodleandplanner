@@ -215,15 +215,16 @@ export class RoomDurableObject {
       return json({ error: 'bad-request' }, { status: 400 }, cors);
     }
     const room = await this.service.get();
-    const known =
-      room?.worldCup?.predictors.some((p) => p.id === body.predictorId) ||
-      room?.clubLeague?.predictors.some((p) => p.id === body.predictorId);
-    if (!known) {
+    const inWorldCup = room?.worldCup?.predictors.some((p) => p.id === body.predictorId);
+    const inClub = room?.clubLeague?.predictors.some((p) => p.id === body.predictorId);
+    if (!inWorldCup && !inClub) {
       return json({ error: 'unknown-predictor' }, { status: 404 }, cors);
     }
+    // Word the login email for the board the name belongs to (a room carries one).
+    const product = inClub && !inWorldCup ? 'Club Football' : 'World Cup Predictions';
     try {
       const r = await this.authSvc.requestCode(body.predictorId, body.email, (to, code) =>
-        sendOtpEmail(this.env, to, code),
+        sendOtpEmail(this.env, to, code, product),
       );
       return json(r.body, { status: r.status }, cors);
     } catch {

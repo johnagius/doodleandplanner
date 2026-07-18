@@ -1,12 +1,26 @@
+import { lazy, Suspense } from 'react';
 import { Link, Route, Routes, useLocation } from 'react-router-dom';
 import { ThemeToggle } from './components/ThemeToggle.js';
 import { ToastProvider } from './components/Toast.js';
 import { WelcomeModal } from './components/WelcomeModal.js';
-import { HomePage } from './features/home/HomePage.js';
-import { RoomPage } from './features/room/RoomPage.js';
-import { WorldCupPage } from './features/worldcup/WorldCupPage.js';
-import { ClubLeaguePage } from './features/clubleague/ClubLeaguePage.js';
-import { NotFoundPage } from './features/home/NotFoundPage.js';
+
+// Route pages are code-split so each board only ships its own JS — visiting
+// /club no longer downloads the World Cup bundle (and vice-versa).
+const HomePage = lazy(() =>
+  import('./features/home/HomePage.js').then((m) => ({ default: m.HomePage })),
+);
+const RoomPage = lazy(() =>
+  import('./features/room/RoomPage.js').then((m) => ({ default: m.RoomPage })),
+);
+const WorldCupPage = lazy(() =>
+  import('./features/worldcup/WorldCupPage.js').then((m) => ({ default: m.WorldCupPage })),
+);
+const ClubLeaguePage = lazy(() =>
+  import('./features/clubleague/ClubLeaguePage.js').then((m) => ({ default: m.ClubLeaguePage })),
+);
+const NotFoundPage = lazy(() =>
+  import('./features/home/NotFoundPage.js').then((m) => ({ default: m.NotFoundPage })),
+);
 
 export function App() {
   // Club Football stands on its own — it hides the Doodle & Planner shell chrome
@@ -44,13 +58,15 @@ export function App() {
           </header>
         )}
         <main className="grow">
-          <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/r/:slug" element={<RoomPage />} />
-            <Route path="/world-cup" element={<WorldCupPage />} />
-            <Route path="/club" element={<ClubLeaguePage />} />
-            <Route path="*" element={<NotFoundPage />} />
-          </Routes>
+          <Suspense fallback={<div className="container container-narrow empty">Loading…</div>}>
+            <Routes>
+              <Route path="/" element={<HomePage />} />
+              <Route path="/r/:slug" element={<RoomPage />} />
+              <Route path="/world-cup" element={<WorldCupPage />} />
+              <Route path="/club" element={<ClubLeaguePage />} />
+              <Route path="*" element={<NotFoundPage />} />
+            </Routes>
+          </Suspense>
         </main>
       </div>
     </ToastProvider>

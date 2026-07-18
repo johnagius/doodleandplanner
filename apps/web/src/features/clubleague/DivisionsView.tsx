@@ -36,6 +36,8 @@ export function DivisionsView({ club }: { club: ClubLeagueState }) {
 
   return (
     <div className="stack">
+      <SeasonTimeline club={club} activeId={current.period.id} />
+
       <div className="club-period-tabs" role="tablist" aria-label="Season periods">
         {divisions.map((d) => (
           <button
@@ -54,6 +56,60 @@ export function DivisionsView({ club }: { club: ClubLeagueState }) {
       </div>
 
       <PeriodPanel panel={current} club={club} />
+    </div>
+  );
+}
+
+/** "1 Aug 2026" for an ISO date (UTC, so the season calendar is stable). */
+function fmtDay(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    timeZone: 'UTC',
+  });
+}
+
+/** An always-visible season calendar: every period's window, what happens, and
+ * which one we're in — so everyone knows exactly when things change. */
+function SeasonTimeline({ club, activeId }: { club: ClubLeagueState; activeId: string }) {
+  const periods = [...club.periods].sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt));
+  return (
+    <div className="card stack" style={{ gap: '0.5rem' }}>
+      <h3 style={{ margin: 0, fontSize: '1rem' }}>📅 Season timeline ({club.season})</h3>
+      <div className="club-timeline">
+        {periods.map((p, i) => {
+          const endDay = fmtDay(new Date(new Date(p.endsAt).getTime() - 1).toISOString());
+          const note =
+            i === 0
+              ? `One combined table → leagues split ${fmtDay(p.endsAt)}`
+              : p.runIn
+                ? 'Finale — bottom of each league cut, survivors reset to 0'
+                : `Promotion / relegation applied ${fmtDay(p.startsAt)}`;
+          return (
+            <div
+              key={p.id}
+              className={`club-timeline-row ${p.id === activeId ? 'is-active' : ''} ${
+                p.runIn ? 'is-runin' : ''
+              }`}
+            >
+              <span className="club-timeline-name">
+                {p.runIn ? '🏁 ' : ''}
+                {p.name}
+              </span>
+              <span className="club-timeline-dates">
+                {fmtDay(p.startsAt)} – {endDay}
+              </span>
+              <span className="muted small club-timeline-note">{note}</span>
+            </div>
+          );
+        })}
+      </div>
+      <p className="muted small" style={{ margin: 0 }}>
+        At each new period the table is re-cut on <strong>total season points</strong> — the top{' '}
+        {club.league1Size} sit in League 1, the rest in League 2. Nothing moves mid-period. After
+        the leagues finish, the <strong>Champions League final</strong> decides the Meister Cup.
+      </p>
     </div>
   );
 }
@@ -131,24 +187,13 @@ function PeriodPanel({ panel, club }: { panel: PeriodDivisions; club: ClubLeague
 
   return (
     <div className="stack">
-      <DivisionTable
-        title="🥇 League 1"
-        rows={panel.league1}
-        meId={meId}
-        moveOf={moveOf}
-        markRelegationLast
-      />
-      <DivisionTable
-        title="League 2"
-        rows={panel.league2}
-        meId={meId}
-        moveOf={moveOf}
-        markPromotionFirst
-      />
+      <DivisionTable title="🥇 League 1" rows={panel.league1} meId={meId} moveOf={moveOf} />
+      <DivisionTable title="League 2" rows={panel.league2} meId={meId} moveOf={moveOf} />
       <p className="muted small" style={{ margin: 0 }}>
-        🔁 Promotion &amp; relegation apply <strong>only when this period ends</strong> (
-        {periodEnd(panel.period.endsAt)}) — the bottom of League 1 swaps with the top of League 2.
-        Nothing changes mid-period.
+        🔁 The divisions are re-cut <strong>only when this period ends</strong> (
+        {periodEnd(panel.period.endsAt)}) on <strong>total season points</strong> — the top{' '}
+        {club.league1Size} form League 1, the rest League 2. The ▲ / ▼ arrows show who moved this
+        period. Nothing changes mid-period.
       </p>
     </div>
   );

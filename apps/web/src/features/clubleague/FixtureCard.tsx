@@ -1,5 +1,8 @@
 import {
+  CLUB_COMBINATOR_POINTS,
+  CLUB_COMBINATORS_PER_WEEK,
   clFinalFixture,
+  clubCombinatorsLeft,
   findCompetition,
   findPrediction,
   isFixtureLocked,
@@ -12,6 +15,7 @@ import {
   type ClubLeagueState,
   type ClubMatchEvent,
   type ClubOutcome,
+  type ClubPrediction,
   type ClubResult,
   type ClubTotals,
 } from '@dap/shared';
@@ -67,6 +71,10 @@ export function FixtureCard({ club, fixture }: { club: ClubLeagueState; fixture:
           <span className="badge badge-success">Open</span>
         )}
         {isClFinal && <span className="badge club-meister-badge">🥇 Meister Cup decider</span>}
+        {/* Own combinator flag before lock; after lock everyone sees it in the reveal. */}
+        {mine?.combinator && !locked && (
+          <span className="badge club-combi-badge">🎯 Combinator</span>
+        )}
       </div>
 
       <div className="club-fixture-teams">
@@ -235,6 +243,58 @@ function MarketPicker({ club, fixture }: { club: ClubLeagueState; fixture: ClubF
           No
         </MarketBtn>
       </Market>
+      <CombinatorToggle club={club} fixture={fixture} meId={meId} mine={mine} />
+    </div>
+  );
+}
+
+/** The combinator (accumulator) switch: all three markets right → double points,
+ * anything wrong → 0. Capped at {@link CLUB_COMBINATORS_PER_WEEK} per week. */
+function CombinatorToggle({
+  club,
+  fixture,
+  meId,
+  mine,
+}: {
+  club: ClubLeagueState;
+  fixture: ClubFixture;
+  meId: string;
+  mine: ClubPrediction | undefined;
+}) {
+  const predictMarket = useClubLeagueStore((s) => s.predictMarket);
+  const error = useClubLeagueStore((s) => s.error);
+  const on = !!mine?.combinator;
+  const allThree = !!mine?.outcome && !!mine?.totals && !!mine?.btts;
+  const left = clubCombinatorsLeft(club, meId, fixture.kickoff);
+  // Can turn on only with all three markets picked and a combinator to spare.
+  const canTurnOn = allThree && (on || left > 0);
+
+  return (
+    <div className="club-combi">
+      <button
+        type="button"
+        className={`club-combi-btn ${on ? 'is-on' : ''}`}
+        aria-pressed={on}
+        disabled={!on && !canTurnOn}
+        onClick={() => void predictMarket(fixture.id, { combinator: !on })}
+        title={
+          allThree
+            ? `All three right = +${CLUB_COMBINATOR_POINTS}, any wrong = 0`
+            : 'Pick all three markets first'
+        }
+      >
+        🎯 {on ? `Combinator ON · +${CLUB_COMBINATOR_POINTS} or 0` : 'Combinator'}
+      </button>
+      <span className="muted small">
+        {on
+          ? 'All three must be right for double points — otherwise 0.'
+          : !allThree
+            ? 'Fill all three markets to enable.'
+            : `${left} of ${CLUB_COMBINATORS_PER_WEEK} left this week.`}
+      </span>
+      {on && error && error.includes('combinator') && (
+        <span className="club-combi-err small">{error}</span>
+      )}
     </div>
   );
 }
@@ -290,6 +350,11 @@ function MyTicket({
   return (
     <div className="club-myticket">
       <span className="muted small">Your pick:</span>
+      {mine.combinator && (
+        <span className="club-combi-tag" title="Combinator — all three or nothing">
+          🎯
+        </span>
+      )}
       <TicketPills pred={mine} settled={effective ? marketsForResult(effective) : null} />
       {score != null && (
         <span className={`club-ticket-pts ${score.points > 0 ? 'is-hit' : 'is-miss'}`}>
@@ -378,7 +443,14 @@ function RevealTable({
           const score = effective && pred ? scoreClubPrediction(pred, effective) : null;
           return (
             <li key={p.id} className={p.id === meId ? 'is-me' : ''}>
-              <span className="club-reveal-name">{p.name}</span>
+              <span className="club-reveal-name">
+                {p.name}
+                {pred!.combinator && (
+                  <span className="club-combi-tag" title="Played a combinator">
+                    🎯
+                  </span>
+                )}
+              </span>
               <TicketPills pred={pred!} settled={settled} />
               {score != null && (
                 <span className={`club-ticket-pts ${score.points > 0 ? 'is-hit' : 'is-miss'}`}>

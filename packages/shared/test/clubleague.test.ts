@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
+  CLUB_COMBINATOR_POINTS,
+  CLUB_COMBINATORS_PER_WEEK,
   CLUB_ESPN_TEAM_IDS,
   CLUB_MAX_FIXTURE_POINTS,
   CLUB_POINTS,
   CLUB_TEAM_BY_ESPN_ID,
   addClubPredictor,
+  clubCombinatorsLeft,
   clearClubPrediction,
   clearFixtureResult,
   clubLeaderboard,
@@ -591,10 +594,10 @@ describe('Meister Cup', () => {
 
   it('breaks a level final on the highest points in the closing week', () => {
     const { s, ids } = base();
-    // Both finalists rack up form in the final week, but the First Division
-    // finalist scores more there.
-    let s2 = score(s, ids[4]!, '2027-05-26T12:00:00.000Z', 7);
-    s2 = score(s2, ids[0]!, '2027-05-26T14:00:00.000Z', 3);
+    // Both finalists rack up form in the season's closing week (the 7 days up to
+    // the run-in's end, 2027-05-24), but the First Division finalist scores more.
+    let s2 = score(s, ids[4]!, '2027-05-20T12:00:00.000Z', 7);
+    s2 = score(s2, ids[0]!, '2027-05-20T14:00:00.000Z', 3);
     const withFinal = addFinal(s2);
     let s3 = withFinal.s;
     const finalId = withFinal.finalId;
@@ -616,6 +619,94 @@ describe('Meister Cup', () => {
     expect(cup.decided).toBe(false);
     expect(cup.winnerId).toBeUndefined();
     expect(cup.contenders.length).toBe(2);
+  });
+
+  it('does NOT treat an in-season UCL game as the final — everyone can bet it', () => {
+    const { s, ids } = base();
+    // A Champions League game during the season, long before the periods end.
+    const s2 = syncClubFeed(
+      s,
+      [
+        {
+          externalId: 'mc:ucl-group',
+          competitionId: 'ucl',
+          kickoff: '2026-09-30T19:00:00.000Z',
+          home: tracked('MUN'),
+          away: opp('PSG'),
+          status: 'scheduled',
+        },
+      ],
+      { now },
+    );
+    const groupFx = s2.fixtures.find((f) => f.externalId === 'mc:ucl-group')!;
+    // It's before the season ends, so it is not the final and carries no restriction.
+    expect(clFinalFixture(s2)).toBeUndefined();
+    expect(() =>
+      setClubPrediction(s2, { fixtureId: groupFx.id, predictorId: ids[2]!, outcome: '1' }, { now }),
+    ).not.toThrow();
+  });
+});
+
+describe('combinator', () => {
+  it('scores double when all three are right, and zero otherwise', () => {
+    const win = scoreClubPrediction(
+      { outcome: '1', totals: 'over', btts: 'yes', combinator: true },
+      { home: 2, away: 1 },
+    );
+    expect(win.points).toBe(CLUB_COMBINATOR_POINTS);
+    expect(win.combinator).toBe(true);
+    // One market wrong → the whole thing scores 0.
+    expect(
+      scoreClubPrediction(
+        { outcome: '1', totals: 'under', btts: 'yes', combinator: true },
+        { home: 2, away: 1 },
+      ).points,
+    ).toBe(0);
+    // A blank market can never be "all three right".
+    expect(
+      scoreClubPrediction({ outcome: '1', totals: 'over', combinator: true }, { home: 2, away: 1 })
+        .points,
+    ).toBe(0);
+  });
+
+  it('caps combinators at the weekly limit', () => {
+    const now = () => new Date('2026-08-01T00:00:00.000Z');
+    let s = withFixtures(seed(), [
+      feedFixture(tracked('MUN'), opp('X'), '2026-08-04T12:00:00.000Z'),
+      feedFixture(tracked('LIV'), opp('Y'), '2026-08-05T12:00:00.000Z'),
+      feedFixture(tracked('ARS'), opp('Z'), '2026-08-06T12:00:00.000Z'),
+      feedFixture(tracked('MCI'), opp('W'), '2026-08-12T12:00:00.000Z'),
+    ]);
+    const fx = orderedFixtures(s);
+    const me = s.predictors[0]!.id;
+    s = setClubPrediction(s, { fixtureId: fx[0]!.id, predictorId: me, combinator: true }, { now });
+    s = setClubPrediction(s, { fixtureId: fx[1]!.id, predictorId: me, combinator: true }, { now });
+    expect(clubCombinatorsLeft(s, me, fx[2]!.kickoff)).toBe(0);
+    // A third in the same week is refused…
+    expect(() =>
+      setClubPrediction(s, { fixtureId: fx[2]!.id, predictorId: me, combinator: true }, { now }),
+    ).toThrow(/combinator/i);
+    // …but the next week is fresh.
+    expect(() =>
+      setClubPrediction(s, { fixtureId: fx[3]!.id, predictorId: me, combinator: true }, { now }),
+    ).not.toThrow();
+    expect(CLUB_COMBINATORS_PER_WEEK).toBe(2);
+  });
+
+  it('lets a combinator be turned off and re-picked without hitting the cap', () => {
+    const now = () => new Date('2026-08-01T00:00:00.000Z');
+    let s = withFixtures(seed(), [
+      feedFixture(tracked('MUN'), opp('X'), '2026-08-04T12:00:00.000Z'),
+      feedFixture(tracked('LIV'), opp('Y'), '2026-08-05T12:00:00.000Z'),
+    ]);
+    const fx = orderedFixtures(s);
+    const me = s.predictors[0]!.id;
+    s = setClubPrediction(s, { fixtureId: fx[0]!.id, predictorId: me, combinator: true }, { now });
+    s = setClubPrediction(s, { fixtureId: fx[0]!.id, predictorId: me, combinator: false }, { now });
+    // With the first turned off, the second is fine.
+    expect(() =>
+      setClubPrediction(s, { fixtureId: fx[1]!.id, predictorId: me, combinator: true }, { now }),
+    ).not.toThrow();
   });
 });
 

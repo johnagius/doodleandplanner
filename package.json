@@ -26,6 +26,7 @@
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "eslint .",
     "guide:video": "node scripts/guide-video/make-video.mjs",
+    "guide:video:combinator": "node scripts/guide-video/make-video.mjs combinator",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },

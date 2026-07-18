@@ -365,8 +365,8 @@
     <div id="brand">⚽ Club Football</div>
 
     <div class="stage" id="stage">
-      <!-- 0 intro -->
-      <section class="scene" data-i="0">
+      <!-- intro -->
+      <section class="scene" data-id="intro">
         <div>
           <div class="ball anim">⚽</div>
           <div class="title anim">Club Football</div>
@@ -374,8 +374,8 @@
         </div>
       </section>
 
-      <!-- 1 markets -->
-      <section class="scene" data-i="1">
+      <!-- markets -->
+      <section class="scene" data-id="markets">
         <div class="fixture">
           <div class="teams anim">
             <span class="badge" style="background: #da020e">MUN</span>
@@ -409,8 +409,8 @@
         </div>
       </section>
 
-      <!-- 2 scoring -->
-      <section class="scene" data-i="2">
+      <!-- scoring -->
+      <section class="scene" data-id="scoring">
         <div>
           <div class="teams anim" style="justify-content: center">
             <span class="badge" style="background: #da020e">MUN</span>
@@ -426,8 +426,25 @@
         </div>
       </section>
 
-      <!-- 3 divisions -->
-      <section class="scene" data-i="3">
+      <!-- combinator -->
+      <section class="scene" data-id="combinator">
+        <div>
+          <div class="pills anim">
+            <span class="pill">Result ✓</span>
+            <span class="pill">Over/Under ✓</span>
+            <span class="pill">Both score ✓</span>
+          </div>
+          <div class="total anim" style="animation-delay: 0.5s; color: #b388ff">
+            🎯 Combinator = +14
+          </div>
+          <div class="sub anim" style="animation-delay: 1s">
+            All three right → double points · any one wrong → 0 · max 2 per week
+          </div>
+        </div>
+      </section>
+
+      <!-- divisions -->
+      <section class="scene" data-id="divisions">
         <div class="cols">
           <div class="col slide">
             <h3>🥇 League 1</h3>
@@ -445,8 +462,8 @@
         </div>
       </section>
 
-      <!-- 4 promo -->
-      <section class="scene" data-i="4">
+      <!-- promo -->
+      <section class="scene" data-id="promo">
         <div class="cols" style="align-items: center">
           <div class="col slide">
             <h3>🥇 League 1</h3>
@@ -463,8 +480,8 @@
         </div>
       </section>
 
-      <!-- 5 reset -->
-      <section class="scene" data-i="5">
+      <!-- reset -->
+      <section class="scene" data-id="reset">
         <div>
           <div class="cut slide">Saviour ✗ knocked out · Jonathan ✗ knocked out</div>
           <div class="reset-row slide" style="animation-delay: 0.2s">
@@ -482,8 +499,8 @@
         </div>
       </section>
 
-      <!-- 6 trophies -->
-      <section class="scene" data-i="6">
+      <!-- trophies -->
+      <section class="scene" data-id="trophies">
         <div class="trophies">
           <div class="trophy anim">
             <div class="ic">🏆</div>
@@ -498,8 +515,8 @@
         </div>
       </section>
 
-      <!-- 7 meister -->
-      <section class="scene" data-i="7">
+      <!-- meister -->
+      <section class="scene" data-id="meister">
         <div>
           <div class="duel">
             <div class="seat slide">
@@ -549,36 +566,48 @@
       }
       drawStars();
 
-      const CAPTIONS = [
-        'Predict every game our clubs play — across the league, cups and Europe.',
-        'Three markets a game: Result (+3), Over/Under 2.5 (+2), Both teams to score (+2).',
-        'Each market scores on its own — nail all three and it’s a perfect +7.',
-        'The field splits into League 1 and League 2 — everyone still predicts every game.',
-        'Promotion & relegation happen only at period end, on set dates — never mid-game.',
-        'At the finale each division cuts its last-placed player — survivors reset to 0.',
-        'The leaders play for the Master League Trophy; League 2’s best for the First Division Shield.',
-        'Then the winners face off on the Champions League final — the Meister Cup.',
-      ];
+      const CAPTIONS = {
+        intro: 'Predict every game our clubs play — across the league, cups and Europe.',
+        markets:
+          'Three markets a game: Result (+3), Over/Under 2.5 (+2), Both teams to score (+2).',
+        scoring: 'Each market scores on its own — nail all three and it’s a perfect +7.',
+        combinator:
+          'Feeling brave? A Combinator pays +14 if all three are right — but 0 if any is wrong. Two a week.',
+        divisions:
+          'The field splits into League 1 and League 2 — everyone still predicts every game.',
+        promo: 'Promotion & relegation happen only at period end, on set dates — never mid-game.',
+        reset: 'At the finale each division cuts its last-placed player — survivors reset to 0.',
+        trophies:
+          'The leaders play for the Master League Trophy; League 2’s best for the First Division Shield.',
+        meister: 'Then the winners face off on the Champions League final — the Meister Cup.',
+      };
 
-      // Durations (seconds) per scene are injected by the recorder; fall back to fixed.
-      const DUR = window.SCENE_DURATIONS || CAPTIONS.map(() => 6);
-      const scenes = [...document.querySelectorAll('.scene')];
+      const allScenes = [...document.querySelectorAll('.scene')];
+      const byId = new Map(allScenes.map((el) => [el.dataset.id, el]));
+      // The recorder injects which scenes to play (and their durations); by default
+      // play them all in document order.
+      const ids =
+        window.SCENE_IDS && window.SCENE_IDS.length
+          ? window.SCENE_IDS
+          : allScenes.map((el) => el.dataset.id);
+      const DUR = window.SCENE_DURATIONS || ids.map(() => 6);
+      const seq = ids.map((id) => byId.get(id)).filter(Boolean);
       const bar = document.getElementById('bar');
       const cap = document.getElementById('caption');
       const total = DUR.reduce((a, b) => a + b, 0);
 
       let elapsed = 0;
       function show(i) {
-        scenes.forEach((s) => s.classList.remove('active'));
-        const el = scenes[i];
+        allScenes.forEach((s) => s.classList.remove('active'));
+        const el = seq[i];
         // Force reflow so the pop/slide animations restart for this scene.
         void el.offsetWidth;
         el.classList.add('active');
-        cap.textContent = CAPTIONS[i];
+        cap.textContent = CAPTIONS[ids[i]] || '';
       }
 
       function run(i) {
-        if (i >= scenes.length) {
+        if (i >= seq.length) {
           bar.style.width = '100%';
           window.__done = true;
           document.title = 'DONE';

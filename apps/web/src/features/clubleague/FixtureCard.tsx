@@ -61,7 +61,7 @@ export function FixtureCard({ club, fixture }: { club: ClubLeagueState; fixture:
             {fixture.result.home}–{fixture.result.away} FT
           </span>
         ) : isLive ? (
-          <span className="badge club-live-badge">
+          <span className="badge club-live-badge" aria-live="polite">
             🔴 {liveInfo.home}–{liveInfo.away}
             {liveInfo.detail ? ` · ${liveInfo.detail}` : ''}
           </span>
@@ -382,23 +382,42 @@ function TicketPills({
   pred: { outcome?: ClubOutcome; totals?: ClubTotals; btts?: ClubBtts };
   settled: { outcome: ClubOutcome; totals: ClubTotals; btts: ClubBtts } | null;
 }) {
-  const cls = (hit: boolean | null) => (settled == null ? '' : hit ? 'is-hit' : 'is-miss');
   return (
     <span className="club-pills">
       {pred.outcome && (
-        <span className={`club-pill ${cls(settled ? settled.outcome === pred.outcome : null)}`}>
-          {pred.outcome}
-        </span>
+        <Pill label={pred.outcome} hit={settled ? settled.outcome === pred.outcome : null} />
       )}
       {pred.totals && (
-        <span className={`club-pill ${cls(settled ? settled.totals === pred.totals : null)}`}>
-          {pred.totals === 'over' ? 'O2.5' : 'U2.5'}
-        </span>
+        <Pill
+          label={pred.totals === 'over' ? 'O2.5' : 'U2.5'}
+          hit={settled ? settled.totals === pred.totals : null}
+        />
       )}
       {pred.btts && (
-        <span className={`club-pill ${cls(settled ? settled.btts === pred.btts : null)}`}>
-          BTTS {pred.btts === 'yes' ? 'Y' : 'N'}
-        </span>
+        <Pill
+          label={`BTTS ${pred.btts === 'yes' ? 'Y' : 'N'}`}
+          hit={settled ? settled.btts === pred.btts : null}
+        />
+      )}
+    </span>
+  );
+}
+
+/** A pick pill. Once settled, correctness is shown by a ✓/✗ mark and a label —
+ * not colour alone — so it's readable for colour-blind and screen-reader users. */
+function Pill({ label, hit }: { label: string; hit: boolean | null }) {
+  const cls = hit == null ? '' : hit ? 'is-hit' : 'is-miss';
+  return (
+    <span
+      className={`club-pill ${cls}`}
+      title={hit == null ? undefined : hit ? 'Correct' : 'Wrong'}
+    >
+      {label}
+      {hit != null && (
+        <>
+          <span aria-hidden> {hit ? '✓' : '✗'}</span>
+          <span className="sr-only">{hit ? ' correct' : ' wrong'}</span>
+        </>
       )}
     </span>
   );

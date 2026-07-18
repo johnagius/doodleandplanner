@@ -255,8 +255,10 @@ export function ClubLeaguePage() {
             {TABS.map((t) => (
               <button
                 key={t.id}
+                id={`club-tab-${t.id}`}
                 role="tab"
                 aria-selected={tab === t.id}
+                aria-controls={`club-panel-${t.id}`}
                 className={`tab ${tab === t.id ? 'active' : ''}`}
                 onClick={() => setTab(t.id)}
               >
@@ -267,7 +269,7 @@ export function ClubLeaguePage() {
             ))}
           </nav>
 
-          <div role="tabpanel">
+          <div role="tabpanel" id={`club-panel-${tab}`} aria-labelledby={`club-tab-${tab}`}>
             {tab === 'fixtures' && <FixturesView club={club} />}
             {tab === 'table' && <ClubTable club={club} />}
             {tab === 'divisions' && <DivisionsView club={club} />}

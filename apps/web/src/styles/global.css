@@ -8182,8 +8182,14 @@ label.field {
 }
 
 /* --- Standalone layout + side rail --------------------------------------- */
+/* Club Football runs wide on desktop (it's a standalone app, not a sub-page). */
 .club-app {
-  max-width: 1200px;
+  max-width: 1440px;
+}
+@media (min-width: 100rem) {
+  .club-app {
+    max-width: 1680px;
+  }
 }
 .club-layout {
   display: grid;
@@ -8193,12 +8199,17 @@ label.field {
 }
 @media (min-width: 60rem) {
   .club-layout {
-    grid-template-columns: minmax(0, 1fr) 320px;
+    grid-template-columns: minmax(0, 1fr) 340px;
     align-items: start;
   }
   .club-side-rail {
     position: sticky;
     top: 0.75rem;
+  }
+}
+@media (min-width: 100rem) {
+  .club-layout {
+    grid-template-columns: minmax(0, 1fr) 380px;
   }
 }
 .club-main {

@@ -26,6 +26,24 @@ import { clearSessionToken, isSessionPersisted } from '../features/worldcup/wcAu
 
 const PREDICTOR_KEY = 'dap:club:predictor';
 const ADMIN_KEY = 'dap:club:admin';
+const NOTES_KEY = 'dap:club:notes';
+
+/** Live swing notes are session drama worth keeping across a refresh mid-game. */
+function readNotes(): Record<string, string[]> {
+  try {
+    const raw = localStorage.getItem(NOTES_KEY);
+    return raw ? (JSON.parse(raw) as Record<string, string[]>) : {};
+  } catch {
+    return {};
+  }
+}
+function writeNotes(notes: Record<string, string[]>): void {
+  try {
+    localStorage.setItem(NOTES_KEY, JSON.stringify(notes));
+  } catch {
+    /* private mode / quota — notes just won't persist */
+  }
+}
 
 function readLocal(key: string): string | null {
   try {
@@ -182,7 +200,7 @@ export const useClubLeagueStore = create<ClubLeagueStore>((set, get) => {
     meId: readLocal(PREDICTOR_KEY),
     admin: readLocal(ADMIN_KEY) === '1',
     live: {},
-    liveNotes: {},
+    liveNotes: readNotes(),
     unsubscribe: null,
 
     async load() {
@@ -321,6 +339,7 @@ export const useClubLeagueStore = create<ClubLeagueStore>((set, get) => {
         }
       }
       set({ live, liveNotes: notes });
+      writeNotes(notes);
     },
 
     async enterResult(fixtureId, home, away) {

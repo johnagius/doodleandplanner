@@ -8,6 +8,8 @@ import {
   CLUB_TEAM_BY_ESPN_ID,
   addClubPredictor,
   clubCombinatorsLeft,
+  clubMatchdayRecap,
+  clubRankTimeline,
   clearClubPrediction,
   clearFixtureResult,
   clubLeaderboard,
@@ -707,6 +709,54 @@ describe('combinator', () => {
     expect(() =>
       setClubPrediction(s, { fixtureId: fx[1]!.id, predictorId: me, combinator: true }, { now }),
     ).not.toThrow();
+  });
+});
+
+describe('history & recaps', () => {
+  const now = () => new Date('2026-08-10T00:00:00.000Z');
+
+  // Two match-days: ids[0] scores 7 on day 1, ids[1] scores 3 on day 2.
+  function twoDays(): { s: ClubLeagueState; ids: string[] } {
+    let s = seed();
+    const ids = s.predictors.map((p) => p.id) as string[];
+    s = withFixtures(s, [feedFixture(opp('H'), opp('A'), '2026-08-15T12:00:00.000Z')]);
+    const f1 = orderedFixtures(s)[0]!;
+    s = setClubPrediction(
+      s,
+      { fixtureId: f1.id, predictorId: ids[0]!, outcome: '1', totals: 'over', btts: 'yes' },
+      { now },
+    );
+    s = setFixtureResult(s, f1.id, { home: 3, away: 1 }); // ids[0] +7
+    s = withFixtures(s, [feedFixture(opp('H'), opp('A'), '2026-08-20T12:00:00.000Z')]);
+    const f2 = orderedFixtures(s).find((f) => f.kickoff.startsWith('2026-08-20'))!;
+    s = setClubPrediction(s, { fixtureId: f2.id, predictorId: ids[1]!, outcome: '1' }, { now });
+    s = setFixtureResult(s, f2.id, { home: 2, away: 1 }); // ids[1] +3
+    return { s, ids };
+  }
+
+  it('builds a cumulative rank timeline per match-day', () => {
+    const { s, ids } = twoDays();
+    const { days, series } = clubRankTimeline(s);
+    expect(days).toEqual(['2026-08-15', '2026-08-20']);
+    const leader = series.find((x) => x.predictorId === ids[0])!;
+    expect(leader.points.at(-1)).toEqual({ day: '2026-08-20', points: 7, rank: 1 });
+    const chaser = series.find((x) => x.predictorId === ids[1])!;
+    expect(chaser.points.at(-1)!.points).toBe(3);
+  });
+
+  it('recaps the latest match-day: points gained + biggest climber', () => {
+    const { s, ids } = twoDays();
+    const recap = clubMatchdayRecap(s)!;
+    expect(recap.dayKey).toBe('2026-08-20');
+    expect(recap.topGain!.predictorId).toBe(ids[1]);
+    expect(recap.topGain!.gained).toBe(3);
+    expect(recap.topClimb!.predictorId).toBe(ids[1]);
+    expect(recap.topClimb!.delta).toBeGreaterThan(0);
+  });
+
+  it('returns null recap before any game is played', () => {
+    expect(clubMatchdayRecap(seed())).toBeNull();
+    expect(clubRankTimeline(seed()).days).toEqual([]);
   });
 });
 

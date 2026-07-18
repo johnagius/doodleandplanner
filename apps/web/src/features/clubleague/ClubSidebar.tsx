@@ -1,9 +1,11 @@
 import {
+  clubActivity,
   clubCombinatorsLeft,
   clubLeaderboardWithMovement,
   clubMatchdayRecap,
   clubPlayedCount,
   clubRivalry,
+  clubWeekParticipation,
   computeDivisions,
   findCompetition,
   findPrediction,
@@ -43,11 +45,87 @@ export function ClubSidebar({
       <Leaderboard club={club} meId={meId} liveScores={liveCount ? liveScores : undefined} />
       <LastRound club={club} />
       <NextUp club={club} meId={meId} onGoFixtures={onGoFixtures} />
+      <ThisWeekPicks club={club} meId={meId} />
       <SeasonProgress club={club} />
       {meId && (
         <YourStats club={club} meId={meId} liveScores={liveCount ? liveScores : undefined} />
       )}
+      <Activity club={club} meId={meId} />
     </div>
+  );
+}
+
+/** Who's playing this week: each player's pick count for the week's fixtures —
+ * counts only, so nobody's actual picks leak before kick-off. */
+function ThisWeekPicks({ club, meId }: { club: ClubLeagueState; meId: string | null }) {
+  const part = clubWeekParticipation(club, new Date());
+  if (!part || part.total === 0) return null;
+  const rows = [...part.rows].sort((a, b) => b.picked - a.picked || a.name.localeCompare(b.name));
+  return (
+    <Card title="🗓 This week's picks">
+      <ul className="club-week-picks">
+        {rows.map((r) => {
+          const done = r.picked >= part.total;
+          const none = r.picked === 0;
+          return (
+            <li key={r.predictorId} className={r.predictorId === meId ? 'is-me' : ''}>
+              <span className="club-week-name">
+                {done ? '✅' : none ? '⚪️' : '⏳'} {r.name}
+              </span>
+              <span className={`club-week-count ${none ? 'is-none' : ''}`}>
+                {r.picked}/{part.total}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+      <p className="muted small" style={{ margin: 0 }}>
+        Pick counts only — nobody can see what anyone picked until kick-off.
+      </p>
+    </Card>
+  );
+}
+
+/** "17:42 relative" for an ISO timestamp — "just now", "2h ago", "3d ago". */
+function ago(iso: string): string {
+  const ms = Date.now() - new Date(iso).getTime();
+  if (ms < 60_000) return 'just now';
+  const m = Math.floor(ms / 60_000);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+}
+
+/** A live activity feed — every bet as it's placed (clocked, no content) and each
+ * full-time result, newest first. */
+function Activity({ club, meId }: { club: ClubLeagueState; meId: string | null }) {
+  const items = clubActivity(club, 12);
+  if (items.length === 0) return null;
+  return (
+    <Card title="🔔 Activity">
+      <ul className="club-activity">
+        {items.map((it, i) => (
+          <li key={`${it.kind}-${it.fixtureId}-${it.predictorId ?? ''}-${i}`}>
+            {it.kind === 'pick' ? (
+              <span>
+                🎫 <strong>{it.predictorId === meId ? 'You' : it.name}</strong> picked {it.home} v{' '}
+                {it.away}
+              </span>
+            ) : (
+              <span>
+                ⚽ {it.home}{' '}
+                <strong>
+                  {it.result!.home}–{it.result!.away}
+                </strong>{' '}
+                {it.away} · FT
+              </span>
+            )}
+            <span className="muted small club-activity-time">{ago(it.at)}</span>
+          </li>
+        ))}
+      </ul>
+    </Card>
   );
 }
 

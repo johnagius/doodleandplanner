@@ -7,9 +7,11 @@ import {
   CLUB_POINTS,
   CLUB_TEAM_BY_ESPN_ID,
   addClubPredictor,
+  clubActivity,
   clubCombinatorsLeft,
   clubMatchdayRecap,
   clubRankTimeline,
+  clubWeekParticipation,
   clearClubPrediction,
   clearFixtureResult,
   clubLeaderboard,
@@ -757,6 +759,46 @@ describe('history & recaps', () => {
   it('returns null recap before any game is played', () => {
     expect(clubMatchdayRecap(seed())).toBeNull();
     expect(clubRankTimeline(seed()).days).toEqual([]);
+  });
+
+  it('counts weekly participation without revealing picks', () => {
+    const now = () => new Date('2026-08-10T00:00:00.000Z');
+    let s = withFixtures(seed(), [
+      feedFixture(opp('H'), opp('A'), '2026-08-11T12:00:00.000Z'),
+      feedFixture(opp('H'), opp('A'), '2026-08-12T12:00:00.000Z'),
+    ]);
+    const [f1, f2] = orderedFixtures(s);
+    const ids = s.predictors.map((p) => p.id);
+    s = setClubPrediction(
+      s,
+      { fixtureId: f1!.id, predictorId: ids[0]!, outcome: '1', totals: 'over', btts: 'yes' },
+      { now },
+    );
+    s = setClubPrediction(s, { fixtureId: f2!.id, predictorId: ids[0]!, outcome: '1' }, { now });
+    const part = clubWeekParticipation(s, now())!;
+    expect(part.total).toBe(2);
+    const me = part.rows.find((r) => r.predictorId === ids[0])!;
+    expect(me.picked).toBe(2); // both fixtures started
+    expect(me.complete).toBe(1); // only one fully filled
+    expect(part.rows.find((r) => r.predictorId === ids[1])!.picked).toBe(0);
+    // The shape carries no pick content.
+    expect(Object.keys(me).sort()).toEqual(['complete', 'name', 'picked', 'predictorId']);
+  });
+
+  it('builds an activity feed of picks + results, newest first, no pick content', () => {
+    const now = () => new Date('2026-08-10T00:00:00.000Z');
+    let s = withFixtures(seed(), [feedFixture(opp('H'), opp('A'), '2026-08-15T12:00:00.000Z')]);
+    const f = orderedFixtures(s)[0]!;
+    const ids = s.predictors.map((p) => p.id);
+    s = setClubPrediction(s, { fixtureId: f.id, predictorId: ids[0]!, outcome: '1' }, { now });
+    const feed = clubActivity(s);
+    const pick = feed.find((i) => i.kind === 'pick')!;
+    expect(pick.name).toBeTruthy();
+    expect(pick.fixtureId).toBe(f.id);
+    expect('outcome' in pick).toBe(false); // never leaks the pick itself
+    s = setFixtureResult(s, f.id, { home: 2, away: 1 });
+    const feed2 = clubActivity(s);
+    expect(feed2.some((i) => i.kind === 'result')).toBe(true);
   });
 });
 

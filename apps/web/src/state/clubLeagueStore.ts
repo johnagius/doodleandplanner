@@ -75,7 +75,7 @@ interface ClubLeagueStore {
 
   predictMarket: (
     fixtureId: string,
-    market: { outcome?: ClubOutcome; totals?: ClubTotals; btts?: ClubBtts },
+    market: { outcome?: ClubOutcome; totals?: ClubTotals; btts?: ClubBtts; combinator?: boolean },
   ) => Promise<void>;
   clearMyPrediction: (fixtureId: string) => Promise<void>;
 
@@ -246,7 +246,15 @@ export const useClubLeagueStore = create<ClubLeagueStore>((set, get) => {
     async syncFixtures() {
       const club = get().state?.clubLeague;
       if (!club) return;
-      const { fixtures, window } = await fetchClubFixtures();
+      // The Champions League final always belongs on the board (it decides the
+      // Meister Cup) even if it's between two non-tracked clubs — so let the feed
+      // keep any UCL match kicking off after the leagues have finished.
+      const seasonEnd = club.periods.length
+        ? new Date(Math.max(...club.periods.map((p) => new Date(p.endsAt).getTime()))).toISOString()
+        : undefined;
+      const { fixtures, window } = await fetchClubFixtures(new Date(), {
+        uclFinalAfter: seasonEnd,
+      });
       if (fixtures.length === 0) return; // nothing fresh — leave the board as-is
 
       // Persist the reconciled fixtures (final results, adds/prunes) only when the

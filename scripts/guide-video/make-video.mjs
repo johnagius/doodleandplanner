@@ -25,10 +25,33 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '..', '..');
 const VO_DIR = join(ROOT, 'apps', 'web', 'public', 'club-vo');
 const GUIDE = join(HERE, 'guide.html');
-const OUT = join(HERE, 'club-football-guide.mp4');
 
-// Narration order must match the scenes in guide.html.
-const ORDER = ['intro', 'markets', 'scoring', 'divisions', 'promo', 'reset', 'trophies', 'meister'];
+// Every scene id (must match the data-id attributes in guide.html).
+const FULL = [
+  'intro',
+  'markets',
+  'scoring',
+  'combinator',
+  'divisions',
+  'promo',
+  'reset',
+  'trophies',
+  'meister',
+];
+
+// Chapters you can render on their own, e.g. `npm run guide:video combinator`.
+const CHAPTERS = {
+  combinator: { ids: ['combinator'], out: 'club-football-combinator.mp4' },
+};
+
+const chapter = process.argv[2];
+const picked = chapter && CHAPTERS[chapter] ? CHAPTERS[chapter] : null;
+if (chapter && !picked) {
+  console.error(`Unknown chapter "${chapter}". Options: ${Object.keys(CHAPTERS).join(', ')}`);
+  process.exit(1);
+}
+const ORDER = picked ? picked.ids : FULL;
+const OUT = join(HERE, picked ? picked.out : 'club-football-guide.mp4');
 
 const FFMPEG = process.env.FFMPEG || 'ffmpeg';
 
@@ -90,9 +113,13 @@ async function main() {
     recordVideo: { dir: videoDir, size: { width: 1280, height: 720 } },
   });
   const page = await context.newPage();
-  await page.addInitScript((d) => {
-    window.SCENE_DURATIONS = d;
-  }, durations);
+  await page.addInitScript(
+    ({ ids, d }) => {
+      window.SCENE_IDS = ids;
+      window.SCENE_DURATIONS = d;
+    },
+    { ids: ORDER, d: durations },
+  );
   await page.goto(pathToFileURL(GUIDE).href);
   await page.waitForFunction(() => window.__done === true, null, {
     timeout: Math.ceil(total * 1000) + 15000,

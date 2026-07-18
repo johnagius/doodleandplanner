@@ -8072,6 +8072,115 @@ label.field {
   padding-left: 0.55rem;
 }
 
+/* --- Combinator ----------------------------------------------------------- */
+.club-combi {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+  margin-top: 0.35rem;
+  padding-top: 0.5rem;
+  border-top: 1px dashed var(--border);
+}
+.club-combi-btn {
+  border: 1px solid var(--border);
+  background: var(--surface-2, rgba(127, 127, 127, 0.06));
+  border-radius: 999px;
+  padding: 0.35rem 0.8rem;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.club-combi-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.club-combi-btn.is-on {
+  background: linear-gradient(90deg, #7c3aed, #a855f7);
+  border-color: #7c3aed;
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(124, 58, 237, 0.35);
+}
+.club-combi-badge {
+  background: rgba(124, 58, 237, 0.18);
+  color: #6d28d9;
+  font-weight: 800;
+}
+.club-combi-tag {
+  margin-left: 0.35rem;
+}
+.club-combi-err {
+  color: var(--danger);
+  font-weight: 600;
+}
+.club-combi-explain {
+  margin-top: 0.6rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: var(--radius);
+  border: 1px solid rgba(124, 58, 237, 0.4);
+  background: rgba(124, 58, 237, 0.08);
+}
+.club-combi-explain-head {
+  font-weight: 800;
+  color: #7c3aed;
+}
+/* --- Divisions: season timeline ------------------------------------------ */
+.club-timeline {
+  display: grid;
+  gap: 0.4rem;
+}
+.club-timeline-row {
+  display: grid;
+  grid-template-columns: minmax(7.5rem, auto) auto 1fr;
+  align-items: baseline;
+  gap: 0.4rem 0.9rem;
+  padding: 0.5rem 0.7rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface-2, rgba(127, 127, 127, 0.05));
+}
+.club-timeline-row.is-active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent) inset;
+}
+.club-timeline-row.is-runin {
+  border-color: rgba(212, 175, 55, 0.5);
+}
+.club-timeline-name {
+  font-weight: 800;
+}
+.club-timeline-dates {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.club-timeline-note {
+  grid-column: 1 / -1;
+}
+@media (min-width: 34rem) {
+  .club-timeline-note {
+    grid-column: auto;
+    text-align: right;
+  }
+}
+
+/* --- Fixtures: match-day headers + guide nudge ---------------------------- */
+.club-matchday-head {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 800;
+  padding-bottom: 0.2rem;
+  border-bottom: 2px solid var(--border);
+}
+.club-guide-nudge {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-top: 0.75rem;
+}
+
 /* --- Rules ---------------------------------------------------------------- */
 .club-rule-section h3 {
   font-size: 1.05rem;

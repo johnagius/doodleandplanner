@@ -256,6 +256,24 @@ function ScoringVisual() {
   );
 }
 
+function CombinatorVisual() {
+  return (
+    <div className="cx-scoring">
+      <div className="cx-pills">
+        <span className="cx-pill hit">Result ✓</span>
+        <span className="cx-pill hit">Over/Under ✓</span>
+        <span className="cx-pill hit">Both score ✓</span>
+      </div>
+      <div className="cx-total cx-pop" style={{ animationDelay: '0.5s', color: '#b388ff' }}>
+        🎯 Combinator = +14
+      </div>
+      <div className="cx-sub cx-pop" style={{ animationDelay: '1s' }}>
+        All three right → double · any wrong → 0 · max 2 per week
+      </div>
+    </div>
+  );
+}
+
 function DivisionsVisual() {
   const l1 = ['John', 'Noel', 'Daniel', 'Saviour'];
   const l2 = ['Manuel', 'Kevin', 'Jonathan'];
@@ -406,6 +424,13 @@ const SCENES: Scene[] = [
     seconds: 7,
     caption: 'Each market scores on its own — nail all three and it’s a perfect +7.',
     Visual: ScoringVisual,
+  },
+  {
+    id: 'combinator',
+    seconds: 9,
+    caption:
+      'Feeling brave? A Combinator pays +14 if all three are right — but 0 if any is wrong. Two a week.',
+    Visual: CombinatorVisual,
   },
   {
     id: 'divisions',

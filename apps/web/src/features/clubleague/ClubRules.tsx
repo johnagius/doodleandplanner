@@ -1,4 +1,6 @@
 import {
+  CLUB_COMBINATOR_POINTS,
+  CLUB_COMBINATORS_PER_WEEK,
   CLUB_ESPN_TEAM_IDS,
   CLUB_POINTS,
   CLUB_TOTALS_LINE,
@@ -74,6 +76,22 @@ export function ClubRules({ club }: { club: ClubLeagueState }) {
           <strong>{CLUB_POINTS.result + CLUB_POINTS.totals + CLUB_POINTS.btts} points</strong> (all
           three right).
         </p>
+        <div className="club-combi-explain">
+          <div className="club-combi-explain-head">🎯 Combinator — the catch-up gamble</div>
+          <p style={{ margin: '0.35rem 0 0' }}>
+            Feeling confident? Tap <strong>Combinator</strong> on a fixture to go all-in: if{' '}
+            <strong>all three markets are right</strong> it pays{' '}
+            <strong>+{CLUB_COMBINATOR_POINTS}</strong> (double), but if{' '}
+            <strong>any one is wrong the whole fixture scores 0</strong> — you forfeit the points
+            you’d otherwise have banked.
+          </p>
+          <p className="muted small" style={{ margin: '0.35rem 0 0' }}>
+            To stop it being spammed, you get just{' '}
+            <strong>{CLUB_COMBINATORS_PER_WEEK} combinators per week</strong> — a real boost for
+            anyone chasing the pack, not a free lottery. Once the game kicks off, everyone can see
+            who played a combinator.
+          </p>
+        </div>
       </Section>
 
       <Section emoji="📅" title="3 · Fixtures are automatic">

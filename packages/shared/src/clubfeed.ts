@@ -120,9 +120,14 @@ function toSide(team: EspnTeam): ClubSide {
 /**
  * Parse one competition's ESPN scoreboard, keeping only fixtures where at least
  * one side is a tracked club. `competitionId` is our own competition id for that
- * ESPN league.
+ * ESPN league. Pass `keepUntracked` to keep every fixture regardless of the clubs
+ * involved (used to always surface the Champions League final).
  */
-export function parseClubScoreboard(raw: unknown, competitionId: string): ClubFeedFixture[] {
+export function parseClubScoreboard(
+  raw: unknown,
+  competitionId: string,
+  opts: { keepUntracked?: boolean } = {},
+): ClubFeedFixture[] {
   const events = (raw as { events?: EspnEvent[] } | null)?.events ?? [];
   const out: ClubFeedFixture[] = [];
   for (const ev of events) {
@@ -131,7 +136,7 @@ export function parseClubScoreboard(raw: unknown, competitionId: string): ClubFe
     const home = comp.competitors?.find((c) => c.homeAway === 'home');
     const away = comp.competitors?.find((c) => c.homeAway === 'away');
     if (!home?.team || !away?.team) continue;
-    if (!isTracked(home.team.id) && !isTracked(away.team.id)) continue;
+    if (!opts.keepUntracked && !isTracked(home.team.id) && !isTracked(away.team.id)) continue;
 
     const type = comp.status?.type ?? ev.status?.type ?? {};
     const status = toStatus(type);

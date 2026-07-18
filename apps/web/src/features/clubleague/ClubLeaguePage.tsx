@@ -52,34 +52,38 @@ export function ClubLeaguePage() {
   const meId = useClubLeagueStore((s) => s.meId);
   const [tab, setTab] = useState<Tab>(initialTab);
   const [claimId, setClaimId] = useState<string | null>(null);
-  // Auto-play the narrated guide for a first-time visitor (or a shared #rules link).
-  const [autoGuide, setAutoGuide] = useState(false);
+  // Auto-play the narrated guide only when someone arrives on a shared #rules link.
+  const [autoGuide] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.location.hash.replace(/^#/, '') === 'rules';
+  });
+  // First-timers land on the fixtures (next matches) but get a one-time nudge to
+  // the guide, so the board is the front door — not the rulebook.
+  const [showGuideNudge, setShowGuideNudge] = useState(false);
 
   // Attach the current name's verified session token to every club-room save.
   useEffect(() => {
     installWcSaveAuth(() => useClubLeagueStore.getState().meId);
   }, []);
 
-  // First visit → open the "How to play" guide and start the narrated walkthrough.
-  // A shared #rules link also auto-narrates. Both are remembered so we only nudge once.
+  // One-time gentle nudge toward the guide (never hijacks the landing page).
   useEffect(() => {
-    const fromHash = window.location.hash.replace(/^#/, '') === 'rules';
-    let seen = false;
+    if (window.location.hash.replace(/^#/, '') === 'rules') return;
     try {
-      seen = localStorage.getItem('club-guide-seen') === '1';
+      if (localStorage.getItem('club-guide-seen') !== '1') setShowGuideNudge(true);
     } catch {
-      /* private mode — treat as first visit */
-    }
-    if (fromHash || !seen) {
-      setTab('rules');
-      setAutoGuide(true);
-      try {
-        localStorage.setItem('club-guide-seen', '1');
-      } catch {
-        /* ignore */
-      }
+      /* ignore */
     }
   }, []);
+
+  const dismissGuideNudge = () => {
+    setShowGuideNudge(false);
+    try {
+      localStorage.setItem('club-guide-seen', '1');
+    } catch {
+      /* ignore */
+    }
+  };
 
   // Keep the URL hash in step with the tab so the current section is shareable.
   useEffect(() => {
@@ -205,6 +209,28 @@ export function ClubLeaguePage() {
 
       {error && <div className="banner banner-danger no-print">{error}</div>}
 
+      {showGuideNudge && (
+        <div className="banner club-guide-nudge">
+          <span>
+            👋 New to Club Football? Take the 90-second guide — scoring, leagues and trophies.
+          </span>
+          <span className="row" style={{ gap: '0.4rem' }}>
+            <button
+              className="btn btn-sm btn-primary"
+              onClick={() => {
+                setTab('rules');
+                dismissGuideNudge();
+              }}
+            >
+              📖 How to play
+            </button>
+            <button className="btn btn-sm btn-ghost" onClick={dismissGuideNudge}>
+              Dismiss
+            </button>
+          </span>
+        </div>
+      )}
+
       {locking.length > 0 ? (
         <div className="row" style={{ marginTop: '0.75rem' }}>
           <button className="nudge-chip nudge-urgent" onClick={() => setTab('fixtures')}>
@@ -273,19 +299,58 @@ function FixturesView({ club }: { club: ClubLeagueState }) {
     return [...map.entries()].map(([key, items]) => ({ key, items }));
   }, [club, compFilter]);
 
-  // Land on the next match-day that still has an unplayed game, else the last.
-  const defaultIdx = useMemo(() => {
+  // Show several match-days at once so nobody misses a game; "Next" pages forward.
+  const PAGE_DAYS = 3;
+
+  // The batch containing the next match-day that still has an unplayed game.
+  const defaultPage = useMemo(() => {
     const now = Date.now();
     const i = days.findIndex((d) =>
       d.items.some((f) => !f.result && new Date(f.kickoff).getTime() >= now),
     );
-    return i >= 0 ? i : Math.max(0, days.length - 1);
+    return Math.floor((i >= 0 ? i : Math.max(0, days.length - 1)) / PAGE_DAYS);
   }, [days]);
 
-  const [dayIdx, setDayIdx] = useState(defaultIdx);
-  // Clamp when the day list changes (feed refresh / filter switch).
-  const idx = Math.min(dayIdx, Math.max(0, days.length - 1));
-  const current = days[idx];
+  const [page, setPage] = useState(defaultPage);
+  const totalPages = Math.max(1, Math.ceil(days.length / PAGE_DAYS));
+  const p = Math.min(page, totalPages - 1); // clamp on feed refresh / filter switch
+  const visible = days.slice(p * PAGE_DAYS, p * PAGE_DAYS + PAGE_DAYS);
+  const gamesOnPage = visible.reduce((n, d) => n + d.items.length, 0);
+
+  const nav = (
+    <div className="club-day-flipper">
+      <button
+        type="button"
+        className="btn btn-sm"
+        onClick={() => setPage(p - 1)}
+        disabled={p <= 0}
+        aria-label="Previous match-days"
+      >
+        ‹ Prev
+      </button>
+      <div className="club-day-flip-label">
+        <div className="club-day-flip-date">
+          {visible.length > 0
+            ? `${gamesOnPage} game${gamesOnPage === 1 ? '' : 's'} over ${visible.length} match-day${
+                visible.length === 1 ? '' : 's'
+              }`
+            : 'No matches'}
+        </div>
+        <div className="muted small">
+          Showing {p + 1} of {totalPages} · 🇲🇹 Malta time
+        </div>
+      </div>
+      <button
+        type="button"
+        className="btn btn-sm"
+        onClick={() => setPage(p + 1)}
+        disabled={p >= totalPages - 1}
+        aria-label="Next match-days"
+      >
+        Next ›
+      </button>
+    </div>
+  );
 
   return (
     <div className="stack">
@@ -296,7 +361,7 @@ function FixturesView({ club }: { club: ClubLeagueState }) {
           value={compFilter}
           onChange={(e) => {
             setCompFilter(e.target.value);
-            setDayIdx(0);
+            setPage(0);
           }}
           aria-label="Filter by competition"
         >
@@ -310,7 +375,7 @@ function FixturesView({ club }: { club: ClubLeagueState }) {
         <button
           type="button"
           className="btn btn-sm btn-ghost"
-          onClick={() => setDayIdx(defaultIdx)}
+          onClick={() => setPage(defaultPage)}
           title="Jump to the next matches"
         >
           ⏭ Next matches
@@ -318,75 +383,24 @@ function FixturesView({ club }: { club: ClubLeagueState }) {
         <span className="muted small club-feed-note">🔄 Auto-updated</span>
       </div>
 
-      {!current ? (
+      {visible.length === 0 ? (
         <div className="empty">Loading the upcoming fixtures for our clubs…</div>
       ) : (
         <>
-          <DayFlipper
-            label={formatFixtureDayLong(current.items[0]!.kickoff)}
-            count={current.items.length}
-            index={idx}
-            total={days.length}
-            onGo={(delta) => setDayIdx(idx + delta)}
-          />
-          <div className="stack" style={{ gap: '0.5rem' }}>
-            {current.items.map((f) => (
-              <FixtureCard key={f.id} club={club} fixture={f} />
+          {nav}
+          <div className="stack" style={{ gap: '1.1rem' }}>
+            {visible.map((d) => (
+              <div key={d.key} className="stack" style={{ gap: '0.5rem' }}>
+                <h3 className="club-matchday-head">{formatFixtureDayLong(d.items[0]!.kickoff)}</h3>
+                {d.items.map((f) => (
+                  <FixtureCard key={f.id} club={club} fixture={f} />
+                ))}
+              </div>
             ))}
           </div>
-          <DayFlipper
-            label={formatFixtureDayLong(current.items[0]!.kickoff)}
-            count={current.items.length}
-            index={idx}
-            total={days.length}
-            onGo={(delta) => setDayIdx(idx + delta)}
-          />
+          {nav}
         </>
       )}
-    </div>
-  );
-}
-
-/** ‹ Prev · date + count · Next › day navigator. */
-function DayFlipper({
-  label,
-  count,
-  index,
-  total,
-  onGo,
-}: {
-  label: string;
-  count: number;
-  index: number;
-  total: number;
-  onGo: (delta: number) => void;
-}) {
-  return (
-    <div className="club-day-flipper">
-      <button
-        type="button"
-        className="btn btn-sm"
-        onClick={() => onGo(-1)}
-        disabled={index <= 0}
-        aria-label="Previous match-day"
-      >
-        ‹ Prev
-      </button>
-      <div className="club-day-flip-label">
-        <div className="club-day-flip-date">{label}</div>
-        <div className="muted small">
-          Match-day {index + 1} of {total} · {count} game{count === 1 ? '' : 's'} · 🇲🇹
-        </div>
-      </div>
-      <button
-        type="button"
-        className="btn btn-sm"
-        onClick={() => onGo(1)}
-        disabled={index >= total - 1}
-        aria-label="Next match-day"
-      >
-        Next ›
-      </button>
     </div>
   );
 }

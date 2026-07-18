@@ -22,14 +22,30 @@ export interface ClubFeedResult {
  * to appear. Each league is fetched in parallel and per-league failures are
  * tolerated; we only return what we actually got.
  */
-export async function fetchClubFixtures(now: Date = new Date()): Promise<ClubFeedResult> {
+export async function fetchClubFixtures(
+  now: Date = new Date(),
+  opts: { uclFinalAfter?: ISODateTime } = {},
+): Promise<ClubFeedResult> {
   const win = clubFeedWindow(now);
+  const finalAfterMs = opts.uclFinalAfter ? Date.parse(opts.uclFinalAfter) : null;
   const lists = await Promise.all(
     CLUB_ESPN_LEAGUES.map(async (league) => {
       try {
         const res = await fetch(clubScoreboardUrl(league.slug, win.fromYmd, win.toYmd));
         if (!res.ok) return [];
-        return parseClubScoreboard(await res.json(), league.competitionId);
+        const raw = await res.json();
+        const tracked = parseClubScoreboard(raw, league.competitionId);
+        // The Champions League final must always be on the board (it decides the
+        // Meister Cup) even between non-tracked clubs. For the UCL feed, also keep
+        // any match kicking off after the leagues finish — that's the final.
+        if (league.competitionId === 'ucl' && finalAfterMs != null) {
+          const all = parseClubScoreboard(raw, league.competitionId, { keepUntracked: true });
+          const seen = new Set(tracked.map((f) => f.externalId));
+          for (const f of all) {
+            if (!seen.has(f.externalId) && Date.parse(f.kickoff) >= finalAfterMs) tracked.push(f);
+          }
+        }
+        return tracked;
       } catch {
         return [];
       }

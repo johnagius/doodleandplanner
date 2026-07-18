@@ -142,6 +142,9 @@ export interface ClubPrediction {
   outcome?: ClubOutcome;
   totals?: ClubTotals;
   btts?: ClubBtts;
+  /** Combinator (accumulator): all three markets must be right for a double-value
+   * payout, otherwise the whole fixture scores 0. Capped per week. */
+  combinator?: boolean;
   updatedAt: ISODateTime;
 }
 
@@ -206,8 +209,15 @@ export const CLUB_POINTS = {
 /** The Over/Under line. 2.5 means "3 or more goals" = Over. */
 export const CLUB_TOTALS_LINE = 2.5;
 
-/** The most a single fixture can be worth (all three markets right). */
+/** The most a single fixture can be worth from the three normal markets. */
 export const CLUB_MAX_FIXTURE_POINTS = CLUB_POINTS.result + CLUB_POINTS.totals + CLUB_POINTS.btts;
+
+/** Combinator (accumulator) payout: double the normal maximum, but ALL three
+ * markets must be right — otherwise the fixture scores 0. A catch-up gamble. */
+export const CLUB_COMBINATOR_POINTS = 2 * CLUB_MAX_FIXTURE_POINTS; // 14
+
+/** How many combinators a player may have live per calendar week (anti-spam). */
+export const CLUB_COMBINATORS_PER_WEEK = 2;
 
 export interface ClubMarketOutcome {
   outcome: ClubOutcome;
@@ -233,23 +243,50 @@ export interface ClubScoreBreakdown {
   hits: { result: boolean; totals: boolean; btts: boolean };
   /** Total points for the fixture. */
   points: number;
+  /** True when this was a combinator (all-or-nothing double). */
+  combinator?: boolean;
 }
 
-/** Score a single prediction against the actual scoreline. */
+/** Score a single prediction against the actual scoreline. A **combinator** is
+ * all-or-nothing: every market must be filled AND correct for the double payout,
+ * otherwise the whole fixture scores 0. */
 export function scoreClubPrediction(
-  pred: Pick<ClubPrediction, 'outcome' | 'totals' | 'btts'>,
+  pred: Pick<ClubPrediction, 'outcome' | 'totals' | 'btts' | 'combinator'>,
   actual: ClubResult,
 ): ClubScoreBreakdown {
   const m = marketsForResult(actual);
-  const hits = {
+  const rawHits = {
     result: pred.outcome != null && pred.outcome === m.outcome,
     totals: pred.totals != null && pred.totals === m.totals,
     btts: pred.btts != null && pred.btts === m.btts,
   };
-  const result = hits.result ? CLUB_POINTS.result : 0;
-  const totals = hits.totals ? CLUB_POINTS.totals : 0;
-  const btts = hits.btts ? CLUB_POINTS.btts : 0;
-  return { result, totals, btts, hits, points: result + totals + btts };
+
+  if (pred.combinator) {
+    const allThree =
+      pred.outcome != null &&
+      pred.totals != null &&
+      pred.btts != null &&
+      rawHits.result &&
+      rawHits.totals &&
+      rawHits.btts;
+    // On a win, stats reflect all three hit; on a loss, the gamble scores nothing.
+    const hits = allThree
+      ? { result: true, totals: true, btts: true }
+      : { result: false, totals: false, btts: false };
+    return {
+      result: 0,
+      totals: 0,
+      btts: 0,
+      hits,
+      points: allThree ? CLUB_COMBINATOR_POINTS : 0,
+      combinator: true,
+    };
+  }
+
+  const result = rawHits.result ? CLUB_POINTS.result : 0;
+  const totals = rawHits.totals ? CLUB_POINTS.totals : 0;
+  const btts = rawHits.btts ? CLUB_POINTS.btts : 0;
+  return { result, totals, btts, hits: rawHits, points: result + totals + btts };
 }
 
 // --- Lookups & helpers -----------------------------------------------------
@@ -741,12 +778,17 @@ export function meisterContenderIds(state: ClubLeagueState): {
   };
 }
 
-/** The Champions League final — the single latest-kick-off UCL fixture. The
- * leagues finish before it, so it sits after every period: the Meister decider,
- * bet only by the two finalists. Undefined until the feed lists a UCL game. */
+/** The Champions League final — the Meister decider, bet only by the two
+ * finalists. The leagues deliberately finish before it, so the final is the
+ * latest UCL fixture that kicks off **after every period has ended**. This is
+ * crucial: in-season UCL games (group stage, earlier rounds) are NOT the final
+ * and must stay open for everyone to bet. Undefined until such a fixture exists. */
 export function clFinalFixture(state: ClubLeagueState): ClubFixture | undefined {
+  const periods = orderedPeriods(state);
+  if (periods.length === 0) return undefined;
+  const seasonEnd = Math.max(...periods.map((p) => toMs(p.endsAt)));
   const ucl = state.fixtures
-    .filter((f) => f.competitionId === 'ucl')
+    .filter((f) => f.competitionId === 'ucl' && toMs(f.kickoff) >= seasonEnd)
     .sort((a, b) => toMs(b.kickoff) - toMs(a.kickoff) || b.order - a.order);
   return ucl[0];
 }
@@ -794,7 +836,11 @@ export function computeMeister(
   const final = clFinalFixture(state);
   const finalScore = final ? (final.result ?? opts?.liveScores?.[final.id]) : undefined;
   const weekMs = 7 * 86_400_000;
-  const finalKick = final ? toMs(final.kickoff) : null;
+  // The tie-break "closing week" is the last 7 days of the season itself (up to the
+  // final period's end), i.e. each finalist's form over the run-in's closing games —
+  // NOT the week before the CL final (which sits after the leagues have finished).
+  const periods = orderedPeriods(state);
+  const seasonEnd = periods.length ? Math.max(...periods.map((p) => toMs(p.endsAt))) : null;
 
   const build = (id: string | undefined, side: 'master' | 'firstDiv'): MeisterContender | null => {
     if (!id) return null;
@@ -804,12 +850,12 @@ export function computeMeister(
     const points =
       final && finalScore && prediction ? scoreClubPrediction(prediction, finalScore).points : 0;
     let lastWeekPoints = 0;
-    if (finalKick != null) {
+    if (seasonEnd != null) {
       for (const f of state.fixtures) {
         const res = f.result ?? opts?.liveScores?.[f.id];
         if (!res) continue;
         const k = toMs(f.kickoff);
-        if (k < finalKick - weekMs || k >= finalKick) continue; // only the closing week, pre-final
+        if (k < seasonEnd - weekMs || k >= seasonEnd) continue; // the season's closing week
         const pred = findPrediction(state, f.id, id);
         if (pred) lastWeekPoints += scoreClubPrediction(pred, res).points;
       }
@@ -856,6 +902,45 @@ export function computeMeister(
   };
 }
 
+// --- Combinator (accumulator) ----------------------------------------------
+
+/** The Monday (UTC) that starts the calendar week a kick-off falls in — the
+ * bucket the per-week combinator cap counts against. */
+export function clubWeekKey(iso: ISODateTime): string {
+  const d = new Date(iso);
+  const dow = (d.getUTCDay() + 6) % 7; // Monday = 0
+  const monday = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - dow));
+  return monday.toISOString().slice(0, 10);
+}
+
+/** How many combinators a player already has set in a given week, optionally
+ * ignoring one fixture (the one being toggled). */
+export function clubCombinatorCountInWeek(
+  state: ClubLeagueState,
+  predictorId: string,
+  weekKey: string,
+  excludeFixtureId?: string,
+): number {
+  let n = 0;
+  for (const p of state.predictions) {
+    if (p.predictorId !== predictorId || !p.combinator) continue;
+    if (excludeFixtureId && p.fixtureId === excludeFixtureId) continue;
+    const fx = findFixture(state, p.fixtureId);
+    if (fx && clubWeekKey(fx.kickoff) === weekKey) n++;
+  }
+  return n;
+}
+
+/** Combinators a player has left to use in the week of `kickoff`. */
+export function clubCombinatorsLeft(
+  state: ClubLeagueState,
+  predictorId: string,
+  kickoff: ISODateTime,
+): number {
+  const used = clubCombinatorCountInWeek(state, predictorId, clubWeekKey(kickoff));
+  return Math.max(0, CLUB_COMBINATORS_PER_WEEK - used);
+}
+
 // --- Mutations (pure) ------------------------------------------------------
 
 function touch(now: () => Date): ISODateTime {
@@ -876,6 +961,7 @@ export function setClubPrediction(
     outcome?: ClubOutcome;
     totals?: ClubTotals;
     btts?: ClubBtts;
+    combinator?: boolean;
   },
   opts: { now?: () => Date; force?: boolean } = {},
 ): ClubLeagueState {
@@ -897,12 +983,29 @@ export function setClubPrediction(
     }
   }
   const existing = findPrediction(state, input.fixtureId, input.predictorId);
+  // Turning a combinator ON is capped per week (anti-spam). Turning it off, or
+  // editing markets on an already-combinator fixture, is always allowed.
+  const turningOn = input.combinator === true && existing?.combinator !== true;
+  if (turningOn && !opts.force) {
+    const used = clubCombinatorCountInWeek(
+      state,
+      input.predictorId,
+      clubWeekKey(fixture.kickoff),
+      input.fixtureId,
+    );
+    if (used >= CLUB_COMBINATORS_PER_WEEK) {
+      throw new Error(
+        `Only ${CLUB_COMBINATORS_PER_WEEK} combinators allowed per week — you've used them.`,
+      );
+    }
+  }
   const merged: ClubPrediction = {
     fixtureId: input.fixtureId,
     predictorId: input.predictorId,
     outcome: input.outcome ?? existing?.outcome,
     totals: input.totals ?? existing?.totals,
     btts: input.btts ?? existing?.btts,
+    combinator: input.combinator ?? existing?.combinator,
     updatedAt: touch(now),
   };
   const predictions = existing

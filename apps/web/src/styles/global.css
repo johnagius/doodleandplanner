@@ -8328,6 +8328,115 @@ label.field {
   color: var(--primary);
 }
 
+/* --- Match centre -------------------------------------------------------- */
+.club-mc-open {
+  margin-top: 0.5rem;
+  text-align: center;
+}
+.club-mc-teams {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.club-mc-section {
+  display: grid;
+  gap: 0.4rem;
+}
+.club-mc-h {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+.club-odds-bar {
+  display: flex;
+  height: 26px;
+  border-radius: 8px;
+  overflow: hidden;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #fff;
+}
+.club-odds-seg {
+  display: grid;
+  place-items: center;
+  min-width: 1.2rem;
+}
+.club-odds-seg.home {
+  background: #16a34a;
+}
+.club-odds-seg.draw {
+  background: #6b7280;
+}
+.club-odds-seg.away {
+  background: #2563eb;
+}
+.club-odds-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.9rem;
+}
+.club-mc-standings,
+.club-mc-pos,
+.club-mc-form {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+.club-mc-standings {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.25rem;
+}
+.club-form-dots {
+  display: inline-flex;
+  gap: 0.25rem;
+}
+.club-form-dot {
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 6px;
+  display: grid;
+  place-items: center;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #fff;
+  background: var(--muted);
+}
+.club-form-dot.w {
+  background: #16a34a;
+}
+.club-form-dot.d {
+  background: #9ca3af;
+}
+.club-form-dot.l {
+  background: #dc2626;
+}
+.club-h2h {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.3rem;
+  max-height: 40vh;
+  overflow-y: auto;
+}
+.club-h2h > li {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.5rem;
+  align-items: baseline;
+  padding: 0.25rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.club-h2h > li:last-child {
+  border-bottom: none;
+}
+.club-h2h-score {
+  font-size: 0.9rem;
+}
+
 /* --- This week's picks + activity feed ----------------------------------- */
 .club-week-picks,
 .club-activity {

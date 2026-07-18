@@ -106,6 +106,75 @@ function MatchBody({ fixture, info }: { fixture: ClubFixture; info: ClubMatchInf
         </section>
       )}
 
+      {info.keyEvents.length > 0 && (
+        <section className="club-mc-section">
+          <h4 className="club-mc-h">⏱ Key events</h4>
+          <ul className="club-events-list">
+            {info.keyEvents.map((e, i) => (
+              <li key={i}>
+                <span className="club-ev-min">{e.minute}</span>
+                <span aria-hidden>
+                  {e.scoring
+                    ? '⚽'
+                    : e.type === 'Yellow Card'
+                      ? '🟨'
+                      : e.type === 'Red Card'
+                        ? '🟥'
+                        : e.type === 'Substitution'
+                          ? '🔁'
+                          : '•'}
+                </span>
+                <span>{e.text}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {info.stats.length > 0 && (
+        <section className="club-mc-section">
+          <h4 className="club-mc-h">📊 Match stats</h4>
+          <div className="club-statrows">
+            {info.stats.map((s) => (
+              <div key={s.label} className="club-statrow">
+                <span className="club-statrow-h">{s.home}</span>
+                <span className="club-statrow-l muted small">{s.label}</span>
+                <span className="club-statrow-a">{s.away}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {info.lineups.length > 0 && (
+        <section className="club-mc-section">
+          <h4 className="club-mc-h">👕 Line-ups</h4>
+          <div className="club-lineups">
+            {info.lineups.map((l) => (
+              <div key={l.teamId} className="club-lineup">
+                <div className="club-lineup-h">
+                  <strong>{l.name}</strong>
+                  {l.formation ? <span className="muted small"> · {l.formation}</span> : null}
+                </div>
+                <ol className="club-lineup-xi">
+                  {l.starters.map((p, i) => (
+                    <li key={i}>
+                      <span className="muted small">{p.jersey ?? ''}</span> {p.name}
+                      {p.pos ? <span className="muted small"> {p.pos}</span> : null}
+                    </li>
+                  ))}
+                </ol>
+                {l.subs.length > 0 && (
+                  <p className="muted small" style={{ margin: 0 }}>
+                    Subs: {l.subs.map((p) => p.name).join(', ')}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       {info.h2h.length > 0 && (
         <section className="club-mc-section">
           <h4 className="club-mc-h">🤝 Head to head</h4>
@@ -121,6 +190,25 @@ function MatchBody({ fixture, info }: { fixture: ClubFixture; info: ClubMatchInf
                   {g.awayName}
                 </span>
                 <span className="muted small">{g.competition}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {info.news.length > 0 && (
+        <section className="club-mc-section">
+          <h4 className="club-mc-h">📰 News</h4>
+          <ul className="club-news">
+            {info.news.map((a, i) => (
+              <li key={i}>
+                {a.url ? (
+                  <a href={a.url} target="_blank" rel="noreferrer">
+                    {a.headline}
+                  </a>
+                ) : (
+                  a.headline
+                )}
               </li>
             ))}
           </ul>

@@ -51,12 +51,54 @@ export interface ClubStandingRow {
   record: string; // "W-D-L"
 }
 
+export interface ClubLineupPlayer {
+  name: string;
+  pos?: string;
+  jersey?: string;
+}
+
+export interface ClubLineup {
+  teamId: string;
+  name: string;
+  formation?: string;
+  homeAway?: string;
+  starters: ClubLineupPlayer[];
+  subs: ClubLineupPlayer[];
+}
+
+export interface ClubStatPair {
+  label: string;
+  home: string;
+  away: string;
+}
+
+export interface ClubKeyEvent {
+  minute: string;
+  text: string;
+  type: string;
+  scoring: boolean;
+}
+
+export interface ClubNewsItem {
+  headline: string;
+  url?: string;
+  published?: string;
+}
+
 export interface ClubMatchInfo {
   odds: ClubOdds | null;
   /** Form per side (home first when identifiable). */
   form: ClubTeamForm[];
   h2h: ClubH2HGame[];
   standings: ClubStandingRow[];
+  /** Team line-ups (formation + starters/subs), when published. */
+  lineups: ClubLineup[];
+  /** Paired home/away match statistics. */
+  stats: ClubStatPair[];
+  /** Goals, cards and substitutions in order. */
+  keyEvents: ClubKeyEvent[];
+  /** Match/club news headlines. */
+  news: ClubNewsItem[];
   /** ESPN team ids for the home/away sides, to line up form/standings. */
   homeId?: string;
   awayId?: string;
@@ -158,6 +200,89 @@ function parseStandings(raw: any): ClubStandingRow[] {
   return rows.sort((a, b) => a.rank - b.rank);
 }
 
+function parseLineups(raw: any): ClubLineup[] {
+  const out: ClubLineup[] = [];
+  for (const r of raw?.rosters ?? []) {
+    if (!r?.team) continue;
+    const players = (r.roster ?? []).map((p: any) => ({
+      name: p.athlete?.displayName ?? '',
+      pos: p.position?.abbreviation,
+      jersey: p.jersey != null ? String(p.jersey) : undefined,
+    }));
+    out.push({
+      teamId: String(r.team.id ?? ''),
+      name: r.team.displayName ?? '',
+      formation: r.formation,
+      homeAway: r.homeAway,
+      starters: (r.roster ?? [])
+        .map((p: any, i: number) => ({ p, l: players[i] }))
+        .filter((x: any) => x.p.starter)
+        .map((x: any) => x.l),
+      subs: (r.roster ?? [])
+        .map((p: any, i: number) => ({ p, l: players[i] }))
+        .filter((x: any) => !x.p.starter)
+        .map((x: any) => x.l),
+    });
+  }
+  return out;
+}
+
+// Curated home/away stat comparison (ESPN stat name → label).
+const STAT_LABELS: [string, string][] = [
+  ['possessionPct', 'Possession %'],
+  ['totalShots', 'Shots'],
+  ['shotsOnTarget', 'On target'],
+  ['wonCorners', 'Corners'],
+  ['foulsCommitted', 'Fouls'],
+  ['yellowCards', 'Yellow cards'],
+  ['redCards', 'Red cards'],
+  ['offsides', 'Offsides'],
+  ['saves', 'Saves'],
+];
+
+function parseStats(raw: any): ClubStatPair[] {
+  const teams = raw?.boxscore?.teams ?? [];
+  const home = teams.find((t: any) => t.homeAway === 'home');
+  const away = teams.find((t: any) => t.homeAway === 'away');
+  if (!home || !away) return [];
+  const val = (t: any, name: string) =>
+    (t.statistics ?? []).find((s: any) => s?.name === name)?.displayValue as string | undefined;
+  const out: ClubStatPair[] = [];
+  for (const [name, label] of STAT_LABELS) {
+    const h = val(home, name);
+    const a = val(away, name);
+    if (h != null && a != null) out.push({ label, home: h, away: a });
+  }
+  return out;
+}
+
+const KEY_EVENT_TYPES = new Set(['Goal', 'Yellow Card', 'Red Card', 'Substitution', 'Penalty']);
+
+function parseKeyEvents(raw: any): ClubKeyEvent[] {
+  const out: ClubKeyEvent[] = [];
+  for (const e of raw?.keyEvents ?? []) {
+    const type = e?.type?.text ?? '';
+    const scoring = !!e?.scoringPlay;
+    if (!scoring && !KEY_EVENT_TYPES.has(type)) continue;
+    out.push({
+      minute: e?.clock?.displayValue ?? '',
+      text: e?.text ?? '',
+      type,
+      scoring,
+    });
+  }
+  return out.slice(0, 25);
+}
+
+function parseNews(raw: any): ClubNewsItem[] {
+  const arts = raw?.news?.articles ?? [];
+  return arts.slice(0, 5).map((a: any) => ({
+    headline: a.headline ?? '',
+    url: a.links?.web?.href,
+    published: a.published,
+  }));
+}
+
 /** Parse an ESPN event `summary` payload into match-centre context. */
 export function parseClubMatch(raw: unknown): ClubMatchInfo {
   const r = raw as any;
@@ -170,6 +295,10 @@ export function parseClubMatch(raw: unknown): ClubMatchInfo {
     form: parseForm(r),
     h2h: parseH2H(r),
     standings: parseStandings(r),
+    lineups: parseLineups(r),
+    stats: parseStats(r),
+    keyEvents: parseKeyEvents(r),
+    news: parseNews(r),
     homeId: homeC?.team?.id ? String(homeC.team.id) : undefined,
     awayId: awayC?.team?.id ? String(awayC.team.id) : undefined,
     homeName: homeC?.team?.displayName,

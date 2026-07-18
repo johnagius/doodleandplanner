@@ -14,6 +14,7 @@ import { ClubBackdrop } from './ClubBackdrop.js';
 import { ClubExplainer } from './ClubExplainer.js';
 import { ClubIdentityModal } from './ClubIdentityModal.js';
 import { ClubRules } from './ClubRules.js';
+import { ClubSidebar } from './ClubSidebar.js';
 import { installWcSaveAuth } from '../worldcup/wcAuthClient.js';
 import { ClubTable } from './ClubTable.js';
 import { DivisionsView } from './DivisionsView.js';
@@ -151,7 +152,7 @@ export function ClubLeaguePage() {
   const locking = meId ? clubLockingSoon(club, meId, new Date()) : [];
 
   return (
-    <div className="container">
+    <div className="container club-app">
       <section className="club-hero">
         <ClubBackdrop />
         <div className="club-hero-scrim" aria-hidden />
@@ -248,33 +249,41 @@ export function ClubLeaguePage() {
         )
       )}
 
-      <nav className="tabs club-tabs" role="tablist" aria-label="Club Football sections">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            role="tab"
-            aria-selected={tab === t.id}
-            className={`tab ${tab === t.id ? 'active' : ''}`}
-            onClick={() => setTab(t.id)}
-          >
-            <span className="tab-label">
-              <span aria-hidden>{t.icon}</span> {t.label}
-            </span>
-          </button>
-        ))}
-      </nav>
+      <div className="club-layout">
+        <div className="club-main">
+          <nav className="tabs club-tabs" role="tablist" aria-label="Club Football sections">
+            {TABS.map((t) => (
+              <button
+                key={t.id}
+                role="tab"
+                aria-selected={tab === t.id}
+                className={`tab ${tab === t.id ? 'active' : ''}`}
+                onClick={() => setTab(t.id)}
+              >
+                <span className="tab-label">
+                  <span aria-hidden>{t.icon}</span> {t.label}
+                </span>
+              </button>
+            ))}
+          </nav>
 
-      <div role="tabpanel">
-        {tab === 'fixtures' && <FixturesView club={club} />}
-        {tab === 'table' && <ClubTable club={club} />}
-        {tab === 'divisions' && <DivisionsView club={club} />}
-        {tab === 'rules' && (
-          <div className="stack">
-            <ShareGuide />
-            <ClubExplainer autoNarrate={autoGuide} />
-            <ClubRules club={club} />
+          <div role="tabpanel">
+            {tab === 'fixtures' && <FixturesView club={club} />}
+            {tab === 'table' && <ClubTable club={club} />}
+            {tab === 'divisions' && <DivisionsView club={club} />}
+            {tab === 'rules' && (
+              <div className="stack">
+                <ShareGuide />
+                <ClubExplainer autoNarrate={autoGuide} />
+                <ClubRules club={club} />
+              </div>
+            )}
           </div>
-        )}
+        </div>
+
+        <aside className="club-side-rail">
+          <ClubSidebar club={club} onGoFixtures={() => setTab('fixtures')} />
+        </aside>
       </div>
 
       <BuildStamp />

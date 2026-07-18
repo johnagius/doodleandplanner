@@ -21,6 +21,7 @@ import {
 } from '@dap/shared';
 import { useState } from 'react';
 import { useClubLeagueStore } from '../../state/clubLeagueStore.js';
+import { ClubMatchModal } from './ClubMatchModal.js';
 import { formatKickoff } from './clubFormat.js';
 import { TeamChip } from './TeamChip.js';
 
@@ -30,6 +31,7 @@ import { TeamChip } from './TeamChip.js';
 export function FixtureCard({ club, fixture }: { club: ClubLeagueState; fixture: ClubFixture }) {
   const meId = useClubLeagueStore((s) => s.meId);
   const admin = useClubLeagueStore((s) => s.admin);
+  const [mcOpen, setMcOpen] = useState(false);
   const liveInfo = useClubLeagueStore((s) => s.live[fixture.id]);
   const notes = useClubLeagueStore((s) => s.liveNotes[fixture.id]);
   const now = new Date();
@@ -120,6 +122,18 @@ export function FixtureCard({ club, fixture }: { club: ClubLeagueState; fixture:
             <li key={i}>📣 {n}</li>
           ))}
         </ul>
+      )}
+
+      {fixture.externalId?.startsWith('espn:') && (
+        <div className="club-mc-open">
+          <button type="button" className="btn btn-sm btn-ghost" onClick={() => setMcOpen(true)}>
+            📊 Match centre — odds, form, H2H
+          </button>
+        </div>
+      )}
+
+      {mcOpen && (
+        <ClubMatchModal fixture={fixture} open={mcOpen} onClose={() => setMcOpen(false)} />
       )}
 
       {admin && <ResultEditor fixture={fixture} />}

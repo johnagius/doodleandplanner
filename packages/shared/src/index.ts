@@ -32,6 +32,7 @@ export * from './worldcup.js';
 export * from './clubleague.js';
 export * from './clubfeed.js';
 export * from './clubAuth.js';
+export * from './clubmatch.js';
 export * from './squads.js';
 export * from './playerCards.js';
 export * from './betting.js';

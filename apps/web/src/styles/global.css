@@ -8328,6 +8328,94 @@ label.field {
   color: var(--primary);
 }
 
+/* --- Rank-over-time chart ------------------------------------------------- */
+.club-chart-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+.club-chart {
+  width: 100%;
+  min-width: 280px;
+  height: auto;
+  display: block;
+}
+.club-chart-grid {
+  stroke: var(--border);
+  stroke-width: 1;
+}
+.club-chart-axis {
+  fill: var(--muted);
+  font-size: 10px;
+}
+.club-chart-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.8rem;
+}
+.club-chart-legend > li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.82rem;
+}
+.club-chart-legend > li.is-me {
+  font-weight: 800;
+}
+.club-chart-dot {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 999px;
+  display: inline-block;
+}
+
+/* Clickable leaderboard rows → player history */
+.club-row.is-clickable {
+  cursor: pointer;
+}
+.club-row.is-clickable:hover,
+.club-row.is-clickable:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+}
+
+/* --- Player history modal ------------------------------------------------- */
+.club-history {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.4rem;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+.club-history-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.2rem 0.6rem;
+  align-items: center;
+  padding: 0.45rem 0.6rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface-2, rgba(127, 127, 127, 0.05));
+}
+.club-history-teams {
+  display: flex;
+  flex-direction: column;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+.club-history-row .club-pills {
+  grid-column: 1;
+}
+.club-history-row .club-ticket-pts {
+  grid-row: 1 / span 2;
+  grid-column: 2;
+  align-self: center;
+}
+
 /* --- Rules ---------------------------------------------------------------- */
 .club-rule-section h3 {
   font-size: 1.05rem;

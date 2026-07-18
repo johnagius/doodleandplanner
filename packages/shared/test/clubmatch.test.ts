@@ -132,5 +132,103 @@ describe('parseClubMatch', () => {
     expect(empty.form).toEqual([]);
     expect(empty.h2h).toEqual([]);
     expect(empty.standings).toEqual([]);
+    expect(empty.lineups).toEqual([]);
+    expect(empty.stats).toEqual([]);
+    expect(empty.keyEvents).toEqual([]);
+    expect(empty.news).toEqual([]);
+  });
+});
+
+const COMPLETED = {
+  rosters: [
+    {
+      homeAway: 'home',
+      team: { id: '359', displayName: 'Arsenal' },
+      formation: '4-3-3',
+      roster: [
+        {
+          starter: true,
+          jersey: '1',
+          athlete: { displayName: 'Keeper' },
+          position: { abbreviation: 'G' },
+        },
+        {
+          starter: false,
+          jersey: '30',
+          athlete: { displayName: 'Benchwarmer' },
+          position: { abbreviation: 'M' },
+        },
+      ],
+    },
+    {
+      homeAway: 'away',
+      team: { id: '388', displayName: 'Coventry City' },
+      formation: '4-4-2',
+      roster: [],
+    },
+  ],
+  boxscore: {
+    teams: [
+      {
+        homeAway: 'home',
+        statistics: [
+          { name: 'possessionPct', displayValue: '61.2' },
+          { name: 'totalShots', displayValue: '15' },
+        ],
+      },
+      {
+        homeAway: 'away',
+        statistics: [
+          { name: 'possessionPct', displayValue: '38.8' },
+          { name: 'totalShots', displayValue: '6' },
+        ],
+      },
+    ],
+  },
+  keyEvents: [
+    {
+      clock: { displayValue: "23'" },
+      text: 'Goal! Arsenal 1, Coventry 0.',
+      type: { text: 'Goal' },
+      scoringPlay: true,
+    },
+    { clock: { displayValue: "45'" }, text: 'First Half ends.', type: { text: 'Halftime' } },
+    { clock: { displayValue: "67'" }, text: 'Booking.', type: { text: 'Yellow Card' } },
+  ],
+  news: {
+    articles: [
+      {
+        headline: 'Match report',
+        published: '2026-08-16T18:00Z',
+        links: { web: { href: 'https://espn.com/x' } },
+      },
+    ],
+  },
+};
+
+describe('parseClubMatch — completed match', () => {
+  const info = parseClubMatch(COMPLETED);
+
+  it('reads line-ups with formation, starters and subs', () => {
+    const home = info.lineups.find((l) => l.homeAway === 'home')!;
+    expect(home.formation).toBe('4-3-3');
+    expect(home.starters.map((p) => p.name)).toEqual(['Keeper']);
+    expect(home.subs.map((p) => p.name)).toEqual(['Benchwarmer']);
+  });
+
+  it('pairs home/away match stats', () => {
+    const poss = info.stats.find((s) => s.label === 'Possession %')!;
+    expect(poss).toMatchObject({ home: '61.2', away: '38.8' });
+    expect(info.stats.find((s) => s.label === 'Shots')).toMatchObject({ home: '15', away: '6' });
+  });
+
+  it('keeps only meaningful key events (goals/cards/subs), not kickoff/halftime', () => {
+    expect(info.keyEvents.map((e) => e.type)).toEqual(['Goal', 'Yellow Card']);
+    expect(info.keyEvents[0]).toMatchObject({ minute: "23'", scoring: true });
+  });
+
+  it('reads news headlines with links', () => {
+    expect(info.news).toHaveLength(1);
+    expect(info.news[0]).toMatchObject({ headline: 'Match report', url: 'https://espn.com/x' });
   });
 });

@@ -547,6 +547,125 @@ export function rankedLeaderboard(state: ClubLeagueState): ClubLeaderRowRanked[]
   return clubLeaderboard(state).map((r, i) => ({ ...r, rank: i + 1 }));
 }
 
+// --- History & recaps ------------------------------------------------------
+
+/** The UTC calendar day a fixture falls on ("YYYY-MM-DD") — a stable grouping key. */
+function utcDayKey(iso: ISODateTime): string {
+  return new Date(iso).toISOString().slice(0, 10);
+}
+
+export interface ClubTimelinePoint {
+  /** UTC day this snapshot is taken at. */
+  day: string;
+  /** Cumulative points through this day. */
+  points: number;
+  /** 1-based standing through this day. */
+  rank: number;
+}
+
+export interface ClubTimelineSeries {
+  predictorId: string;
+  name: string;
+  points: ClubTimelinePoint[];
+}
+
+/**
+ * Each player's cumulative points and rank after every match-day that had a
+ * result — the data behind a rank-over-time chart. Pure; reuses
+ * {@link clubLeaderboard} for each cumulative snapshot.
+ */
+export function clubRankTimeline(state: ClubLeagueState): {
+  days: string[];
+  series: ClubTimelineSeries[];
+} {
+  const resulted = state.fixtures
+    .filter((f) => f.result)
+    .sort((a, b) => toMs(a.kickoff) - toMs(b.kickoff));
+  const days = [...new Set(resulted.map((f) => utcDayKey(f.kickoff)))];
+  const series = new Map<string, ClubTimelineSeries>(
+    state.predictors.map((p) => [p.id, { predictorId: p.id, name: p.name, points: [] }]),
+  );
+  for (const day of days) {
+    const upto = new Set(resulted.filter((f) => utcDayKey(f.kickoff) <= day).map((f) => f.id));
+    clubLeaderboard(state, { fixtureIds: upto }).forEach((row, i) => {
+      series.get(row.predictorId)?.points.push({ day, points: row.points, rank: i + 1 });
+    });
+  }
+  return { days, series: [...series.values()] };
+}
+
+export interface ClubRecapRow {
+  predictorId: string;
+  name: string;
+  /** Points earned on the recap day. */
+  gained: number;
+  /** Overall standing before / after the day (0 if unranked yet). */
+  before: number;
+  after: number;
+  /** Places climbed (positive) or dropped (negative) over the day. */
+  delta: number;
+}
+
+export interface ClubRecap {
+  dayKey: string;
+  fixtureIds: string[];
+  /** Every player, sorted by points gained that day (desc). */
+  rows: ClubRecapRow[];
+  /** The day's top scorer and biggest climber (null if nobody gained/climbed). */
+  topGain: ClubRecapRow | null;
+  topClimb: ClubRecapRow | null;
+}
+
+/**
+ * "What happened" for a match-day: points gained per player and how the overall
+ * standings moved across it. Defaults to the latest resulted day. Pure.
+ */
+export function clubMatchdayRecap(state: ClubLeagueState, dayKey?: string): ClubRecap | null {
+  const resulted = state.fixtures
+    .filter((f) => f.result)
+    .sort((a, b) => toMs(a.kickoff) - toMs(b.kickoff));
+  if (resulted.length === 0) return null;
+  const days = [...new Set(resulted.map((f) => utcDayKey(f.kickoff)))];
+  const day = dayKey ?? days[days.length - 1]!;
+  const dayFixtures = resulted.filter((f) => utcDayKey(f.kickoff) === day);
+  if (dayFixtures.length === 0) return null;
+
+  const dayIds = new Set(dayFixtures.map((f) => f.id));
+  const beforeIds = new Set(resulted.filter((f) => utcDayKey(f.kickoff) < day).map((f) => f.id));
+  const uptoIds = new Set(resulted.filter((f) => utcDayKey(f.kickoff) <= day).map((f) => f.id));
+
+  const gainOf = new Map(
+    clubLeaderboard(state, { fixtureIds: dayIds }).map((r) => [r.predictorId, r.points]),
+  );
+  const beforeRank = new Map(
+    clubLeaderboard(state, { fixtureIds: beforeIds }).map((r, i) => [r.predictorId, i + 1]),
+  );
+  const afterRank = new Map(
+    clubLeaderboard(state, { fixtureIds: uptoIds }).map((r, i) => [r.predictorId, i + 1]),
+  );
+
+  const rows: ClubRecapRow[] = state.predictors
+    .map((p) => {
+      const before = beforeRank.get(p.id) ?? 0;
+      const after = afterRank.get(p.id) ?? 0;
+      // Only count a climb/drop when the player was ranked both before and after.
+      const delta = before > 0 && after > 0 ? before - after : 0;
+      return {
+        predictorId: p.id,
+        name: p.name,
+        gained: gainOf.get(p.id) ?? 0,
+        before,
+        after,
+        delta,
+      };
+    })
+    .sort((a, b) => b.gained - a.gained || a.name.localeCompare(b.name));
+
+  const topGain = rows.find((r) => r.gained > 0) ?? null;
+  const topClimb = [...rows].sort((a, b) => b.delta - a.delta).find((r) => r.delta > 0) ?? null;
+  return { dayKey: day, fixtureIds: [...dayIds], rows, topGain, topClimb };
+}
+
 // --- Periods, divisions, promotion / relegation ----------------------------
 
 /** Ordered periods by start time. */

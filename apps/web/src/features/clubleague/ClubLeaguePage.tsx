@@ -192,6 +192,9 @@ export function ClubLeaguePage() {
             >
               🔧 Organiser {admin ? 'on' : 'off'}
             </button>
+            <Link className="btn btn-sm btn-ghost" to="/club/poster" title="Countdown poster">
+              📣 Poster
+            </Link>
             <Link className="btn btn-sm btn-ghost" to="/">
               ← Home
             </Link>

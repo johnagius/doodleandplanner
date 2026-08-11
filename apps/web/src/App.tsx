@@ -18,14 +18,19 @@ const WorldCupPage = lazy(() =>
 const ClubLeaguePage = lazy(() =>
   import('./features/clubleague/ClubLeaguePage.js').then((m) => ({ default: m.ClubLeaguePage })),
 );
+const ClubPosterPage = lazy(() =>
+  import('./features/clubleague/ClubPosterPage.js').then((m) => ({ default: m.ClubPosterPage })),
+);
 const NotFoundPage = lazy(() =>
   import('./features/home/NotFoundPage.js').then((m) => ({ default: m.NotFoundPage })),
 );
 
 export function App() {
-  // Club Football stands on its own — it hides the Doodle & Planner shell chrome
-  // and runs full-width, so it doesn't read as a sub-page.
-  const standalone = useLocation().pathname === '/club';
+  // Club Football (and its countdown poster) stands on its own — it hides the
+  // Doodle & Planner shell chrome and runs full-width, so it doesn't read as a
+  // sub-page.
+  const { pathname } = useLocation();
+  const standalone = pathname === '/club' || pathname === '/club/poster';
   return (
     <ToastProvider>
       <WelcomeModal />
@@ -64,6 +69,7 @@ export function App() {
               <Route path="/r/:slug" element={<RoomPage />} />
               <Route path="/world-cup" element={<WorldCupPage />} />
               <Route path="/club" element={<ClubLeaguePage />} />
+              <Route path="/club/poster" element={<ClubPosterPage />} />
               <Route path="*" element={<NotFoundPage />} />
             </Routes>
           </Suspense>

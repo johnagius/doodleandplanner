@@ -9623,3 +9623,177 @@ label.field {
   gap: 0.25rem;
   font-size: 0.82rem;
 }
+
+/* --- Club Football countdown poster (/club/poster) ------------------------ */
+/* The poster paints its own night-match palette so it looks identical in both
+   themes (and in a screenshot). */
+.club-poster-stage {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 1.25rem;
+  background:
+    radial-gradient(60rem 40rem at 80% -10%, rgba(52, 211, 153, 0.14), transparent 60%),
+    radial-gradient(50rem 35rem at 10% 110%, rgba(96, 165, 250, 0.12), transparent 60%), #070d0a;
+}
+.club-poster {
+  width: min(34rem, 100%);
+  text-align: center;
+  color: #f0fdf4;
+  background:
+    radial-gradient(26rem 16rem at 50% -6rem, rgba(251, 191, 36, 0.16), transparent 70%),
+    linear-gradient(160deg, #0c2818 0%, #0a1f2e 55%, #101827 100%);
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  border-radius: 1.25rem;
+  box-shadow:
+    0 24px 70px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  padding: clamp(1.25rem, 4vw, 2.25rem);
+  position: relative;
+  overflow: hidden;
+}
+/* Faint pitch markings: halfway line + centre circle behind the countdown. */
+.club-poster::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.05)) 50% 46% / 120% 1px
+      no-repeat,
+    radial-gradient(
+        circle at 50% 46%,
+        transparent 5.4rem,
+        rgba(255, 255, 255, 0.06) 5.4rem,
+        rgba(255, 255, 255, 0.06) calc(5.4rem + 1px),
+        transparent calc(5.4rem + 2px)
+      )
+      no-repeat;
+  pointer-events: none;
+}
+.club-poster > * {
+  position: relative;
+}
+.club-poster-ribbon {
+  display: inline-block;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #fbbf24;
+  border: 1px solid rgba(251, 191, 36, 0.5);
+  border-radius: 999px;
+  padding: 0.3rem 0.8rem;
+  margin-bottom: 0.75rem;
+}
+.club-poster-title {
+  margin: 0;
+  font-size: clamp(1.9rem, 7.5vw, 2.9rem);
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  line-height: 1.1;
+  text-wrap: balance;
+}
+.club-poster-sub {
+  margin: 0.3rem 0 0;
+  color: rgba(240, 253, 244, 0.75);
+  font-size: 0.95rem;
+}
+.club-poster-count {
+  margin: 0.9rem 0 0.2rem;
+}
+.club-poster-count-num {
+  font-size: clamp(4.75rem, 26vw, 8.5rem);
+  font-weight: 900;
+  line-height: 0.95;
+  background: linear-gradient(180deg, #fde68a 0%, #fbbf24 55%, #d97706 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 6px 18px rgba(251, 191, 36, 0.35));
+  font-variant-numeric: tabular-nums;
+}
+.club-poster-count-label {
+  text-transform: uppercase;
+  letter-spacing: 0.34em;
+  font-weight: 800;
+  font-size: clamp(0.9rem, 3.4vw, 1.15rem);
+  margin-top: 0.35rem;
+}
+.club-poster-count-now {
+  letter-spacing: 0.12em;
+  color: #fbbf24;
+  padding: 1.25rem 0;
+  text-wrap: balance;
+}
+.club-poster-ticker {
+  margin-top: 0.45rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: rgba(240, 253, 244, 0.8);
+}
+.club-poster-date {
+  margin: 0.35rem 0 0;
+  font-size: 0.92rem;
+  color: rgba(240, 253, 244, 0.85);
+  font-weight: 600;
+}
+.club-poster-crests {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  margin: 1rem 0 0;
+}
+.club-poster-crests .club-poster-crest,
+.club-poster-crests .club-badge {
+  width: 38px;
+  height: 38px;
+  object-fit: contain;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92);
+  padding: 3px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
+}
+.club-poster-crests .club-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.66rem;
+  color: #fff;
+  padding: 0;
+}
+.club-poster-rules {
+  list-style: none;
+  margin: 1.1rem 0 0;
+  padding: 0.75rem 0.9rem;
+  text-align: left;
+  display: grid;
+  gap: 0.45rem;
+  font-size: 0.86rem;
+  line-height: 1.45;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 0.9rem;
+}
+.club-poster-rules li {
+  display: flex;
+  gap: 0.5rem;
+  align-items: baseline;
+}
+.club-poster-cta {
+  margin: 1rem 0 0;
+  font-weight: 700;
+  color: #fde68a;
+}
+.club-poster-actions {
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 0.8rem;
+  flex-wrap: wrap;
+}
+.club-poster-actions .btn:not(.btn-primary) {
+  background: rgba(255, 255, 255, 0.1);
+  color: #f0fdf4;
+  border-color: rgba(255, 255, 255, 0.25);
+}
